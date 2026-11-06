@@ -1693,7 +1693,8 @@ class ViewerMixin:
         """Recall the roast's tasting, or ask for one once it has rested; nothing before."""
         from tilauscope import tasting_log  # noqa: PLC0415
         from tilauscope.brew_advisor import RestStatus, rest_window  # noqa: PLC0415
-        from tilauscope.cave.tasting_dialog import defect_labels, verdict_labels  # noqa: PLC0415
+        from tilauscope.cave.tasting_dialog import (  # noqa: PLC0415
+            defect_labels, found_said, intention_said, verdict_labels)
         banner = self.roast_tasting_banner
         roast_uuid = str((profile or {}).get('roastUUID') or '')
         if not roast_uuid:
@@ -1709,6 +1710,7 @@ class ViewerMixin:
         if tasting is not None:
             labels = defect_labels()
             parts = [verdict_labels().get(tasting.verdict, '')] + [labels[d] for d in tasting.defects if d in labels]
+            parts += [intention_said(tasting), found_said(tasting, bean.flavour_notes if bean is not None else '')]
             verdict = " · ".join(p for p in parts if p)
             if profile.get('tilau_shared'):
                 # The sender's verdict on their own cup: read, never edited as if it were the operator's.
@@ -1807,7 +1809,9 @@ class ViewerMixin:
         dlg = TastingDialog(self, directory=str(self.beancave_directory), roast_uuid=roast_uuid,
                             bean_uuid=(bean.uuid if bean is not None else ''), coffee=coffee,
                             roast_epoch=self._roast_epoch(profile), mode=self.aw.qmc.mode,
-                            is_reference=bean is not None and bean.reference_roast_uuid == roast_uuid)
+                            is_reference=bean is not None and bean.reference_roast_uuid == roast_uuid,
+                            intention=(bean.intention if bean is not None else ''),
+                            announced=(bean.flavour_notes if bean is not None else ''))
         if dlg.exec():
             choice = dlg.reference_choice()
             if choice is not None and bean is not None:

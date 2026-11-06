@@ -91,7 +91,7 @@ rather than leaving its zones cramped at the top.
 
 | Zone | What it holds |
 |---|---|
-| **Essentials** | Name, origin, process and supplier; stock (with the batches it still makes), crop year, [SCA](glossary.md#sca-score) score and number of roasts as tiles; the flavour notes and the roasting memo. Hovering the stock shows what it is worth once a price is entered. The ✎ beside the flavour notes edits the score, the notes and the memo. |
+| **Essentials** | Name, origin, process and supplier; stock (with the batches it still makes), crop year, [SCA](glossary.md#sca-score) score and number of roasts as tiles; the coffee's intention; the flavour notes and the roasting memo. Hovering the stock shows what it is worth once a price is entered. The ✎ beside the flavour notes, or a click on the intention, edits the score, the intention, the notes and the memo. |
 | **Roast memory** | The coffee's last roast — see [below](#the-roast-history-of-a-coffee). |
 | **Characteristics** | Process, species, varieties and [screen size](glossary.md#screen-size); [density](glossary.md#density), [humidity](glossary.md#moisture-content) and water activity as tiles with their meaning; a blend's components as one bar; the [bean family](glossary.md#bean-family) and what it does to the pace of the roast. |
 | **Provenance** | Farm, altitude, supplier, purchase price. |
@@ -142,6 +142,11 @@ nothing.
 
 **Flavour notes** are entered on the flavour wheel rather than typed as free text, which keeps the
 vocabulary consistent from one coffee to the next.
+
+**Intention** is what the cup of this coffee should bring out: **Acidity & florals**,
+**Sweetness** or **Body**, or **Not set**. It shows under 🎯 on the record, and the tasting of each
+roast of the coffee asks whether the cup brought it out — see
+[Tasting](after-the-roast.md#tasting). The intention changes nothing in the roast plan.
 
 ### Price and screen size
 
@@ -388,7 +393,9 @@ you use, so roast plans are built for that machine.
 
 **Roasting a coffee.** **Prepare in Artisan** on a bean record opens the coffee's next roast in
 Artisan, with its name, its batch weight, its alarms and its reference roast as the background
-curve. Artisan may ask whether to load a profile that is not genuine: answer yes. Roast as usual
+curve. Artisan may ask whether to load a profile that is not genuine: answer yes. Keep Artisan open
+while BeanCave hands it roasts: started by BeanCave, Artisan reopens the roast it last had loaded
+over the one asked for. Roast as usual
 in Artisan. When Artisan saves the roast, BeanCave takes its green weight off the coffee's stock,
 once per roast.
 
@@ -412,6 +419,9 @@ tabs:
 | **DEVICES** | The scale, the colour meter, the AquaGauge, the ambient probe and the label printer. |
 | **LIBRARY** | The library and roasts folders, the currency, the roaster and the label size. |
 | **INTEGRATIONS** | The MQTT broker and the AI provider. |
+
+BeanCave connects its devices when it starts: after you save another device, it offers to
+restart now or later.
 
 These settings belong to BeanCave. At its first launch it takes over the devices, MQTT and AI
 TilauScope already knows on this computer; after that, a change in one program does not reach

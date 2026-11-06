@@ -47,9 +47,11 @@ from PyQt6.QtWidgets import (
 from tilauscope.tilauscope_types import (THEME, TilauProgressDialog, show_styled_message, price_per_kg_spin,
                                          select_listed_or_other)
 from tilaucore.bean_edit import apply as apply_zone
+from tilaucore.tasting_log import INTENTION_WORDS
 from tilauscope.bean_qualifiers import screen_size_options
 from tilauscope.header_icons import SVG_PROG_AI
 from tilauscope.sack_manager import prompt_release_if_emptied  # sack reclaim (§9.3)
+from tilauscope.widgets.controls import SegmentedControl
 
 _logd = logging.getLogger('tilau')
 
@@ -495,6 +497,15 @@ class ZoneEditorDialog(QDialog):
         fr.addWidget(wheel_btn)
         self._form.addRow(QApplication.translate("tilauscope_common", "Flavour notes:"), fr)
 
+        self._intention_keys = ('', *INTENTION_WORDS)
+        self.intention_seg = SegmentedControl(
+            [QApplication.translate("tilauscope_beancave", "Not set"),
+             *(QApplication.translate(*word) for word in INTENTION_WORDS.values())], compact=True)
+        key = getattr(b, 'intention', '') or ''
+        self.intention_seg.set_current(self._intention_keys.index(key) if key in self._intention_keys else 0)
+        self._form.addRow(QApplication.translate("tilauscope_beancave", "What should the cup bring out?"),
+                          self.intention_seg)
+
         self.tips_edit = QPlainTextEdit(getattr(b, 'tips', '') or "")
         self.tips_edit.setFixedHeight(80)
         self._form.addRow(QApplication.translate("tilauscope_beancave", "Roasting tips / memo:"), self.tips_edit)
@@ -916,6 +927,8 @@ class ZoneEditorDialog(QDialog):
         apply_zone(self._bean, 'sensory', {
             'sca': self.sca_spin.value(), 'flavour_notes': self.flavour_edit.text(),
             'tips': self.tips_edit.toPlainText()}, self._countries())
+        # Not a bean_edit field: the Android editor does not send it, and must not erase it.
+        self._bean.intention = self._intention_keys[max(self.intention_seg.current(), 0)]
         return True
 
     def _save(self) -> None:

@@ -105,6 +105,12 @@ class RoastTasting:
     verdict: str = ''       # '' | 'yes' | 'almost' | 'no'
     defects: list[str] = field(default_factory=list)   # keys of tasting_log.DEFECT_CHANGES
     notes: str = ''
+    # The coffee's intention when it was tasted (a key of tasting_log.INTENTION_WORDS), and
+    # whether the cup brought it out: '' | 'yes' | 'partly' | 'no'.
+    intention: str = ''
+    intention_reached: str = ''
+    # The flavour notes found in the cup, in the English names the flavour wheel writes.
+    tasted_notes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -171,6 +177,8 @@ class GreenBean:
     reference_roast_uuid: str = ''
     # What this coffee is for ('filter' | 'omni' | 'espresso'); '' = not chosen yet.
     destination: str = ''
+    # What the cup should bring out (a key of tasting_log.INTENTION_WORDS); '' = not chosen yet.
+    intention: str = ''
     # Dated history of water activity and moisture; the fields above keep the latest.
     measures: list[Measure] = field(default_factory=list)
 

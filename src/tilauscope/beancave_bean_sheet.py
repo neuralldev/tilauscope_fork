@@ -40,6 +40,7 @@ from PyQt6.QtWidgets import (
 
 from tilaucore.bean_qualifiers import family_pace
 from tilaucore.roast_colour import agtron_text
+from tilaucore.tasting_log import INTENTION_WORDS
 from tilauscope.bean_qualifiers import physical_qualifier, screen_size_label
 from tilauscope.beancave_catalogue import roast_name, short_date, svg_pixmap
 from tilauscope.roast_memory import ReferenceState, RoastMemory, ready_to_taste
@@ -111,6 +112,20 @@ def _chip(text: str, filled: str | None = None) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(css)
     return lbl
+
+
+class _Band(QFrame):
+    """A framed line the operator clicks to edit what it shows."""
+
+    clicked = pyqtSignal()
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: ANN001, N802
+        # A virtual: an escape here would close the application.
+        try:
+            if event.button() == Qt.MouseButton.LeftButton:
+                self.clicked.emit()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.exception("intention band click failed")
 
 
 class _Zone(QFrame):
@@ -265,7 +280,7 @@ class BeanSheetWidget(QWidget):
         self.clear()
         try:
             self._build_essentials(bean, memory)
-            self._build_memory(memory, mode, reference)
+            self._build_memory(memory, mode, reference, announced=bean.flavour_notes or '')
             self._build_characteristics(bean)
             self._build_provenance(bean)
             self._build_sacks(bean)
@@ -360,6 +375,8 @@ class BeanSheetWidget(QWidget):
                                 QApplication.translate("tilauscope_beancave", "Roasts"), THEME['TEXT']))
         z.body.addLayout(self._tiles_row(tiles))
 
+        z.body.addWidget(self._intention_band(bean))
+
         # Flavour notes and the memo, edited together (SCA, notes, memo).
         flow_host = QWidget()
         flow_host.setStyleSheet(_PLAIN)
@@ -386,8 +403,39 @@ class BeanSheetWidget(QWidget):
             z.body.addWidget(memo)
         self._add(self._left, z)
 
+    def _intention_band(self, bean) -> QFrame:
+        """What the cup of this coffee should bring out; clicking it opens the flavour editor."""
+        word = INTENTION_WORDS.get(getattr(bean, 'intention', '') or '')
+        band = _Band()
+        band.setObjectName("intention")
+        band.setCursor(Qt.CursorShape.PointingHandCursor)
+        band.setStyleSheet(
+            f"QFrame#intention {{ background:{tint('MAUVE', 0.10)};border:1px solid {tint('MAUVE', 0.35)};"
+            f"border-radius:8px; }}" if word else
+            f"QFrame#intention {{ background:transparent;border:1px dashed {THEME['BORDER']};border-radius:8px; }}")
+        band.setToolTip(QApplication.translate("tilauscope_common", "Edit SCA score, flavour notes and memo"))
+        band.clicked.connect(lambda: self.editRequested.emit('sensory'))
+        row = QHBoxLayout(band)
+        row.setContentsMargins(_px(10), _px(6), _px(10), _px(6))
+        row.setSpacing(_px(8))
+        row.addWidget(_label("🎯", f"font-size:{_fs(15)}px;"))
+        text = QVBoxLayout()
+        text.setSpacing(0)
+        text.addWidget(_label(QApplication.translate("tilauscope_beancave", "INTENTION"),
+                              f"color:{THEME['MAUVE'] if word else _DIM};font-size:{_fs(10)}px;"
+                              f"font-weight:700;letter-spacing:1px;"))
+        if word:
+            text.addWidget(_label(QApplication.translate(*word),
+                                  f"color:{THEME['TEXT']};font-size:{_fs(13)}px;font-weight:600;"))
+        else:
+            text.addWidget(_label(QApplication.translate(
+                "tilauscope_beancave", "What should the cup bring out? Choose it in Edit."),
+                f"color:{_DIM};font-size:{_fs(12)}px;", wrap=True))
+        row.addLayout(text, 1)
+        return band
+
     def _build_memory(self, memory: RoastMemory | None, mode: str,
-                      reference: ReferenceState | None = None) -> None:
+                      reference: ReferenceState | None = None, announced: str = '') -> None:
         z = _Zone(QApplication.translate("tilauscope_beancave", "Roast memory"), accent=True)
         z.edit_btn.hide()
         if memory is None:
@@ -434,10 +482,11 @@ class BeanSheetWidget(QWidget):
 
         if tasting is not None:
             from tilauscope.cave.tasting_dialog import (  # noqa: PLC0415
-                change_text, defect_labels, verdict_labels)
+                change_text, defect_labels, found_said, intention_said, verdict_labels)
             labels = defect_labels()
             defects = [labels[d] for d in tasting.defects if d in labels]
             said = ", ".join(defects) if defects else verdict_labels().get(tasting.verdict, "")
+            said = " · ".join(p for p in (said, intention_said(tasting), found_said(tasting, announced)) if p)
             when = QApplication.translate("tilauscope_beancave", "Tasted:")
             try:
                 when = QApplication.translate("tilauscope_beancave", "Tasted {0}:").format(

@@ -206,11 +206,11 @@
 </context><context>
     <name>Button</name>
     <message>
-        <location filename="../artisanlib/main.py" line="3081" />
         <location filename="../tilauscope/window/build.py" line="1064" />
         <location filename="../tilauscope/config_controls_tab.py" line="234" />
         <location filename="../tilauscope/roast_plan_model.py" line="775" />
         <location filename="../tilauscope/roast_properties.py" line="1979" />
+        <location filename="../artisanlib/main.py" line="3081" />
         <location filename="../tilaucore/roast_plan.py" line="4972" />
         <source>CHARGE</source>
         <translation>FÜLLEN</translation>
@@ -243,31 +243,27 @@
         <translation type="unfinished">FC START</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="3103" />
         <location filename="../tilauscope/window/build.py" line="1070" />
         <location filename="../tilauscope/config_controls_tab.py" line="240" />
         <location filename="../tilauscope/roast_plan_model.py" line="775" />
         <location filename="../tilauscope/roast_properties.py" line="1985" />
+        <location filename="../artisanlib/main.py" line="3103" />
         <location filename="../tilaucore/roast_plan.py" line="4977" />
         <source>DROP</source>
         <translation>LEEREN</translation>
     </message>
     <message>
-        <location filename="../tilauscope/visualalarm.py" line="141" />
-        <source>Generate explanation (AI)</source>
-        <translation>Erklärung erzeugen (KI)</translation>
+        <location filename="../artisanlib/dialogs.py" line="632" />
+        <location filename="../artisanlib/dialogs.py" line="93" />
+        <location filename="../artisanlib/comm.py" line="230" />
+        <location filename="../artisanlib/pid_dialogs.py" line="2845" />
+        <location filename="../artisanlib/pid_dialogs.py" line="1974" />
+        <location filename="../artisanlib/pid_dialogs.py" line="949" />
+        <location filename="../plus/login.py" line="79" />
+        <source>OK</source>
+        <translation>OK</translation>
     </message>
     <message>
-        <location filename="../tilauscope/visualalarm.py" line="169" />
-        <source>Auto-center timeline</source>
-        <translation>Zeitleiste automatisch zentrieren</translation>
-    </message>
-    <message>
-        <location filename="../plus/login.py" line="84" />
-        <location filename="../artisanlib/dialogs.py" line="633" />
-        <location filename="../artisanlib/dialogs.py" line="94" />
-        <location filename="../artisanlib/comm.py" line="231" />
-        <location filename="../artisanlib/pid_dialogs.py" line="3133" />
         <location filename="../tilauscope/device_setup/dialog.py" line="905" />
         <location filename="../tilauscope/device_setup/dialog.py" line="847" />
         <location filename="../tilauscope/device_setup/dialog.py" line="681" />
@@ -275,12 +271,12 @@
         <location filename="../tilauscope/device_setup/dialog.py" line="139" />
         <location filename="../tilauscope/graph/milestone_edit.py" line="462" />
         <location filename="../tilauscope/cave/printing.py" line="640" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1100" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="379" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1102" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="380" />
         <location filename="../tilauscope/cave/widgets.py" line="967" />
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="175" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="238" />
         <location filename="../tilauscope/cave/ambient.py" line="164" />
-        <location filename="../tilauscope/cave/viewer.py" line="1780" />
+        <location filename="../tilauscope/cave/viewer.py" line="1783" />
         <location filename="../tilauscope/backup_dialog.py" line="372" />
         <location filename="../tilauscope/backup_dialog.py" line="82" />
         <location filename="../tilauscope/devices.py" line="505" />
@@ -291,14 +287,14 @@
         <location filename="../tilauscope/sack_manager.py" line="292" />
         <location filename="../tilauscope/pid_autotune.py" line="2759" />
         <location filename="../tilauscope/pid_autotune.py" line="2636" />
-        <location filename="../tilauscope/alog_repair.py" line="1067" />
+        <location filename="../tilauscope/alog_repair.py" line="1076" />
         <location filename="../tilauscope/alog_repair.py" line="734" />
         <location filename="../tilauscope/tilauscope_types.py" line="1106" />
         <location filename="../tilauscope/tilauscope_types.py" line="516" />
         <location filename="../tilauscope/roast_properties.py" line="5466" />
         <location filename="../tilauscope/roast_properties.py" line="4848" />
         <location filename="../tilauscope/roast_properties.py" line="2704" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="260" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="262" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1852" />
         <location filename="../tilauscope/webclient.py" line="948" />
         <location filename="../tilauscope/coffee_share_dialog.py" line="272" />
@@ -307,241 +303,13 @@
         <location filename="../tilauscope/custom_buttons.py" line="399" />
         <location filename="../tilauscope/ai_support.py" line="579" />
         <location filename="../tilauscope/beancave_storage_tab.py" line="1170" />
+        <location filename="../artisanlib/dialogs.py" line="633" />
+        <location filename="../artisanlib/dialogs.py" line="94" />
+        <location filename="../artisanlib/comm.py" line="231" />
+        <location filename="../artisanlib/pid_dialogs.py" line="3133" />
+        <location filename="../plus/login.py" line="84" />
         <source>Cancel</source>
         <translation>Abbrechen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/transposer.py" line="141" />
-        <location filename="../artisanlib/designer.py" line="244" />
-        <location filename="../artisanlib/events.py" line="1200" />
-        <location filename="../tilauscope/graph/milestone_edit.py" line="466" />
-        <location filename="../tilauscope/cave/viewer.py" line="1975" />
-        <location filename="../tilauscope/custom_buttons.py" line="407" />
-        <source>Apply</source>
-        <translation>Anwenden</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="329" />
-        <location filename="../artisanlib/alarms.py" line="105" />
-        <location filename="../artisanlib/dialogs.py" line="625" />
-        <location filename="../artisanlib/statistics.py" line="292" />
-        <location filename="../artisanlib/curves.py" line="1391" />
-        <location filename="../artisanlib/roast_properties.py" line="820" />
-        <location filename="../artisanlib/background.py" line="95" />
-        <location filename="../artisanlib/events.py" line="691" />
-        <location filename="../artisanlib/comparator.py" line="1006" />
-        <location filename="../artisanlib/wheels.py" line="444" />
-        <location filename="../tilauscope/device_setup/dialog.py" line="447" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1099" />
-        <location filename="../tilauscope/devices.py" line="2141" />
-        <location filename="../tilauscope/alarms.py" line="1717" />
-        <location filename="../tilauscope/alarms.py" line="1544" />
-        <location filename="../tilauscope/custom_buttons.py" line="1077" />
-        <location filename="../tilauscope/custom_buttons.py" line="433" />
-        <source>Delete</source>
-        <translation>Entfernen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="99" />
-        <location filename="../artisanlib/statistics.py" line="297" />
-        <location filename="../artisanlib/events.py" line="696" />
-        <location filename="../tilauscope/custom_buttons.py" line="479" />
-        <source>Insert</source>
-        <translation>Einfügen</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/alarms.py" line="1532" />
-        <location filename="../tilauscope/pairing_dialog.py" line="328" />
-        <source>Rename</source>
-        <translation type="unfinished">Umbenennen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/designer.py" line="242" />
-        <location filename="../artisanlib/wheels.py" line="145" />
-        <location filename="../artisanlib/wheels.py" line="60" />
-        <location filename="../tilauscope/widgets/card_dialog.py" line="115" />
-        <location filename="../tilauscope/backup_dialog.py" line="473" />
-        <location filename="../tilauscope/backup_dialog.py" line="430" />
-        <location filename="../tilauscope/alarms.py" line="1762" />
-        <location filename="../tilauscope/alarms.py" line="1485" />
-        <location filename="../tilauscope/about_dialog.py" line="190" />
-        <location filename="../tilauscope/custom_label_dialog.py" line="273" />
-        <location filename="../tilauscope/alog_repair.py" line="982" />
-        <location filename="../tilauscope/tilau_privacy_ui.py" line="342" />
-        <location filename="../tilauscope/roast_properties.py" line="6332" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1990" />
-        <location filename="../tilauscope/qr_scan.py" line="324" />
-        <source>Close</source>
-        <translation>Beenden</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/colors.py" line="103" />
-        <location filename="../artisanlib/colors.py" line="93" />
-        <location filename="../artisanlib/colors.py" line="82" />
-        <location filename="../artisanlib/colors.py" line="72" />
-        <location filename="../tilauscope/roast_asssistant.py" line="2236" />
-        <location filename="../tilauscope/roast_properties.py" line="3378" />
-        <source>BT</source>
-        <translation>BT</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/colors.py" line="98" />
-        <location filename="../artisanlib/colors.py" line="88" />
-        <location filename="../artisanlib/colors.py" line="77" />
-        <location filename="../artisanlib/colors.py" line="67" />
-        <location filename="../tilauscope/roast_asssistant.py" line="2237" />
-        <location filename="../tilauscope/roast_properties.py" line="3384" />
-        <source>ET</source>
-        <translation>ET</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="119" />
-        <location filename="../artisanlib/events.py" line="740" />
-        <location filename="../artisanlib/pid_dialogs.py" line="2831" />
-        <location filename="../artisanlib/pid_dialogs.py" line="929" />
-        <location filename="../tilauscope/alarms.py" line="1418" />
-        <location filename="../tilauscope/tilauscope_types.py" line="519" />
-        <source>Save</source>
-        <translation>Speichern</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/build.py" line="561" />
-        <location filename="../tilauscope/displayscope.py" line="780" />
-        <source>MONITOR</source>
-        <translation>ÜBERWACHEN</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="784" />
-        <source>STOP</source>
-        <translation type="unfinished">STOPP</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="14493" />
-        <location filename="../artisanlib/canvas.py" line="11623" />
-        <location filename="../artisanlib/canvas.py" line="7908" />
-        <location filename="../artisanlib/main.py" line="3043" />
-        <location filename="../tilauscope/window/build.py" line="573" />
-        <location filename="../tilauscope/config_controls_tab.py" line="307" />
-        <location filename="../tilauscope/displayscope.py" line="785" />
-        <source>START</source>
-        <translation>START</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/cup_profile.py" line="98" />
-        <location filename="../artisanlib/devices.py" line="307" />
-        <location filename="../artisanlib/alarms.py" line="94" />
-        <location filename="../artisanlib/dialogs.py" line="623" />
-        <location filename="../artisanlib/statistics.py" line="287" />
-        <location filename="../artisanlib/roast_properties.py" line="815" />
-        <location filename="../artisanlib/events.py" line="686" />
-        <location filename="../artisanlib/comparator.py" line="1003" />
-        <location filename="../artisanlib/wheels.py" line="112" />
-        <location filename="../tilauscope/device_setup/dialog.py" line="623" />
-        <location filename="../tilauscope/device_setup/dialog.py" line="439" />
-        <location filename="../tilauscope/alarms.py" line="1710" />
-        <source>Add</source>
-        <translation>Hinzufügen</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/alarms.py" line="2023" />
-        <source>Overwrite</source>
-        <translation>Überschreiben</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/build.py" line="1067" />
-        <location filename="../tilauscope/config_controls_tab.py" line="237" />
-        <source>FC END</source>
-        <translation type="unfinished">FC ENDE</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/build.py" line="1068" />
-        <location filename="../tilauscope/config_controls_tab.py" line="238" />
-        <source>SC START</source>
-        <translation type="unfinished">SC START</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/build.py" line="1069" />
-        <location filename="../tilauscope/config_controls_tab.py" line="239" />
-        <source>SC END</source>
-        <translation type="unfinished">SC ENDE</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/build.py" line="1071" />
-        <location filename="../tilauscope/config_controls_tab.py" line="241" />
-        <source>COOL END</source>
-        <translation type="unfinished">ABGEKÜHLT</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3054" />
-        <location filename="../tilauscope/window/build.py" line="585" />
-        <location filename="../tilauscope/config_controls_tab.py" line="265" />
-        <source>RESET</source>
-        <translation>RESET</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="13673" />
-        <location filename="../artisanlib/canvas.py" line="7897" />
-        <location filename="../artisanlib/main.py" line="3032" />
-        <location filename="../tilauscope/config_controls_tab.py" line="267" />
-        <source>ON</source>
-        <translation>EIN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="14379" />
-        <location filename="../artisanlib/canvas.py" line="13463" />
-        <location filename="../tilauscope/config_controls_tab.py" line="269" />
-        <source>OFF</source>
-        <translation>AUS</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="172" />
-        <location filename="../artisanlib/devices.py" line="157" />
-        <location filename="../artisanlib/wheels.py" line="449" />
-        <location filename="../tilauscope/cave/printing.py" line="1074" />
-        <location filename="../tilauscope/cave/printing.py" line="971" />
-        <source>Select</source>
-        <translation>Auswählen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/colors.py" line="160" />
-        <location filename="../artisanlib/canvas.py" line="11782" />
-        <location filename="../tilauscope/window/build.py" line="829" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="129" />
-        <source>Drying Phase</source>
-        <translation>Trocknungsphase</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/colors.py" line="175" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="130" />
-        <source>Cooling Phase</source>
-        <translation>Abkühlphase</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/build.py" line="597" />
-        <source>BEAN CAVE</source>
-        <translation>BEAN CAVE</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/colors.py" line="170" />
-        <location filename="../artisanlib/canvas.py" line="11767" />
-        <location filename="../tilauscope/window/build.py" line="831" />
-        <source>Finishing Phase</source>
-        <translation>Endphase</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/widgets/dialogs.py" line="154" />
-        <source>Cancel Roasting</source>
-        <translation>Röstung abbrechen</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/widgets/dialogs.py" line="156" />
-        <source>Deactivate all and Roast</source>
-        <translation>Alle deaktivieren und rösten</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/widgets/dialogs.py" line="158" />
-        <source>Continue as is</source>
-        <translation>Unverändert fortfahren</translation>
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="577" />
@@ -557,6 +325,25 @@
         <translation>Voreinstellungen</translation>
     </message>
     <message>
+        <location filename="../tilauscope/widgets/card_dialog.py" line="115" />
+        <location filename="../tilauscope/backup_dialog.py" line="473" />
+        <location filename="../tilauscope/backup_dialog.py" line="430" />
+        <location filename="../tilauscope/alarms.py" line="1762" />
+        <location filename="../tilauscope/alarms.py" line="1485" />
+        <location filename="../tilauscope/about_dialog.py" line="190" />
+        <location filename="../tilauscope/custom_label_dialog.py" line="273" />
+        <location filename="../tilauscope/alog_repair.py" line="991" />
+        <location filename="../tilauscope/tilau_privacy_ui.py" line="342" />
+        <location filename="../tilauscope/roast_properties.py" line="6332" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1990" />
+        <location filename="../tilauscope/qr_scan.py" line="324" />
+        <location filename="../artisanlib/designer.py" line="242" />
+        <location filename="../artisanlib/wheels.py" line="145" />
+        <location filename="../artisanlib/wheels.py" line="60" />
+        <source>Close</source>
+        <translation>Beenden</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/wheels.py" line="99" />
         <source>Line Color</source>
         <translation>Linienfarbe</translation>
@@ -565,6 +352,22 @@
         <location filename="../artisanlib/wheels.py" line="102" />
         <source>Text Color</source>
         <translation>Textfarbe</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/device_setup/dialog.py" line="623" />
+        <location filename="../tilauscope/device_setup/dialog.py" line="439" />
+        <location filename="../tilauscope/alarms.py" line="1710" />
+        <location filename="../artisanlib/cup_profile.py" line="98" />
+        <location filename="../artisanlib/devices.py" line="307" />
+        <location filename="../artisanlib/alarms.py" line="94" />
+        <location filename="../artisanlib/dialogs.py" line="623" />
+        <location filename="../artisanlib/statistics.py" line="287" />
+        <location filename="../artisanlib/roast_properties.py" line="815" />
+        <location filename="../artisanlib/events.py" line="686" />
+        <location filename="../artisanlib/comparator.py" line="1003" />
+        <location filename="../artisanlib/wheels.py" line="112" />
+        <source>Add</source>
+        <translation>Hinzufügen</translation>
     </message>
     <message>
         <location filename="../artisanlib/wheels.py" line="124" />
@@ -582,10 +385,40 @@
         <translation>Öffnen</translation>
     </message>
     <message>
+        <location filename="../tilauscope/device_setup/dialog.py" line="447" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1101" />
+        <location filename="../tilauscope/devices.py" line="2150" />
+        <location filename="../tilauscope/alarms.py" line="1717" />
+        <location filename="../tilauscope/alarms.py" line="1544" />
+        <location filename="../tilauscope/custom_buttons.py" line="1077" />
+        <location filename="../tilauscope/custom_buttons.py" line="433" />
+        <location filename="../artisanlib/devices.py" line="329" />
+        <location filename="../artisanlib/alarms.py" line="105" />
+        <location filename="../artisanlib/dialogs.py" line="625" />
+        <location filename="../artisanlib/statistics.py" line="292" />
+        <location filename="../artisanlib/curves.py" line="1391" />
+        <location filename="../artisanlib/roast_properties.py" line="820" />
+        <location filename="../artisanlib/background.py" line="95" />
+        <location filename="../artisanlib/events.py" line="691" />
+        <location filename="../artisanlib/comparator.py" line="1006" />
+        <location filename="../artisanlib/wheels.py" line="444" />
+        <source>Delete</source>
+        <translation>Entfernen</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="3355" />
         <location filename="../artisanlib/wheels.py" line="447" />
         <source>Update</source>
         <translation>Aktualisieren</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/printing.py" line="1074" />
+        <location filename="../tilauscope/cave/printing.py" line="971" />
+        <location filename="../artisanlib/devices.py" line="172" />
+        <location filename="../artisanlib/devices.py" line="157" />
+        <location filename="../artisanlib/wheels.py" line="449" />
+        <source>Select</source>
+        <translation>Auswählen</translation>
     </message>
     <message>
         <location filename="../artisanlib/wheels.py" line="472" />
@@ -616,15 +449,14 @@
         <translation>Laden</translation>
     </message>
     <message>
-        <location filename="../plus/login.py" line="79" />
-        <location filename="../artisanlib/dialogs.py" line="632" />
-        <location filename="../artisanlib/dialogs.py" line="93" />
-        <location filename="../artisanlib/comm.py" line="230" />
-        <location filename="../artisanlib/pid_dialogs.py" line="2845" />
-        <location filename="../artisanlib/pid_dialogs.py" line="1974" />
-        <location filename="../artisanlib/pid_dialogs.py" line="949" />
-        <source>OK</source>
-        <translation>OK</translation>
+        <location filename="../tilauscope/alarms.py" line="1418" />
+        <location filename="../tilauscope/tilauscope_types.py" line="519" />
+        <location filename="../artisanlib/alarms.py" line="119" />
+        <location filename="../artisanlib/events.py" line="740" />
+        <location filename="../artisanlib/pid_dialogs.py" line="2831" />
+        <location filename="../artisanlib/pid_dialogs.py" line="929" />
+        <source>Save</source>
+        <translation>Speichern</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="951" />
@@ -887,6 +719,14 @@
         <translation>Tabelle Kopieren</translation>
     </message>
     <message>
+        <location filename="../tilauscope/custom_buttons.py" line="479" />
+        <location filename="../artisanlib/alarms.py" line="99" />
+        <location filename="../artisanlib/statistics.py" line="297" />
+        <location filename="../artisanlib/events.py" line="696" />
+        <source>Insert</source>
+        <translation>Einfügen</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/events.py" line="719" />
         <source>&lt;&lt; Store Palette</source>
         <translation>&lt;&lt; Palette speichern</translation>
@@ -895,6 +735,16 @@
         <location filename="../artisanlib/events.py" line="721" />
         <source>Activate Palette &gt;&gt;</source>
         <translation>Palette abrufen &gt;&gt;</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/milestone_edit.py" line="466" />
+        <location filename="../tilauscope/cave/viewer.py" line="1980" />
+        <location filename="../tilauscope/custom_buttons.py" line="407" />
+        <location filename="../artisanlib/transposer.py" line="141" />
+        <location filename="../artisanlib/designer.py" line="244" />
+        <location filename="../artisanlib/events.py" line="1200" />
+        <source>Apply</source>
+        <translation>Anwenden</translation>
     </message>
     <message>
         <location filename="../artisanlib/ports.py" line="378" />
@@ -1104,6 +954,32 @@ anlegen</translation>
         <translation>Text</translation>
     </message>
     <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="267" />
+        <location filename="../artisanlib/canvas.py" line="13673" />
+        <location filename="../artisanlib/canvas.py" line="7897" />
+        <location filename="../artisanlib/main.py" line="3032" />
+        <source>ON</source>
+        <translation>EIN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="573" />
+        <location filename="../tilauscope/config_controls_tab.py" line="307" />
+        <location filename="../tilauscope/displayscope.py" line="785" />
+        <location filename="../artisanlib/canvas.py" line="14493" />
+        <location filename="../artisanlib/canvas.py" line="11623" />
+        <location filename="../artisanlib/canvas.py" line="7908" />
+        <location filename="../artisanlib/main.py" line="3043" />
+        <source>START</source>
+        <translation>START</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="585" />
+        <location filename="../tilauscope/config_controls_tab.py" line="265" />
+        <location filename="../artisanlib/main.py" line="3054" />
+        <source>RESET</source>
+        <translation>RESET</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="3063" />
         <source>CONTROL</source>
         <translation>STEUERUNG</translation>
@@ -1208,10 +1084,52 @@ END</source>
         <translation>Tara</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/build.py" line="831" />
+        <location filename="../artisanlib/colors.py" line="170" />
+        <location filename="../artisanlib/canvas.py" line="11767" />
+        <source>Finishing Phase</source>
+        <translation>Endphase</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/colors.py" line="165" />
         <location filename="../artisanlib/canvas.py" line="11775" />
         <source>Maillard Phase</source>
         <translation>Maillardphase</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="829" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="129" />
+        <location filename="../artisanlib/colors.py" line="160" />
+        <location filename="../artisanlib/canvas.py" line="11782" />
+        <source>Drying Phase</source>
+        <translation>Trocknungsphase</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="269" />
+        <location filename="../artisanlib/canvas.py" line="14379" />
+        <location filename="../artisanlib/canvas.py" line="13463" />
+        <source>OFF</source>
+        <translation>AUS</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="2237" />
+        <location filename="../tilauscope/roast_properties.py" line="3384" />
+        <location filename="../artisanlib/colors.py" line="98" />
+        <location filename="../artisanlib/colors.py" line="88" />
+        <location filename="../artisanlib/colors.py" line="77" />
+        <location filename="../artisanlib/colors.py" line="67" />
+        <source>ET</source>
+        <translation>ET</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="2236" />
+        <location filename="../tilauscope/roast_properties.py" line="3378" />
+        <location filename="../artisanlib/colors.py" line="103" />
+        <location filename="../artisanlib/colors.py" line="93" />
+        <location filename="../artisanlib/colors.py" line="82" />
+        <location filename="../artisanlib/colors.py" line="72" />
+        <source>BT</source>
+        <translation>BT</translation>
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="109" />
@@ -1242,6 +1160,12 @@ END</source>
         <location filename="../artisanlib/colors.py" line="155" />
         <source>X Label</source>
         <translation>X Achse</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="130" />
+        <location filename="../artisanlib/colors.py" line="175" />
+        <source>Cooling Phase</source>
+        <translation>Abkühlphase</translation>
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="180" />
@@ -1355,44 +1279,94 @@ END</source>
         <source>Del</source>
         <translation>Löschen</translation>
     </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="141" />
+        <source>Generate explanation (AI)</source>
+        <translation>Erklärung erzeugen (KI)</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="169" />
+        <source>Auto-center timeline</source>
+        <translation>Zeitleiste automatisch zentrieren</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="1532" />
+        <location filename="../tilauscope/pairing_dialog.py" line="328" />
+        <source>Rename</source>
+        <translation type="unfinished">Umbenennen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="561" />
+        <location filename="../tilauscope/displayscope.py" line="780" />
+        <source>MONITOR</source>
+        <translation>ÜBERWACHEN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="784" />
+        <source>STOP</source>
+        <translation type="unfinished">STOPP</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="2023" />
+        <source>Overwrite</source>
+        <translation>Überschreiben</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="1067" />
+        <location filename="../tilauscope/config_controls_tab.py" line="237" />
+        <source>FC END</source>
+        <translation type="unfinished">FC ENDE</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="1068" />
+        <location filename="../tilauscope/config_controls_tab.py" line="238" />
+        <source>SC START</source>
+        <translation type="unfinished">SC START</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="1069" />
+        <location filename="../tilauscope/config_controls_tab.py" line="239" />
+        <source>SC END</source>
+        <translation type="unfinished">SC ENDE</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="1071" />
+        <location filename="../tilauscope/config_controls_tab.py" line="241" />
+        <source>COOL END</source>
+        <translation type="unfinished">ABGEKÜHLT</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="597" />
+        <source>BEAN CAVE</source>
+        <translation>BEAN CAVE</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/widgets/dialogs.py" line="154" />
+        <source>Cancel Roasting</source>
+        <translation>Röstung abbrechen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/widgets/dialogs.py" line="156" />
+        <source>Deactivate all and Roast</source>
+        <translation>Alle deaktivieren und rösten</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/widgets/dialogs.py" line="158" />
+        <source>Continue as is</source>
+        <translation>Unverändert fortfahren</translation>
+    </message>
 </context><context>
     <name>CheckBox</name>
     <message>
-        <location filename="../artisanlib/statistics.py" line="70" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="243" />
-        <location filename="../tilauscope/beancave_social_card.py" line="186" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="66" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="548" />
-        <source>Characteristics</source>
-        <translation>Kenndaten</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/axis.py" line="268" />
-        <location filename="../artisanlib/axis.py" line="179" />
-        <location filename="../tilauscope/window/milestones.py" line="56" />
-        <location filename="../tilauscope/window/milestones.py" line="54" />
-        <location filename="../tilauscope/cave/viewer.py" line="471" />
-        <source>Auto</source>
-        <translation>Automatisch</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/background.py" line="244" />
-        <location filename="../tilauscope/window/lifecycle.py" line="889" />
-        <location filename="../tilauscope/window/build.py" line="248" />
-        <source>Playback Aid</source>
-        <translation>Wiedergabehilfe</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/background.py" line="253" />
-        <location filename="../tilauscope/window/lifecycle.py" line="891" />
-        <source>Playback Events</source>
-        <translation>Ereigniswiedergabe</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/background.py" line="258" />
-        <location filename="../tilauscope/window/lifecycle.py" line="893" />
-        <source>Playback DROP</source>
-        <translation>Wiedergabe LEEREN</translation>
+        <location filename="../artisanlib/curves.py" line="1044" />
+        <location filename="../artisanlib/curves.py" line="955" />
+        <location filename="../artisanlib/curves.py" line="949" />
+        <location filename="../artisanlib/curves.py" line="942" />
+        <location filename="../artisanlib/curves.py" line="924" />
+        <location filename="../artisanlib/background.py" line="72" />
+        <location filename="../plus/schedule.py" line="1584" />
+        <source>Show</source>
+        <translation>Anzeigen</translation>
     </message>
     <message>
         <location filename="../artisanlib/axis.py" line="170" />
@@ -1403,6 +1377,15 @@ END</source>
         <location filename="../artisanlib/axis.py" line="174" />
         <source>Lock</source>
         <translation>Fest</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/milestones.py" line="56" />
+        <location filename="../tilauscope/window/milestones.py" line="54" />
+        <location filename="../tilauscope/cave/viewer.py" line="471" />
+        <location filename="../artisanlib/axis.py" line="268" />
+        <location filename="../artisanlib/axis.py" line="179" />
+        <source>Auto</source>
+        <translation>Automatisch</translation>
     </message>
     <message>
         <location filename="../artisanlib/statistics.py" line="56" />
@@ -1585,27 +1568,35 @@ END</source>
         <translation>AUS bei LEEREN</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="1584" />
-        <location filename="../artisanlib/curves.py" line="1044" />
-        <location filename="../artisanlib/curves.py" line="955" />
-        <location filename="../artisanlib/curves.py" line="949" />
-        <location filename="../artisanlib/curves.py" line="942" />
-        <location filename="../artisanlib/curves.py" line="924" />
-        <location filename="../artisanlib/background.py" line="72" />
-        <source>Show</source>
-        <translation>Anzeigen</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/curves.py" line="408" />
         <location filename="../artisanlib/background.py" line="81" />
         <source>Show Full</source>
         <translation>Vollständig</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="889" />
+        <location filename="../tilauscope/window/build.py" line="248" />
+        <location filename="../artisanlib/background.py" line="244" />
+        <source>Playback Aid</source>
+        <translation>Wiedergabehilfe</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/curves.py" line="1224" />
         <location filename="../artisanlib/background.py" line="248" />
         <source>Beep</source>
         <translation>Piepston</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="891" />
+        <location filename="../artisanlib/background.py" line="253" />
+        <source>Playback Events</source>
+        <translation>Ereigniswiedergabe</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="893" />
+        <location filename="../artisanlib/background.py" line="258" />
+        <source>Playback DROP</source>
+        <translation>Wiedergabe LEEREN</translation>
     </message>
     <message>
         <location filename="../artisanlib/background.py" line="272" />
@@ -1823,6 +1814,15 @@ END</source>
         <translation>Balken</translation>
     </message>
     <message>
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="243" />
+        <location filename="../tilauscope/beancave_social_card.py" line="186" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="68" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="597" />
+        <location filename="../artisanlib/statistics.py" line="70" />
+        <source>Characteristics</source>
+        <translation>Kenndaten</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/statistics.py" line="76" />
         <source>/min</source>
         <translation>/min</translation>
@@ -1895,416 +1895,6 @@ END</source>
     </message>
 </context><context>
     <name>ComboBox</name>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="926" />
-        <location filename="../artisanlib/pid_dialogs.py" line="845" />
-        <location filename="../tilauscope/window/sidebar.py" line="299" />
-        <location filename="../tilauscope/alarms.py" line="610" />
-        <location filename="../tilauscope/visualalarm.py" line="478" />
-        <source>Pop Up</source>
-        <translation>Dialogfenster</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="927" />
-        <location filename="../artisanlib/events.py" line="1292" />
-        <location filename="../artisanlib/events.py" line="783" />
-        <location filename="../artisanlib/events.py" line="137" />
-        <location filename="../artisanlib/pid_dialogs.py" line="846" />
-        <location filename="../tilauscope/window/sidebar.py" line="300" />
-        <location filename="../tilauscope/config_controls_tab.py" line="51" />
-        <location filename="../tilauscope/alarms.py" line="611" />
-        <location filename="../tilauscope/visualalarm.py" line="479" />
-        <source>Call Program</source>
-        <translation>Externes Programm</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="928" />
-        <location filename="../artisanlib/events.py" line="295" />
-        <location filename="../artisanlib/pid_dialogs.py" line="847" />
-        <location filename="../tilauscope/window/sidebar.py" line="301" />
-        <location filename="../tilauscope/alarms.py" line="612" />
-        <location filename="../tilauscope/visualalarm.py" line="480" />
-        <source>Event Button</source>
-        <translation>Ereignis Taste</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="932" />
-        <location filename="../artisanlib/alarms.py" line="931" />
-        <location filename="../artisanlib/alarms.py" line="930" />
-        <location filename="../artisanlib/alarms.py" line="929" />
-        <location filename="../artisanlib/pid_dialogs.py" line="851" />
-        <location filename="../artisanlib/pid_dialogs.py" line="850" />
-        <location filename="../artisanlib/pid_dialogs.py" line="849" />
-        <location filename="../artisanlib/pid_dialogs.py" line="848" />
-        <location filename="../tilauscope/window/sidebar.py" line="305" />
-        <location filename="../tilauscope/window/sidebar.py" line="304" />
-        <location filename="../tilauscope/window/sidebar.py" line="303" />
-        <location filename="../tilauscope/window/sidebar.py" line="302" />
-        <location filename="../tilauscope/visualalarm.py" line="484" />
-        <location filename="../tilauscope/visualalarm.py" line="483" />
-        <location filename="../tilauscope/visualalarm.py" line="482" />
-        <location filename="../tilauscope/visualalarm.py" line="481" />
-        <source>Slider</source>
-        <translation>Regler</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="933" />
-        <location filename="../artisanlib/alarms.py" line="875" />
-        <location filename="../artisanlib/pid_dialogs.py" line="852" />
-        <location filename="../tilauscope/window/sidebar.py" line="306" />
-        <location filename="../tilauscope/visualalarm.py" line="485" />
-        <source>START</source>
-        <translation>START</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18937" />
-        <location filename="../artisanlib/alarms.py" line="940" />
-        <location filename="../artisanlib/alarms.py" line="884" />
-        <location filename="../artisanlib/curves.py" line="2149" />
-        <location filename="../artisanlib/roast_properties.py" line="4531" />
-        <location filename="../artisanlib/roast_properties.py" line="759" />
-        <location filename="../artisanlib/background.py" line="1105" />
-        <location filename="../artisanlib/events.py" line="1408" />
-        <location filename="../artisanlib/pid_dialogs.py" line="859" />
-        <location filename="../tilauscope/window/sidebar.py" line="313" />
-        <location filename="../tilauscope/alarms.py" line="624" />
-        <location filename="../tilauscope/alarms.py" line="87" />
-        <location filename="../tilauscope/visualalarm.py" line="492" />
-        <source>COOL END</source>
-        <translation>ABGEKÜHLT</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="941" />
-        <location filename="../artisanlib/events.py" line="2833" />
-        <location filename="../artisanlib/pid_dialogs.py" line="860" />
-        <location filename="../tilauscope/window/sidebar.py" line="314" />
-        <location filename="../tilauscope/visualalarm.py" line="493" />
-        <source>OFF</source>
-        <translation>AUS</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="943" />
-        <location filename="../artisanlib/pid_dialogs.py" line="862" />
-        <location filename="../tilauscope/window/sidebar.py" line="316" />
-        <location filename="../tilauscope/alarms.py" line="627" />
-        <location filename="../tilauscope/visualalarm.py" line="495" />
-        <source>RampSoak ON</source>
-        <translation>Rampe/Haltezeit AN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="944" />
-        <location filename="../artisanlib/pid_dialogs.py" line="863" />
-        <location filename="../tilauscope/window/sidebar.py" line="317" />
-        <location filename="../tilauscope/alarms.py" line="628" />
-        <location filename="../tilauscope/visualalarm.py" line="496" />
-        <source>RampSoak OFF</source>
-        <translation>Rampe/Haltezeit AUS</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="945" />
-        <location filename="../artisanlib/pid_dialogs.py" line="864" />
-        <location filename="../tilauscope/window/sidebar.py" line="318" />
-        <location filename="../tilauscope/alarms.py" line="629" />
-        <location filename="../tilauscope/visualalarm.py" line="497" />
-        <source>PID ON</source>
-        <translation>PID EIN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="946" />
-        <location filename="../artisanlib/pid_dialogs.py" line="865" />
-        <location filename="../tilauscope/window/sidebar.py" line="319" />
-        <location filename="../tilauscope/alarms.py" line="630" />
-        <location filename="../tilauscope/visualalarm.py" line="498" />
-        <source>PID OFF</source>
-        <translation>PID AUS</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="947" />
-        <location filename="../artisanlib/pid_dialogs.py" line="866" />
-        <location filename="../tilauscope/window/sidebar.py" line="320" />
-        <location filename="../tilauscope/visualalarm.py" line="499" />
-        <source>SV</source>
-        <translation>SV</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="12688" />
-        <location filename="../artisanlib/alarms.py" line="948" />
-        <location filename="../artisanlib/pid_dialogs.py" line="867" />
-        <location filename="../tilauscope/window/sidebar.py" line="321" />
-        <location filename="../tilauscope/alarms.py" line="632" />
-        <location filename="../tilauscope/visualalarm.py" line="500" />
-        <source>Playback ON</source>
-        <translation>Wiedergabe AN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="12690" />
-        <location filename="../artisanlib/alarms.py" line="949" />
-        <location filename="../artisanlib/pid_dialogs.py" line="868" />
-        <location filename="../tilauscope/window/sidebar.py" line="322" />
-        <location filename="../tilauscope/alarms.py" line="633" />
-        <location filename="../tilauscope/visualalarm.py" line="501" />
-        <source>Playback OFF</source>
-        <translation>Wiedergabe AUS</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="950" />
-        <location filename="../artisanlib/pid_dialogs.py" line="869" />
-        <location filename="../tilauscope/window/sidebar.py" line="323" />
-        <location filename="../tilauscope/alarms.py" line="634" />
-        <location filename="../tilauscope/visualalarm.py" line="502" />
-        <source>Set Canvas Color</source>
-        <translation>Hintergrundfarbe Setzen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="951" />
-        <location filename="../artisanlib/pid_dialogs.py" line="870" />
-        <location filename="../tilauscope/window/sidebar.py" line="324" />
-        <location filename="../tilauscope/alarms.py" line="635" />
-        <location filename="../tilauscope/visualalarm.py" line="503" />
-        <source>Reset Canvas Color</source>
-        <translation>Hintergrundfarbe Zurücksetzen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="877" />
-        <location filename="../tilauscope/graph/curve.py" line="2233" />
-        <location filename="../tilauscope/roast_review_panel.py" line="386" />
-        <source>TP</source>
-        <translation>TP</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1482" />
-        <location filename="../artisanlib/canvas.py" line="1475" />
-        <location filename="../artisanlib/canvas.py" line="1468" />
-        <location filename="../artisanlib/canvas.py" line="1224" />
-        <location filename="../tilauscope/cave/standalone.py" line="160" />
-        <location filename="../tilauscope/hibean.py" line="650" />
-        <location filename="../tilauscope/hibean.py" line="649" />
-        <source>Drum</source>
-        <translation>Trommel</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1484" />
-        <location filename="../tilauscope/hibean.py" line="652" />
-        <source>Heater</source>
-        <translation>Heizung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1481" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1009" />
-        <source>Fan</source>
-        <translation>Lüfter</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="885" />
-        <location filename="../tilauscope/alarms.py" line="88" />
-        <source>If Alarm</source>
-        <translation>Wenn Alarm</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/config_controls_tab.py" line="49" />
-        <source>None</source>
-        <translation type="unfinished">Keines</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1291" />
-        <location filename="../artisanlib/events.py" line="780" />
-        <location filename="../artisanlib/events.py" line="136" />
-        <location filename="../tilauscope/config_controls_tab.py" line="50" />
-        <source>Serial Command</source>
-        <translation>Serielles Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1293" />
-        <location filename="../artisanlib/events.py" line="781" />
-        <location filename="../artisanlib/events.py" line="139" />
-        <location filename="../tilauscope/config_controls_tab.py" line="52" />
-        <source>Modbus Command</source>
-        <translation>Modbus Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1294" />
-        <location filename="../artisanlib/events.py" line="782" />
-        <location filename="../artisanlib/events.py" line="140" />
-        <location filename="../tilauscope/config_controls_tab.py" line="53" />
-        <source>DTA Command</source>
-        <translation>DTA Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1295" />
-        <location filename="../artisanlib/events.py" line="790" />
-        <location filename="../artisanlib/events.py" line="141" />
-        <location filename="../tilauscope/config_controls_tab.py" line="54" />
-        <source>IO Command</source>
-        <translation>IO Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1296" />
-        <location filename="../artisanlib/events.py" line="784" />
-        <location filename="../artisanlib/events.py" line="142" />
-        <location filename="../tilauscope/config_controls_tab.py" line="55" />
-        <source>Hottop Heater</source>
-        <translation>Hottop Heizung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1297" />
-        <location filename="../artisanlib/events.py" line="785" />
-        <location filename="../artisanlib/events.py" line="143" />
-        <location filename="../tilauscope/config_controls_tab.py" line="56" />
-        <source>Hottop Fan</source>
-        <translation>Hottop Lüfter</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1298" />
-        <location filename="../artisanlib/events.py" line="786" />
-        <location filename="../artisanlib/events.py" line="144" />
-        <location filename="../tilauscope/config_controls_tab.py" line="57" />
-        <source>Hottop Command</source>
-        <translation>Hottop Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1299" />
-        <location filename="../artisanlib/events.py" line="145" />
-        <location filename="../tilauscope/config_controls_tab.py" line="58" />
-        <source>p-i-d</source>
-        <translation>p-i-d</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1300" />
-        <location filename="../artisanlib/events.py" line="787" />
-        <location filename="../artisanlib/events.py" line="146" />
-        <location filename="../tilauscope/config_controls_tab.py" line="59" />
-        <source>Fuji Command</source>
-        <translation>Fuji Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1301" />
-        <location filename="../artisanlib/events.py" line="788" />
-        <location filename="../artisanlib/events.py" line="147" />
-        <location filename="../tilauscope/config_controls_tab.py" line="60" />
-        <source>PWM Command</source>
-        <translation>PWM Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1302" />
-        <location filename="../artisanlib/events.py" line="789" />
-        <location filename="../artisanlib/events.py" line="148" />
-        <location filename="../tilauscope/config_controls_tab.py" line="61" />
-        <source>VOUT Command</source>
-        <translation>VOUT Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1303" />
-        <location filename="../artisanlib/events.py" line="791" />
-        <location filename="../artisanlib/events.py" line="149" />
-        <location filename="../tilauscope/config_controls_tab.py" line="62" />
-        <source>S7 Command</source>
-        <translation>S7 Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1304" />
-        <location filename="../artisanlib/events.py" line="792" />
-        <location filename="../artisanlib/events.py" line="150" />
-        <location filename="../tilauscope/config_controls_tab.py" line="63" />
-        <source>Aillio R1 Heater</source>
-        <translation>Aillio R1 Heizung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1305" />
-        <location filename="../artisanlib/events.py" line="793" />
-        <location filename="../artisanlib/events.py" line="151" />
-        <location filename="../tilauscope/config_controls_tab.py" line="64" />
-        <source>Aillio R1 Fan</source>
-        <translation>Aillio R1 Lüfter</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1306" />
-        <location filename="../artisanlib/events.py" line="794" />
-        <location filename="../artisanlib/events.py" line="152" />
-        <location filename="../tilauscope/config_controls_tab.py" line="65" />
-        <source>Aillio R1 Drum</source>
-        <translation>Aillio R1 Trommel</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1307" />
-        <location filename="../artisanlib/events.py" line="153" />
-        <location filename="../tilauscope/config_controls_tab.py" line="66" />
-        <source>Aillio R1 Command</source>
-        <translation>Aillio R1 Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1308" />
-        <location filename="../artisanlib/events.py" line="795" />
-        <location filename="../artisanlib/events.py" line="154" />
-        <location filename="../tilauscope/config_controls_tab.py" line="67" />
-        <source>Artisan Command</source>
-        <translation>Artisan Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1309" />
-        <location filename="../artisanlib/events.py" line="796" />
-        <location filename="../artisanlib/events.py" line="155" />
-        <location filename="../tilauscope/config_controls_tab.py" line="68" />
-        <source>RC Command</source>
-        <translation>RC Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1310" />
-        <location filename="../artisanlib/events.py" line="138" />
-        <location filename="../tilauscope/config_controls_tab.py" line="69" />
-        <source>Multiple Event</source>
-        <translation>Ereignissequenz</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1311" />
-        <location filename="../artisanlib/events.py" line="797" />
-        <location filename="../artisanlib/events.py" line="156" />
-        <location filename="../tilauscope/config_controls_tab.py" line="70" />
-        <source>WebSocket Command</source>
-        <translation>WebSocket Kommando</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1313" />
-        <location filename="../artisanlib/events.py" line="800" />
-        <location filename="../artisanlib/events.py" line="159" />
-        <location filename="../tilauscope/config_controls_tab.py" line="71" />
-        <source>Difluid Airwave Command</source>
-        <translation>Difluid-Airwave-Befehl</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="1314" />
-        <location filename="../artisanlib/events.py" line="801" />
-        <location filename="../artisanlib/events.py" line="160" />
-        <location filename="../tilauscope/config_controls_tab.py" line="72" />
-        <source>TilauScope Ambient Command</source>
-        <translation>TilauScope-Ambient-Befehl</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1477" />
-        <location filename="../artisanlib/canvas.py" line="1470" />
-        <location filename="../artisanlib/canvas.py" line="1226" />
-        <location filename="../tilauscope/cave/standalone.py" line="162" />
-        <location filename="../tilauscope/roast_asssistant.py" line="2194" />
-        <source>Burner</source>
-        <translation>Brenner</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1474" />
-        <location filename="../artisanlib/canvas.py" line="1467" />
-        <location filename="../artisanlib/canvas.py" line="1223" />
-        <location filename="../tilauscope/graph/curve.py" line="2645" />
-        <location filename="../tilauscope/graph/curve.py" line="456" />
-        <location filename="../tilauscope/cave/standalone.py" line="159" />
-        <source>Air</source>
-        <translation>Luft</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1476" />
-        <location filename="../artisanlib/canvas.py" line="1469" />
-        <location filename="../artisanlib/canvas.py" line="1225" />
-        <location filename="../tilauscope/cave/standalone.py" line="161" />
-        <source>Damper</source>
-        <translation>Luftklappe</translation>
-    </message>
     <message>
         <location filename="../artisanlib/axis.py" line="138" />
         <source>upper right</source>
@@ -2454,10 +2044,352 @@ END</source>
         <translation>Radial</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/sidebar.py" line="299" />
+        <location filename="../tilauscope/alarms.py" line="610" />
+        <location filename="../tilauscope/visualalarm.py" line="478" />
+        <location filename="../artisanlib/alarms.py" line="926" />
+        <location filename="../artisanlib/pid_dialogs.py" line="845" />
+        <source>Pop Up</source>
+        <translation>Dialogfenster</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="300" />
+        <location filename="../tilauscope/config_controls_tab.py" line="51" />
+        <location filename="../tilauscope/alarms.py" line="611" />
+        <location filename="../tilauscope/visualalarm.py" line="479" />
+        <location filename="../artisanlib/alarms.py" line="927" />
+        <location filename="../artisanlib/events.py" line="1292" />
+        <location filename="../artisanlib/events.py" line="783" />
+        <location filename="../artisanlib/events.py" line="137" />
+        <location filename="../artisanlib/pid_dialogs.py" line="846" />
+        <source>Call Program</source>
+        <translation>Externes Programm</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="301" />
+        <location filename="../tilauscope/alarms.py" line="612" />
+        <location filename="../tilauscope/visualalarm.py" line="480" />
+        <location filename="../artisanlib/alarms.py" line="928" />
+        <location filename="../artisanlib/events.py" line="295" />
+        <location filename="../artisanlib/pid_dialogs.py" line="847" />
+        <source>Event Button</source>
+        <translation>Ereignis Taste</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="305" />
+        <location filename="../tilauscope/window/sidebar.py" line="304" />
+        <location filename="../tilauscope/window/sidebar.py" line="303" />
+        <location filename="../tilauscope/window/sidebar.py" line="302" />
+        <location filename="../tilauscope/visualalarm.py" line="484" />
+        <location filename="../tilauscope/visualalarm.py" line="483" />
+        <location filename="../tilauscope/visualalarm.py" line="482" />
+        <location filename="../tilauscope/visualalarm.py" line="481" />
+        <location filename="../artisanlib/alarms.py" line="932" />
+        <location filename="../artisanlib/alarms.py" line="931" />
+        <location filename="../artisanlib/alarms.py" line="930" />
+        <location filename="../artisanlib/alarms.py" line="929" />
+        <location filename="../artisanlib/pid_dialogs.py" line="851" />
+        <location filename="../artisanlib/pid_dialogs.py" line="850" />
+        <location filename="../artisanlib/pid_dialogs.py" line="849" />
+        <location filename="../artisanlib/pid_dialogs.py" line="848" />
+        <source>Slider</source>
+        <translation>Regler</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="306" />
+        <location filename="../tilauscope/visualalarm.py" line="485" />
+        <location filename="../artisanlib/alarms.py" line="933" />
+        <location filename="../artisanlib/alarms.py" line="875" />
+        <location filename="../artisanlib/pid_dialogs.py" line="852" />
+        <source>START</source>
+        <translation>START</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="313" />
+        <location filename="../tilauscope/alarms.py" line="624" />
+        <location filename="../tilauscope/alarms.py" line="87" />
+        <location filename="../tilauscope/visualalarm.py" line="492" />
+        <location filename="../artisanlib/canvas.py" line="18937" />
+        <location filename="../artisanlib/alarms.py" line="940" />
+        <location filename="../artisanlib/alarms.py" line="884" />
+        <location filename="../artisanlib/curves.py" line="2149" />
+        <location filename="../artisanlib/roast_properties.py" line="4531" />
+        <location filename="../artisanlib/roast_properties.py" line="759" />
+        <location filename="../artisanlib/background.py" line="1105" />
+        <location filename="../artisanlib/events.py" line="1408" />
+        <location filename="../artisanlib/pid_dialogs.py" line="859" />
+        <source>COOL END</source>
+        <translation>ABGEKÜHLT</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="314" />
+        <location filename="../tilauscope/visualalarm.py" line="493" />
+        <location filename="../artisanlib/alarms.py" line="941" />
+        <location filename="../artisanlib/events.py" line="2833" />
+        <location filename="../artisanlib/pid_dialogs.py" line="860" />
+        <source>OFF</source>
+        <translation>AUS</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="316" />
+        <location filename="../tilauscope/alarms.py" line="627" />
+        <location filename="../tilauscope/visualalarm.py" line="495" />
+        <location filename="../artisanlib/alarms.py" line="943" />
+        <location filename="../artisanlib/pid_dialogs.py" line="862" />
+        <source>RampSoak ON</source>
+        <translation>Rampe/Haltezeit AN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="317" />
+        <location filename="../tilauscope/alarms.py" line="628" />
+        <location filename="../tilauscope/visualalarm.py" line="496" />
+        <location filename="../artisanlib/alarms.py" line="944" />
+        <location filename="../artisanlib/pid_dialogs.py" line="863" />
+        <source>RampSoak OFF</source>
+        <translation>Rampe/Haltezeit AUS</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="318" />
+        <location filename="../tilauscope/alarms.py" line="629" />
+        <location filename="../tilauscope/visualalarm.py" line="497" />
+        <location filename="../artisanlib/alarms.py" line="945" />
+        <location filename="../artisanlib/pid_dialogs.py" line="864" />
+        <source>PID ON</source>
+        <translation>PID EIN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="319" />
+        <location filename="../tilauscope/alarms.py" line="630" />
+        <location filename="../tilauscope/visualalarm.py" line="498" />
+        <location filename="../artisanlib/alarms.py" line="946" />
+        <location filename="../artisanlib/pid_dialogs.py" line="865" />
+        <source>PID OFF</source>
+        <translation>PID AUS</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="320" />
+        <location filename="../tilauscope/visualalarm.py" line="499" />
+        <location filename="../artisanlib/alarms.py" line="947" />
+        <location filename="../artisanlib/pid_dialogs.py" line="866" />
+        <source>SV</source>
+        <translation>SV</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="321" />
+        <location filename="../tilauscope/alarms.py" line="632" />
+        <location filename="../tilauscope/visualalarm.py" line="500" />
+        <location filename="../artisanlib/main.py" line="12688" />
+        <location filename="../artisanlib/alarms.py" line="948" />
+        <location filename="../artisanlib/pid_dialogs.py" line="867" />
+        <source>Playback ON</source>
+        <translation>Wiedergabe AN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="322" />
+        <location filename="../tilauscope/alarms.py" line="633" />
+        <location filename="../tilauscope/visualalarm.py" line="501" />
+        <location filename="../artisanlib/main.py" line="12690" />
+        <location filename="../artisanlib/alarms.py" line="949" />
+        <location filename="../artisanlib/pid_dialogs.py" line="868" />
+        <source>Playback OFF</source>
+        <translation>Wiedergabe AUS</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="323" />
+        <location filename="../tilauscope/alarms.py" line="634" />
+        <location filename="../tilauscope/visualalarm.py" line="502" />
+        <location filename="../artisanlib/alarms.py" line="950" />
+        <location filename="../artisanlib/pid_dialogs.py" line="869" />
+        <source>Set Canvas Color</source>
+        <translation>Hintergrundfarbe Setzen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="324" />
+        <location filename="../tilauscope/alarms.py" line="635" />
+        <location filename="../tilauscope/visualalarm.py" line="503" />
+        <location filename="../artisanlib/alarms.py" line="951" />
+        <location filename="../artisanlib/pid_dialogs.py" line="870" />
+        <source>Reset Canvas Color</source>
+        <translation>Hintergrundfarbe Zurücksetzen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="50" />
+        <location filename="../artisanlib/events.py" line="1291" />
+        <location filename="../artisanlib/events.py" line="780" />
+        <location filename="../artisanlib/events.py" line="136" />
+        <source>Serial Command</source>
+        <translation>Serielles Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="69" />
+        <location filename="../artisanlib/events.py" line="1310" />
+        <location filename="../artisanlib/events.py" line="138" />
+        <source>Multiple Event</source>
+        <translation>Ereignissequenz</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="52" />
+        <location filename="../artisanlib/events.py" line="1293" />
+        <location filename="../artisanlib/events.py" line="781" />
+        <location filename="../artisanlib/events.py" line="139" />
+        <source>Modbus Command</source>
+        <translation>Modbus Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="53" />
+        <location filename="../artisanlib/events.py" line="1294" />
+        <location filename="../artisanlib/events.py" line="782" />
+        <location filename="../artisanlib/events.py" line="140" />
+        <source>DTA Command</source>
+        <translation>DTA Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="54" />
+        <location filename="../artisanlib/events.py" line="1295" />
+        <location filename="../artisanlib/events.py" line="790" />
+        <location filename="../artisanlib/events.py" line="141" />
+        <source>IO Command</source>
+        <translation>IO Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="55" />
+        <location filename="../artisanlib/events.py" line="1296" />
+        <location filename="../artisanlib/events.py" line="784" />
+        <location filename="../artisanlib/events.py" line="142" />
+        <source>Hottop Heater</source>
+        <translation>Hottop Heizung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="56" />
+        <location filename="../artisanlib/events.py" line="1297" />
+        <location filename="../artisanlib/events.py" line="785" />
+        <location filename="../artisanlib/events.py" line="143" />
+        <source>Hottop Fan</source>
+        <translation>Hottop Lüfter</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="57" />
+        <location filename="../artisanlib/events.py" line="1298" />
+        <location filename="../artisanlib/events.py" line="786" />
+        <location filename="../artisanlib/events.py" line="144" />
+        <source>Hottop Command</source>
+        <translation>Hottop Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="58" />
+        <location filename="../artisanlib/events.py" line="1299" />
+        <location filename="../artisanlib/events.py" line="145" />
+        <source>p-i-d</source>
+        <translation>p-i-d</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="59" />
+        <location filename="../artisanlib/events.py" line="1300" />
+        <location filename="../artisanlib/events.py" line="787" />
+        <location filename="../artisanlib/events.py" line="146" />
+        <source>Fuji Command</source>
+        <translation>Fuji Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="60" />
+        <location filename="../artisanlib/events.py" line="1301" />
+        <location filename="../artisanlib/events.py" line="788" />
+        <location filename="../artisanlib/events.py" line="147" />
+        <source>PWM Command</source>
+        <translation>PWM Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="61" />
+        <location filename="../artisanlib/events.py" line="1302" />
+        <location filename="../artisanlib/events.py" line="789" />
+        <location filename="../artisanlib/events.py" line="148" />
+        <source>VOUT Command</source>
+        <translation>VOUT Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="62" />
+        <location filename="../artisanlib/events.py" line="1303" />
+        <location filename="../artisanlib/events.py" line="791" />
+        <location filename="../artisanlib/events.py" line="149" />
+        <source>S7 Command</source>
+        <translation>S7 Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="63" />
+        <location filename="../artisanlib/events.py" line="1304" />
+        <location filename="../artisanlib/events.py" line="792" />
+        <location filename="../artisanlib/events.py" line="150" />
+        <source>Aillio R1 Heater</source>
+        <translation>Aillio R1 Heizung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="64" />
+        <location filename="../artisanlib/events.py" line="1305" />
+        <location filename="../artisanlib/events.py" line="793" />
+        <location filename="../artisanlib/events.py" line="151" />
+        <source>Aillio R1 Fan</source>
+        <translation>Aillio R1 Lüfter</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="65" />
+        <location filename="../artisanlib/events.py" line="1306" />
+        <location filename="../artisanlib/events.py" line="794" />
+        <location filename="../artisanlib/events.py" line="152" />
+        <source>Aillio R1 Drum</source>
+        <translation>Aillio R1 Trommel</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="66" />
+        <location filename="../artisanlib/events.py" line="1307" />
+        <location filename="../artisanlib/events.py" line="153" />
+        <source>Aillio R1 Command</source>
+        <translation>Aillio R1 Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="67" />
+        <location filename="../artisanlib/events.py" line="1308" />
+        <location filename="../artisanlib/events.py" line="795" />
+        <location filename="../artisanlib/events.py" line="154" />
+        <source>Artisan Command</source>
+        <translation>Artisan Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="68" />
+        <location filename="../artisanlib/events.py" line="1309" />
+        <location filename="../artisanlib/events.py" line="796" />
+        <location filename="../artisanlib/events.py" line="155" />
+        <source>RC Command</source>
+        <translation>RC Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="70" />
+        <location filename="../artisanlib/events.py" line="1311" />
+        <location filename="../artisanlib/events.py" line="797" />
+        <location filename="../artisanlib/events.py" line="156" />
+        <source>WebSocket Command</source>
+        <translation>WebSocket Kommando</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/events.py" line="798" />
         <location filename="../artisanlib/events.py" line="157" />
         <source>Stepper Command</source>
         <translation>Stepper Kommando</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="71" />
+        <location filename="../artisanlib/events.py" line="1313" />
+        <location filename="../artisanlib/events.py" line="800" />
+        <location filename="../artisanlib/events.py" line="159" />
+        <source>Difluid Airwave Command</source>
+        <translation>Difluid-Airwave-Befehl</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="72" />
+        <location filename="../artisanlib/events.py" line="1314" />
+        <location filename="../artisanlib/events.py" line="801" />
+        <location filename="../artisanlib/events.py" line="160" />
+        <source>TilauScope Ambient Command</source>
+        <translation>TilauScope-Ambient-Befehl</translation>
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="334" />
@@ -2666,9 +2598,60 @@ END</source>
         <translation>Rohgewicht</translation>
     </message>
     <message>
+        <location filename="../tilauscope/graph/curve.py" line="2233" />
+        <location filename="../tilauscope/roast_review_panel.py" line="386" />
+        <location filename="../artisanlib/alarms.py" line="877" />
+        <source>TP</source>
+        <translation>TP</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="88" />
+        <location filename="../artisanlib/alarms.py" line="885" />
+        <source>If Alarm</source>
+        <translation>Wenn Alarm</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/transposer.py" line="155" />
         <source>discrete</source>
         <translation>diskret</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/curve.py" line="2645" />
+        <location filename="../tilauscope/graph/curve.py" line="456" />
+        <location filename="../tilauscope/cave/standalone.py" line="159" />
+        <location filename="../artisanlib/canvas.py" line="1474" />
+        <location filename="../artisanlib/canvas.py" line="1467" />
+        <location filename="../artisanlib/canvas.py" line="1223" />
+        <source>Air</source>
+        <translation>Luft</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/standalone.py" line="160" />
+        <location filename="../tilauscope/hibean.py" line="650" />
+        <location filename="../tilauscope/hibean.py" line="649" />
+        <location filename="../artisanlib/canvas.py" line="1482" />
+        <location filename="../artisanlib/canvas.py" line="1475" />
+        <location filename="../artisanlib/canvas.py" line="1468" />
+        <location filename="../artisanlib/canvas.py" line="1224" />
+        <source>Drum</source>
+        <translation>Trommel</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/standalone.py" line="161" />
+        <location filename="../artisanlib/canvas.py" line="1476" />
+        <location filename="../artisanlib/canvas.py" line="1469" />
+        <location filename="../artisanlib/canvas.py" line="1225" />
+        <source>Damper</source>
+        <translation>Luftklappe</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/standalone.py" line="162" />
+        <location filename="../tilauscope/roast_asssistant.py" line="2194" />
+        <location filename="../artisanlib/canvas.py" line="1477" />
+        <location filename="../artisanlib/canvas.py" line="1470" />
+        <location filename="../artisanlib/canvas.py" line="1226" />
+        <source>Burner</source>
+        <translation>Brenner</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="1253" />
@@ -2686,17 +2669,55 @@ END</source>
         <translation>Elektrisch</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="1009" />
+        <location filename="../artisanlib/canvas.py" line="1481" />
+        <source>Fan</source>
+        <translation>Lüfter</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="1483" />
         <source>Cooling</source>
         <translation>Kühlung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/hibean.py" line="652" />
+        <location filename="../artisanlib/canvas.py" line="1484" />
+        <source>Heater</source>
+        <translation>Heizung</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="2131" />
         <source>Elec</source>
         <translation>Strom</translation>
     </message>
+    <message>
+        <location filename="../tilauscope/config_controls_tab.py" line="49" />
+        <source>None</source>
+        <translation type="unfinished">Keines</translation>
+    </message>
 </context><context>
     <name>Combobox</name>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="636" />
+        <location filename="../artisanlib/alarms.py" line="953" />
+        <location filename="../artisanlib/pid_dialogs.py" line="872" />
+        <source>Difluid Airwave command</source>
+        <translation>Difluid-Airwave-Befehl</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="637" />
+        <location filename="../artisanlib/alarms.py" line="954" />
+        <location filename="../artisanlib/pid_dialogs.py" line="873" />
+        <source>TilauScope Ambient command</source>
+        <translation>TilauScope-Ambient-Befehl</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="638" />
+        <location filename="../artisanlib/alarms.py" line="955" />
+        <location filename="../artisanlib/pid_dialogs.py" line="874" />
+        <source>TilauScope command</source>
+        <translation>TilauScope-Befehl</translation>
+    </message>
     <message>
         <location filename="../tilauscope/window/sidebar.py" line="325" />
         <location filename="../tilauscope/visualalarm.py" line="504" />
@@ -2715,29 +2736,38 @@ END</source>
         <source>TilauScope kernel</source>
         <translation>TilauScope-Kern</translation>
     </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="953" />
-        <location filename="../artisanlib/pid_dialogs.py" line="872" />
-        <location filename="../tilauscope/alarms.py" line="636" />
-        <source>Difluid Airwave command</source>
-        <translation>Difluid-Airwave-Befehl</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="954" />
-        <location filename="../artisanlib/pid_dialogs.py" line="873" />
-        <location filename="../tilauscope/alarms.py" line="637" />
-        <source>TilauScope Ambient command</source>
-        <translation>TilauScope-Ambient-Befehl</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="955" />
-        <location filename="../artisanlib/pid_dialogs.py" line="874" />
-        <location filename="../tilauscope/alarms.py" line="638" />
-        <source>TilauScope command</source>
-        <translation>TilauScope-Befehl</translation>
-    </message>
 </context><context>
     <name>Contextual Menu</name>
+    <message>
+        <location filename="../plus/schedule.py" line="1558" />
+        <source>All batches prepared</source>
+        <translation>Alle Chargen vorbereitet</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="1561" />
+        <source>One more batch prepared</source>
+        <translation>Eine weitere Charge vorbereitet</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="1565" />
+        <source>One less batch prepared</source>
+        <translation>Eine Charge weniger vorbereitet</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="1568" />
+        <source>No batch prepared</source>
+        <translation>Keine Charge vorbereitet</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="1580" />
+        <source>Register roast</source>
+        <translation>Röstung registrieren</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="1588" />
+        <source>Hide</source>
+        <translation>Ausblenden</translation>
+    </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="18712" />
         <source>Add point</source>
@@ -2782,36 +2812,6 @@ END</source>
         <location filename="../artisanlib/canvas.py" line="19523" />
         <source>Edit</source>
         <translation>Bearbeiten</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1558" />
-        <source>All batches prepared</source>
-        <translation>Alle Chargen vorbereitet</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1561" />
-        <source>One more batch prepared</source>
-        <translation>Eine weitere Charge vorbereitet</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1565" />
-        <source>One less batch prepared</source>
-        <translation>Eine Charge weniger vorbereitet</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1568" />
-        <source>No batch prepared</source>
-        <translation>Keine Charge vorbereitet</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1580" />
-        <source>Register roast</source>
-        <translation>Röstung registrieren</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1588" />
-        <source>Hide</source>
-        <translation>Ausblenden</translation>
     </message>
 </context><context>
     <name>Countries</name>
@@ -4175,42 +4175,6 @@ END</source>
 </context><context>
     <name>Error Message</name>
     <message>
-        <location filename="../artisanlib/main.py" line="22219" />
-        <location filename="../artisanlib/main.py" line="22084" />
-        <location filename="../artisanlib/main.py" line="22075" />
-        <location filename="../artisanlib/main.py" line="20421" />
-        <location filename="../artisanlib/main.py" line="20321" />
-        <location filename="../tilauscope/cave/printing.py" line="1108" />
-        <location filename="../tilauscope/cave/printing.py" line="960" />
-        <location filename="../tilauscope/cave/printing.py" line="954" />
-        <location filename="../tilauscope/cave/printing.py" line="916" />
-        <location filename="../tilauscope/cave/printing.py" line="740" />
-        <location filename="../tilauscope/cave/printing.py" line="118" />
-        <location filename="../tilauscope/cave/printing.py" line="82" />
-        <location filename="../tilauscope/cave/printing.py" line="71" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1339" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1256" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1247" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="674" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="569" />
-        <location filename="../tilauscope/cave/lifecycle.py" line="1661" />
-        <location filename="../tilauscope/cave/viewer.py" line="2454" />
-        <location filename="../tilauscope/cave/viewer.py" line="2441" />
-        <location filename="../tilauscope/cave/viewer.py" line="2389" />
-        <location filename="../tilauscope/cave/viewer.py" line="2308" />
-        <location filename="../tilauscope/cave/viewer.py" line="818" />
-        <location filename="../tilauscope/cave/viewer.py" line="799" />
-        <location filename="../tilauscope/cave/viewer.py" line="767" />
-        <location filename="../tilauscope/cave/viewer.py" line="735" />
-        <location filename="../tilauscope/alog_repair.py" line="1296" />
-        <location filename="../tilauscope/roast_properties.py" line="5908" />
-        <location filename="../tilauscope/roast_properties.py" line="5896" />
-        <location filename="../tilauscope/roast_properties.py" line="2160" />
-        <location filename="../tilauscope/webclient.py" line="971" />
-        <source>Error</source>
-        <translation>Fehler</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/main.py" line="28113" />
         <location filename="../artisanlib/main.py" line="28076" />
         <location filename="../artisanlib/main.py" line="27933" />
@@ -4782,6 +4746,42 @@ END</source>
         <translation>Ausnahme: {} ist keine gültige TilauScope-Einstellungsdatei</translation>
     </message>
     <message>
+        <location filename="../tilauscope/cave/printing.py" line="1108" />
+        <location filename="../tilauscope/cave/printing.py" line="960" />
+        <location filename="../tilauscope/cave/printing.py" line="954" />
+        <location filename="../tilauscope/cave/printing.py" line="916" />
+        <location filename="../tilauscope/cave/printing.py" line="740" />
+        <location filename="../tilauscope/cave/printing.py" line="118" />
+        <location filename="../tilauscope/cave/printing.py" line="82" />
+        <location filename="../tilauscope/cave/printing.py" line="71" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1341" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1258" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1249" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="675" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="570" />
+        <location filename="../tilauscope/cave/lifecycle.py" line="1661" />
+        <location filename="../tilauscope/cave/viewer.py" line="2459" />
+        <location filename="../tilauscope/cave/viewer.py" line="2446" />
+        <location filename="../tilauscope/cave/viewer.py" line="2394" />
+        <location filename="../tilauscope/cave/viewer.py" line="2313" />
+        <location filename="../tilauscope/cave/viewer.py" line="819" />
+        <location filename="../tilauscope/cave/viewer.py" line="800" />
+        <location filename="../tilauscope/cave/viewer.py" line="767" />
+        <location filename="../tilauscope/cave/viewer.py" line="735" />
+        <location filename="../tilauscope/alog_repair.py" line="1305" />
+        <location filename="../tilauscope/roast_properties.py" line="5908" />
+        <location filename="../tilauscope/roast_properties.py" line="5896" />
+        <location filename="../tilauscope/roast_properties.py" line="2160" />
+        <location filename="../tilauscope/webclient.py" line="971" />
+        <location filename="../artisanlib/main.py" line="22219" />
+        <location filename="../artisanlib/main.py" line="22084" />
+        <location filename="../artisanlib/main.py" line="22075" />
+        <location filename="../artisanlib/main.py" line="20421" />
+        <location filename="../artisanlib/main.py" line="20321" />
+        <source>Error</source>
+        <translation>Fehler</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="20458" />
         <source>Exception: WebLCDs not supported by this build</source>
         <translation>Ausnahme: WebLCDs, die von diesem Build nicht unterstützt werden</translation>
@@ -4876,6 +4876,12 @@ END</source>
     </message>
 </context><context>
     <name>Form Caption</name>
+    <message>
+        <location filename="../artisanlib/roast_properties.py" line="1805" />
+        <location filename="../plus/blend.py" line="130" />
+        <source>Custom Blend</source>
+        <translation>Benutzerdefinierte Mischung</translation>
+    </message>
     <message>
         <location filename="../artisanlib/axis.py" line="73" />
         <source>Axes</source>
@@ -5038,12 +5044,6 @@ END</source>
         <location filename="../artisanlib/roast_properties.py" line="565" />
         <source>Roast Properties</source>
         <translation>Eigenschaften der Röstung</translation>
-    </message>
-    <message>
-        <location filename="../plus/blend.py" line="130" />
-        <location filename="../artisanlib/roast_properties.py" line="1805" />
-        <source>Custom Blend</source>
-        <translation>Benutzerdefinierte Mischung</translation>
     </message>
     <message>
         <location filename="../artisanlib/roast_properties.py" line="4255" />
@@ -5617,41 +5617,6 @@ END</source>
 </context><context>
     <name>HTML Report Template</name>
     <message>
-        <location filename="../artisanlib/main.py" line="24219" />
-        <location filename="../artisanlib/main.py" line="23057" />
-        <location filename="../artisanlib/main.py" line="22855" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="156" />
-        <location filename="../tilauscope/label_printer.py" line="708" />
-        <source>Loss</source>
-        <translation>Verlust</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="23310" />
-        <location filename="../tilauscope/onboarding.py" line="1018" />
-        <location filename="../tilauscope/onboarding.py" line="456" />
-        <source>Capacity</source>
-        <translation>Röstkapazität</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="23380" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1506" />
-        <source>Ambient Humidity</source>
-        <translation>Umgebungsfeuchtigkeit</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="23346" />
-        <location filename="../tilauscope/cave/analysis.py" line="523" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1553" />
-        <source>Total Time</source>
-        <translation>Gesamtzeit</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="23319" />
-        <location filename="../tilauscope/roast_asssistant.py" line="3510" />
-        <source>Bean Temp</source>
-        <translation>Bohnentemperature</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/canvas.py" line="11744" />
         <location filename="../artisanlib/main.py" line="23416" />
         <location filename="../artisanlib/statistics.py" line="222" />
@@ -5726,6 +5691,15 @@ END</source>
         <location filename="../artisanlib/main.py" line="22854" />
         <source>Out</source>
         <translation>End</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="171" />
+        <location filename="../tilauscope/label_printer.py" line="708" />
+        <location filename="../artisanlib/main.py" line="24219" />
+        <location filename="../artisanlib/main.py" line="23057" />
+        <location filename="../artisanlib/main.py" line="22855" />
+        <source>Loss</source>
+        <translation>Verlust</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="23108" />
@@ -5835,6 +5809,13 @@ END</source>
         <translation>Röstmaschine</translation>
     </message>
     <message>
+        <location filename="../tilauscope/onboarding.py" line="1033" />
+        <location filename="../tilauscope/onboarding.py" line="456" />
+        <location filename="../artisanlib/main.py" line="23310" />
+        <source>Capacity</source>
+        <translation>Röstkapazität</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="23311" />
         <source>Operator</source>
         <translation>Röstmeister</translation>
@@ -5868,6 +5849,12 @@ END</source>
         <location filename="../artisanlib/main.py" line="23318" />
         <source>Screen Max</source>
         <translation>Bildschirm Max</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="3510" />
+        <location filename="../artisanlib/main.py" line="23319" />
+        <source>Bean Temp</source>
+        <translation>Bohnentemperature</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="23320" />
@@ -5973,6 +5960,13 @@ END</source>
         <location filename="../artisanlib/main.py" line="23345" />
         <source>COOL BT</source>
         <translation>ABGEKÜHLT BT</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/analysis.py" line="523" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1553" />
+        <location filename="../artisanlib/main.py" line="23346" />
+        <source>Total Time</source>
+        <translation>Gesamtzeit</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="23347" />
@@ -6123,6 +6117,12 @@ END</source>
         <location filename="../artisanlib/main.py" line="23379" />
         <source>Organic Loss</source>
         <translation>Organischer Verlust</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="1506" />
+        <location filename="../artisanlib/main.py" line="23380" />
+        <source>Ambient Humidity</source>
+        <translation>Umgebungsfeuchtigkeit</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="23381" />
@@ -6542,6 +6542,7 @@ END</source>
         <location filename="../help/symbolic_help.py" line="21" />
         <location filename="../help/symbolic_help.py" line="19" />
         <location filename="../help/symbolic_help.py" line="18" />
+        <location filename="../tilaucore/tasting_log.py" line="109" />
         <location filename="../tilaucore/tasting_log.py" line="91" />
         <source>Yes</source>
         <translation>Ja</translation>
@@ -11719,30 +11720,30 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
 </context><context>
     <name>Label</name>
     <message>
-        <location filename="../plus/schedule.py" line="2095" />
-        <location filename="../artisanlib/canvas.py" line="11670" />
-        <location filename="../artisanlib/roast_properties.py" line="1019" />
         <location filename="../tilauscope/roast_plan_model.py" line="1503" />
         <location filename="../tilauscope/beancave_social_card.py" line="81" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="569" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="618" />
         <location filename="../tilauscope/roast_insights.py" line="115" />
+        <location filename="../artisanlib/canvas.py" line="11670" />
+        <location filename="../artisanlib/roast_properties.py" line="1019" />
+        <location filename="../plus/schedule.py" line="2095" />
         <location filename="../tilaucore/roast_label.py" line="130" />
         <source>Density</source>
         <translation>Dichte</translation>
     </message>
     <message>
-        <location filename="../plus/blend.py" line="343" />
         <location filename="../artisanlib/statistics.py" line="205" />
         <location filename="../artisanlib/roast_properties.py" line="1115" />
         <location filename="../artisanlib/roast_properties.py" line="917" />
+        <location filename="../plus/blend.py" line="343" />
         <location filename="../tilaucore/roast_label.py" line="135" />
         <source>Beans</source>
         <translation>Bohnen</translation>
     </message>
     <message>
-        <location filename="../artisanlib/roast_properties.py" line="1098" />
         <location filename="../tilauscope/roast_properties.py" line="5345" />
         <location filename="../tilauscope/roast_properties.py" line="4847" />
+        <location filename="../artisanlib/roast_properties.py" line="1098" />
         <location filename="../tilaucore/roast_summary.py" line="112" />
         <source>Ground</source>
         <translation>Mahlgut</translation>
@@ -11755,9 +11756,6 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Trocken</translation>
     </message>
     <message>
-        <location filename="../artisanlib/transposer.py" line="1039" />
-        <location filename="../artisanlib/statistics.py" line="228" />
-        <location filename="../artisanlib/phases.py" line="57" />
         <location filename="../tilauscope/graph/curve.py" line="2654" />
         <location filename="../tilauscope/cave/viewer_multi.py" line="410" />
         <location filename="../tilauscope/cave/analysis_view.py" line="726" />
@@ -11772,6 +11770,9 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../tilauscope/webclient.py" line="985" />
         <location filename="../tilauscope/roast_insights.py" line="288" />
         <location filename="../tilauscope/energy_panel.py" line="488" />
+        <location filename="../artisanlib/transposer.py" line="1039" />
+        <location filename="../artisanlib/statistics.py" line="228" />
+        <location filename="../artisanlib/phases.py" line="57" />
         <location filename="../tilaucore/roast_plan.py" line="1410" />
         <source>Maillard</source>
         <translation>Maillard</translation>
@@ -11789,7 +11790,7 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../tilauscope/roast_plan_model.py" line="411" />
         <location filename="../tilauscope/beancave_roast_card.py" line="436" />
         <location filename="../tilauscope/beancave_roast_card.py" line="301" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="154" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="169" />
         <location filename="../tilauscope/webclient.py" line="986" />
         <location filename="../tilauscope/energy_panel.py" line="489" />
         <location filename="../tilaucore/roast_plan.py" line="1411" />
@@ -11797,6 +11798,10 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Entwicklung</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="80" />
+        <location filename="../tilauscope/roast_plan_model.py" line="775" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="520" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="378" />
         <location filename="../artisanlib/main.py" line="8212" />
         <location filename="../artisanlib/main.py" line="8206" />
         <location filename="../artisanlib/main.py" line="8039" />
@@ -11806,10 +11811,6 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/events.py" line="622" />
         <location filename="../artisanlib/events.py" line="613" />
         <location filename="../artisanlib/comparator.py" line="1029" />
-        <location filename="../tilauscope/alarms.py" line="80" />
-        <location filename="../tilauscope/roast_plan_model.py" line="775" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="520" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="378" />
         <location filename="../tilaucore/roast_plan.py" line="4973" />
         <source>TP</source>
         <translation>TP</translation>
@@ -11820,848 +11821,96 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Vor-Leeren</translation>
     </message>
     <message>
-        <location filename="../artisanlib/statistics.py" line="203" />
-        <location filename="../tilauscope/devices.py" line="2791" />
-        <location filename="../tilauscope/devices.py" line="679" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1500" />
-        <location filename="../tilauscope/onboarding.py" line="997" />
-        <location filename="../tilauscope/energy_panel.py" line="309" />
-        <location filename="../tilauscope/energy_panel.py" line="292" />
-        <source>Roaster</source>
-        <translation type="unfinished">Röstmaschine</translation>
+        <location filename="../artisanlib/canvas.py" line="11726" />
+        <location filename="../artisanlib/roast_properties.py" line="926" />
+        <location filename="../artisanlib/roast_properties.py" line="224" />
+        <location filename="../artisanlib/roast_properties.py" line="150" />
+        <location filename="../plus/schedule.py" line="2053" />
+        <location filename="../plus/blend.py" line="157" />
+        <source>Weight</source>
+        <translation>Gewicht</translation>
     </message>
     <message>
-        <location filename="../artisanlib/roast_properties.py" line="3645" />
-        <location filename="../artisanlib/roast_properties.py" line="3616" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="105" />
-        <location filename="../tilauscope/webclient.py" line="983" />
-        <location filename="../tilauscope/energy_panel.py" line="388" />
-        <source>Preheat</source>
-        <translation>Vorwärmung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="5851" />
-        <location filename="../artisanlib/roast_properties.py" line="3032" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="100" />
-        <location filename="../tilauscope/webclient.py" line="987" />
-        <location filename="../tilauscope/energy_panel.py" line="392" />
-        <source>Cooling</source>
-        <translation>Kühlung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/transposer.py" line="1038" />
-        <location filename="../artisanlib/statistics.py" line="229" />
-        <location filename="../artisanlib/phases.py" line="56" />
-        <location filename="../tilauscope/graph/curve.py" line="2652" />
-        <location filename="../tilauscope/cave/viewer_multi.py" line="409" />
-        <location filename="../tilauscope/cave/analysis_view.py" line="726" />
-        <location filename="../tilauscope/roast_asssistant.py" line="3761" />
-        <location filename="../tilauscope/roast_asssistant.py" line="3675" />
-        <location filename="../tilauscope/alarms.py" line="134" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="435" />
-        <location filename="../tilauscope/webclient.py" line="984" />
-        <location filename="../tilauscope/roast_insights.py" line="287" />
-        <location filename="../tilauscope/energy_panel.py" line="487" />
-        <source>Drying</source>
-        <translation>Trocknung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27649" />
-        <location filename="../artisanlib/main.py" line="27648" />
-        <location filename="../artisanlib/main.py" line="27647" />
-        <location filename="../artisanlib/ports.py" line="1177" />
-        <location filename="../artisanlib/ports.py" line="713" />
-        <location filename="../artisanlib/events.py" line="1421" />
-        <location filename="../artisanlib/comparator.py" line="1589" />
-        <location filename="../tilauscope/alarms.py" line="77" />
-        <location filename="../tilauscope/button_labels.py" line="94" />
-        <source>ON</source>
-        <translation>EIN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27649" />
-        <location filename="../artisanlib/main.py" line="27648" />
-        <location filename="../artisanlib/main.py" line="27646" />
-        <location filename="../artisanlib/ports.py" line="1174" />
-        <location filename="../artisanlib/ports.py" line="710" />
-        <location filename="../artisanlib/events.py" line="1442" />
-        <location filename="../tilauscope/alarms.py" line="625" />
-        <location filename="../tilauscope/button_labels.py" line="94" />
-        <source>OFF</source>
-        <translation>AUS</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27664" />
-        <location filename="../artisanlib/main.py" line="27651" />
-        <location filename="../artisanlib/main.py" line="27650" />
-        <location filename="../tilauscope/button_labels.py" line="95" />
-        <source>AUTO</source>
-        <translation>AUTO</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27664" />
-        <location filename="../artisanlib/main.py" line="27663" />
-        <location filename="../artisanlib/main.py" line="27651" />
-        <location filename="../tilauscope/roast_asssistant.py" line="4605" />
-        <location filename="../tilauscope/button_labels.py" line="95" />
-        <source>MANUAL</source>
-        <translation>MANUELL</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27666" />
-        <location filename="../artisanlib/main.py" line="27654" />
-        <location filename="../artisanlib/main.py" line="27653" />
-        <location filename="../tilauscope/pid_autotune.py" line="3087" />
-        <location filename="../tilauscope/pid_autotune.py" line="2006" />
-        <location filename="../tilauscope/button_labels.py" line="96" />
-        <source>CLOSE</source>
-        <translation>SCHLIEßEN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27666" />
-        <location filename="../artisanlib/main.py" line="27665" />
-        <location filename="../artisanlib/main.py" line="27654" />
-        <location filename="../tilauscope/button_labels.py" line="96" />
-        <source>OPEN</source>
-        <translation>ÖFFNEN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27673" />
-        <location filename="../artisanlib/main.py" line="27672" />
-        <location filename="../artisanlib/main.py" line="27668" />
-        <location filename="../artisanlib/events.py" line="1479" />
-        <location filename="../artisanlib/events.py" line="584" />
-        <location filename="../artisanlib/events.py" line="573" />
-        <location filename="../tilauscope/alarms.py" line="617" />
-        <location filename="../tilauscope/alarms.py" line="78" />
-        <location filename="../tilauscope/button_labels.py" line="97" />
-        <source>START</source>
-        <translation>START</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27673" />
-        <location filename="../artisanlib/main.py" line="27668" />
-        <location filename="../artisanlib/main.py" line="27667" />
-        <location filename="../tilauscope/button_labels.py" line="97" />
-        <source>STOP</source>
-        <translation>STOPP</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27652" />
-        <location filename="../tilauscope/button_labels.py" line="105" />
-        <source>FLAP</source>
-        <translation>KLAPPE</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27655" />
-        <location filename="../tilauscope/button_labels.py" line="108" />
-        <source>CONTROL</source>
-        <translation>STEUERUNG</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27656" />
-        <location filename="../tilauscope/button_labels.py" line="109" />
-        <source>DISCHARGE</source>
-        <translation>ENTLADEN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27658" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="110" />
-        <location filename="../tilauscope/button_labels.py" line="111" />
-        <source>HEATING</source>
-        <translation>HEIZUNG</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27659" />
-        <location filename="../tilauscope/button_labels.py" line="112" />
-        <source>STIRRER</source>
-        <translation>RÜHRER</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27660" />
-        <location filename="../tilauscope/button_labels.py" line="113" />
-        <source>FILL</source>
-        <translation>FÜLLEN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27662" />
-        <location filename="../tilauscope/roast_asssistant.py" line="3744" />
-        <location filename="../tilauscope/button_labels.py" line="115" />
-        <source>COOLING</source>
-        <translation>KÜHLUNG</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27671" />
-        <location filename="../tilauscope/button_labels.py" line="124" />
-        <source>RELEASE</source>
-        <translation>FREIGEBEN</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="104" />
-        <source>Visual Alarm Timeline</source>
-        <translation>Visuelle Alarm-Zeitleiste</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18919" />
-        <location filename="../artisanlib/canvas.py" line="4084" />
-        <location filename="../artisanlib/transposer.py" line="1209" />
-        <location filename="../artisanlib/transposer.py" line="1138" />
-        <location filename="../artisanlib/alarms.py" line="934" />
-        <location filename="../artisanlib/alarms.py" line="878" />
-        <location filename="../artisanlib/statistics.py" line="102" />
-        <location filename="../artisanlib/curves.py" line="2143" />
-        <location filename="../artisanlib/curves.py" line="1005" />
-        <location filename="../artisanlib/curves.py" line="973" />
-        <location filename="../artisanlib/designer.py" line="632" />
-        <location filename="../artisanlib/designer.py" line="345" />
-        <location filename="../artisanlib/designer.py" line="50" />
-        <location filename="../artisanlib/roast_properties.py" line="4513" />
-        <location filename="../artisanlib/roast_properties.py" line="673" />
-        <location filename="../artisanlib/background.py" line="1087" />
-        <location filename="../artisanlib/events.py" line="1330" />
-        <location filename="../artisanlib/pid_dialogs.py" line="853" />
-        <location filename="../tilauscope/window/sidebar.py" line="307" />
-        <location filename="../tilauscope/graph/curve.py" line="375" />
-        <location filename="../tilauscope/roast_asssistant.py" line="5207" />
-        <location filename="../tilauscope/alarms.py" line="618" />
-        <location filename="../tilauscope/alarms.py" line="81" />
-        <location filename="../tilauscope/roast_review_panel.py" line="387" />
-        <location filename="../tilauscope/visualalarm.py" line="486" />
-        <source>DRY END</source>
-        <translation>TROCKEN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18922" />
-        <location filename="../artisanlib/canvas.py" line="4085" />
-        <location filename="../artisanlib/transposer.py" line="1210" />
-        <location filename="../artisanlib/transposer.py" line="1139" />
-        <location filename="../artisanlib/alarms.py" line="935" />
-        <location filename="../artisanlib/alarms.py" line="879" />
-        <location filename="../artisanlib/statistics.py" line="103" />
-        <location filename="../artisanlib/curves.py" line="2144" />
-        <location filename="../artisanlib/designer.py" line="633" />
-        <location filename="../artisanlib/designer.py" line="346" />
-        <location filename="../artisanlib/designer.py" line="52" />
-        <location filename="../artisanlib/roast_properties.py" line="4516" />
-        <location filename="../artisanlib/roast_properties.py" line="687" />
-        <location filename="../artisanlib/background.py" line="1090" />
-        <location filename="../artisanlib/events.py" line="1343" />
-        <location filename="../artisanlib/pid_dialogs.py" line="854" />
-        <location filename="../tilauscope/window/sidebar.py" line="308" />
-        <location filename="../tilauscope/alarms.py" line="619" />
-        <location filename="../tilauscope/alarms.py" line="82" />
-        <location filename="../tilauscope/visualalarm.py" line="487" />
-        <source>FC START</source>
-        <translation>FC START</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18925" />
-        <location filename="../artisanlib/canvas.py" line="4086" />
-        <location filename="../artisanlib/alarms.py" line="936" />
-        <location filename="../artisanlib/alarms.py" line="880" />
-        <location filename="../artisanlib/curves.py" line="2145" />
-        <location filename="../artisanlib/designer.py" line="634" />
-        <location filename="../artisanlib/designer.py" line="347" />
-        <location filename="../artisanlib/designer.py" line="54" />
-        <location filename="../artisanlib/roast_properties.py" line="4519" />
-        <location filename="../artisanlib/roast_properties.py" line="702" />
-        <location filename="../artisanlib/background.py" line="1093" />
-        <location filename="../artisanlib/events.py" line="1356" />
-        <location filename="../artisanlib/pid_dialogs.py" line="855" />
-        <location filename="../tilauscope/window/sidebar.py" line="309" />
-        <location filename="../tilauscope/graph/curve.py" line="379" />
-        <location filename="../tilauscope/alarms.py" line="620" />
-        <location filename="../tilauscope/alarms.py" line="83" />
-        <location filename="../tilauscope/visualalarm.py" line="488" />
-        <source>FC END</source>
-        <translation>FC ENDE</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18928" />
-        <location filename="../artisanlib/canvas.py" line="4087" />
-        <location filename="../artisanlib/transposer.py" line="1211" />
-        <location filename="../artisanlib/transposer.py" line="1140" />
-        <location filename="../artisanlib/alarms.py" line="937" />
-        <location filename="../artisanlib/alarms.py" line="881" />
-        <location filename="../artisanlib/curves.py" line="2146" />
-        <location filename="../artisanlib/designer.py" line="635" />
-        <location filename="../artisanlib/designer.py" line="348" />
-        <location filename="../artisanlib/designer.py" line="56" />
-        <location filename="../artisanlib/roast_properties.py" line="4522" />
-        <location filename="../artisanlib/roast_properties.py" line="716" />
-        <location filename="../artisanlib/background.py" line="1096" />
-        <location filename="../artisanlib/events.py" line="1369" />
-        <location filename="../artisanlib/pid_dialogs.py" line="856" />
-        <location filename="../tilauscope/window/sidebar.py" line="310" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="96" />
-        <location filename="../tilauscope/alarms.py" line="621" />
-        <location filename="../tilauscope/alarms.py" line="84" />
-        <location filename="../tilauscope/visualalarm.py" line="489" />
-        <source>SC START</source>
-        <translation>SC START</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18931" />
-        <location filename="../artisanlib/canvas.py" line="4088" />
-        <location filename="../artisanlib/alarms.py" line="938" />
-        <location filename="../artisanlib/alarms.py" line="882" />
-        <location filename="../artisanlib/curves.py" line="2147" />
-        <location filename="../artisanlib/designer.py" line="636" />
-        <location filename="../artisanlib/designer.py" line="349" />
-        <location filename="../artisanlib/designer.py" line="58" />
-        <location filename="../artisanlib/roast_properties.py" line="4525" />
-        <location filename="../artisanlib/roast_properties.py" line="730" />
-        <location filename="../artisanlib/background.py" line="1099" />
-        <location filename="../artisanlib/events.py" line="1382" />
-        <location filename="../artisanlib/pid_dialogs.py" line="857" />
-        <location filename="../tilauscope/window/sidebar.py" line="311" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="97" />
-        <location filename="../tilauscope/graph/curve.py" line="383" />
-        <location filename="../tilauscope/alarms.py" line="622" />
-        <location filename="../tilauscope/alarms.py" line="85" />
-        <location filename="../tilauscope/visualalarm.py" line="490" />
-        <source>SC END</source>
-        <translation>SC ENDE</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18934" />
-        <location filename="../artisanlib/canvas.py" line="11623" />
-        <location filename="../artisanlib/canvas.py" line="4089" />
-        <location filename="../artisanlib/canvas.py" line="999" />
-        <location filename="../artisanlib/transposer.py" line="1212" />
-        <location filename="../artisanlib/transposer.py" line="1141" />
-        <location filename="../artisanlib/devices.py" line="1209" />
-        <location filename="../artisanlib/alarms.py" line="939" />
-        <location filename="../artisanlib/alarms.py" line="883" />
-        <location filename="../artisanlib/curves.py" line="2148" />
-        <location filename="../artisanlib/designer.py" line="637" />
-        <location filename="../artisanlib/designer.py" line="350" />
-        <location filename="../artisanlib/designer.py" line="60" />
-        <location filename="../artisanlib/roast_properties.py" line="4528" />
-        <location filename="../artisanlib/roast_properties.py" line="745" />
-        <location filename="../artisanlib/background.py" line="1102" />
-        <location filename="../artisanlib/background.py" line="112" />
-        <location filename="../artisanlib/ports.py" line="1396" />
-        <location filename="../artisanlib/events.py" line="1395" />
-        <location filename="../artisanlib/events.py" line="622" />
-        <location filename="../artisanlib/events.py" line="594" />
-        <location filename="../artisanlib/events.py" line="591" />
-        <location filename="../artisanlib/pid_dialogs.py" line="858" />
-        <location filename="../artisanlib/comparator.py" line="1035" />
-        <location filename="../tilauscope/window/sidebar.py" line="312" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="99" />
-        <location filename="../tilauscope/graph/curve.py" line="385" />
-        <location filename="../tilauscope/roast_asssistant.py" line="5216" />
-        <location filename="../tilauscope/alarms.py" line="623" />
-        <location filename="../tilauscope/alarms.py" line="86" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1242" />
-        <location filename="../tilauscope/roast_review_panel.py" line="389" />
-        <location filename="../tilauscope/visualalarm.py" line="491" />
-        <source>DROP</source>
-        <translation>LEEREN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18916" />
-        <location filename="../artisanlib/canvas.py" line="14685" />
-        <location filename="../artisanlib/canvas.py" line="14614" />
-        <location filename="../artisanlib/canvas.py" line="11943" />
-        <location filename="../artisanlib/canvas.py" line="11622" />
-        <location filename="../artisanlib/canvas.py" line="8369" />
-        <location filename="../artisanlib/canvas.py" line="8364" />
-        <location filename="../artisanlib/canvas.py" line="4083" />
-        <location filename="../artisanlib/canvas.py" line="993" />
-        <location filename="../artisanlib/transposer.py" line="1208" />
-        <location filename="../artisanlib/devices.py" line="1203" />
-        <location filename="../artisanlib/alarms.py" line="942" />
-        <location filename="../artisanlib/alarms.py" line="876" />
-        <location filename="../artisanlib/statistics.py" line="100" />
-        <location filename="../artisanlib/curves.py" line="2141" />
-        <location filename="../artisanlib/designer.py" line="631" />
-        <location filename="../artisanlib/designer.py" line="344" />
-        <location filename="../artisanlib/designer.py" line="47" />
-        <location filename="../artisanlib/roast_properties.py" line="4510" />
-        <location filename="../artisanlib/roast_properties.py" line="662" />
-        <location filename="../artisanlib/background.py" line="1084" />
-        <location filename="../artisanlib/background.py" line="106" />
-        <location filename="../artisanlib/ports.py" line="1394" />
-        <location filename="../artisanlib/events.py" line="1317" />
-        <location filename="../artisanlib/events.py" line="584" />
-        <location filename="../artisanlib/events.py" line="573" />
-        <location filename="../artisanlib/events.py" line="569" />
-        <location filename="../artisanlib/events.py" line="566" />
-        <location filename="../artisanlib/events.py" line="563" />
-        <location filename="../artisanlib/pid_dialogs.py" line="861" />
-        <location filename="../artisanlib/comparator.py" line="1028" />
-        <location filename="../tilauscope/window/sidebar.py" line="315" />
-        <location filename="../tilauscope/graph/curve.py" line="373" />
-        <location filename="../tilauscope/alarms.py" line="626" />
-        <location filename="../tilauscope/alarms.py" line="79" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1241" />
-        <location filename="../tilauscope/roast_review_panel.py" line="385" />
-        <location filename="../tilauscope/visualalarm.py" line="494" />
-        <source>CHARGE</source>
-        <translation>FÜLLEN</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2115" />
-        <location filename="../artisanlib/canvas.py" line="11675" />
-        <location filename="../artisanlib/roast_properties.py" line="1127" />
-        <location filename="../tilauscope/roast_properties.py" line="3283" />
-        <location filename="../tilauscope/beancave_storage_tab.py" line="519" />
-        <location filename="../tilauscope/roast_insights.py" line="144" />
-        <location filename="../tilauscope/label_printer.py" line="919" />
-        <source>Moisture</source>
-        <translation>Feuchte</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="1384" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="332" />
-        <location filename="../tilauscope/beancave_storage_tab.py" line="407" />
-        <source>Stock</source>
-        <translation>Bestand</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="5871" />
-        <location filename="../artisanlib/roast_properties.py" line="4208" />
-        <location filename="../tilauscope/onboarding.py" line="457" />
-        <source>Heating</source>
-        <translation>Beheizung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="2334" />
-        <location filename="../artisanlib/devices.py" line="2193" />
-        <location filename="../artisanlib/devices.py" line="1869" />
-        <location filename="../artisanlib/devices.py" line="1822" />
-        <location filename="../artisanlib/devices.py" line="1288" />
-        <location filename="../artisanlib/devices.py" line="1244" />
-        <location filename="../artisanlib/devices.py" line="1195" />
-        <location filename="../artisanlib/devices.py" line="984" />
-        <location filename="../artisanlib/curves.py" line="1308" />
-        <location filename="../artisanlib/ports.py" line="1557" />
-        <location filename="../artisanlib/ports.py" line="1262" />
-        <location filename="../artisanlib/ports.py" line="968" />
-        <location filename="../artisanlib/ports.py" line="616" />
-        <location filename="../tilauscope/onboarding.py" line="999" />
-        <source>Port</source>
-        <translation>Port</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/ports.py" line="1326" />
-        <location filename="../tilauscope/webclient.py" line="959" />
-        <source>Reconnect</source>
-        <translation>Wiederverbinden</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="1158" />
-        <location filename="../tilauscope/roast_asssistant.py" line="4754" />
-        <location filename="../tilauscope/beancave_social_card.py" line="84" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="571" />
-        <source>Humidity</source>
-        <translation>Luftfeuchte</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="775" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="94" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3456" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2338" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1548" />
-        <source>Temp</source>
-        <translation>Temp</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2075" />
-        <location filename="../artisanlib/statistics.py" line="234" />
-        <location filename="../artisanlib/roast_properties.py" line="1761" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3683" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3662" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2332" />
+        <location filename="../artisanlib/statistics.py" line="234" />
+        <location filename="../artisanlib/roast_properties.py" line="1761" />
+        <location filename="../plus/schedule.py" line="2075" />
         <source>Yield</source>
         <translation>Ertrag</translation>
     </message>
     <message>
-        <location filename="../artisanlib/statistics.py" line="128" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="93" />
-        <location filename="../tilauscope/roast_timeline.py" line="817" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3664" />
-        <source>Target</source>
-        <translation>Ziel</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="3217" />
-        <location filename="../artisanlib/roast_properties.py" line="891" />
-        <location filename="../tilauscope/roast_properties.py" line="5190" />
-        <location filename="../tilauscope/roast_properties.py" line="2616" />
-        <source>Batch</source>
-        <translation>Charge</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="222" />
-        <location filename="../artisanlib/roast_properties.py" line="148" />
-        <location filename="../tilauscope/roast_properties.py" line="2638" />
-        <source>g</source>
-        <translation>g</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/events.py" line="178" />
-        <location filename="../tilauscope/roast_properties.py" line="6362" />
-        <source>Show</source>
-        <translation>Anzeigen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="908" />
-        <location filename="../artisanlib/designer.py" line="73" />
-        <location filename="../artisanlib/events.py" line="468" />
-        <location filename="../tilauscope/roast_properties.py" line="6444" />
-        <source>Marker</source>
-        <translation>Marker</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1309" />
-        <location filename="../artisanlib/designer.py" line="75" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="92" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="511" />
-        <source>Time</source>
-        <translation>Zeit</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="6119" />
-        <location filename="../artisanlib/main.py" line="6113" />
-        <location filename="../artisanlib/main.py" line="6110" />
-        <location filename="../artisanlib/roast_properties.py" line="3004" />
-        <location filename="../artisanlib/ports.py" line="1454" />
-        <location filename="../artisanlib/events.py" line="1039" />
-        <location filename="../artisanlib/events.py" line="751" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="514" />
-        <source>Event</source>
-        <translation>Ereignis</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/batches.py" line="54" />
-        <location filename="../tilauscope/sack_manager.py" line="828" />
-        <source>Prefix</source>
-        <translation>Präfix</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/designer.py" line="726" />
-        <location filename="../tilauscope/roast_plan_model.py" line="395" />
-        <source>time</source>
-        <translation>Zeit</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="16344" />
-        <location filename="../artisanlib/canvas.py" line="16333" />
-        <location filename="../artisanlib/main.py" line="28335" />
-        <location filename="../tilauscope/window/parts.py" line="915" />
-        <location filename="../tilauscope/roast_plan_model.py" line="889" />
-        <location filename="../tilauscope/roast_plan_model.py" line="865" />
-        <source>RoR</source>
-        <translation>RoR</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/comparator.py" line="1341" />
-        <location filename="../artisanlib/comparator.py" line="1223" />
-        <location filename="../tilauscope/roast_plan_model.py" line="867" />
-        <source>/min</source>
-        <translation>/Min</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18563" />
-        <location filename="../artisanlib/canvas.py" line="18553" />
-        <location filename="../artisanlib/canvas.py" line="8918" />
-        <location filename="../artisanlib/canvas.py" line="8862" />
-        <location filename="../artisanlib/main.py" line="19635" />
-        <location filename="../artisanlib/main.py" line="6061" />
-        <location filename="../artisanlib/main.py" line="6055" />
-        <location filename="../artisanlib/main.py" line="6031" />
-        <location filename="../artisanlib/main.py" line="6007" />
-        <location filename="../artisanlib/main.py" line="6001" />
-        <location filename="../artisanlib/main.py" line="3484" />
-        <location filename="../artisanlib/main.py" line="3242" />
-        <location filename="../artisanlib/main.py" line="3232" />
-        <location filename="../artisanlib/curves.py" line="2260" />
-        <location filename="../artisanlib/curves.py" line="1598" />
-        <location filename="../artisanlib/curves.py" line="1360" />
-        <location filename="../artisanlib/curves.py" line="554" />
-        <location filename="../artisanlib/curves.py" line="517" />
-        <location filename="../artisanlib/curves.py" line="454" />
-        <location filename="../artisanlib/curves.py" line="434" />
-        <location filename="../artisanlib/curves.py" line="346" />
-        <location filename="../artisanlib/designer.py" line="222" />
-        <location filename="../artisanlib/designer.py" line="77" />
-        <location filename="../artisanlib/events.py" line="308" />
-        <location filename="../artisanlib/events.py" line="308" />
-        <location filename="../artisanlib/events.py" line="305" />
-        <location filename="../artisanlib/events.py" line="303" />
-        <location filename="../artisanlib/comm.py" line="215" />
-        <location filename="../artisanlib/comparator.py" line="863" />
-        <location filename="../tilauscope/window/sidebar.py" line="122" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="85" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1200" />
-        <location filename="../tilauscope/roast_plan_model.py" line="871" />
-        <source>BT</source>
-        <translation>BT</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/statistics.py" line="204" />
-        <location filename="../artisanlib/roast_properties.py" line="4209" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1391" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1003" />
-        <source>Drum Speed</source>
-        <translation>Trommelgeschwindigkeit</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="128" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1604" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1385" />
-        <source>Control</source>
-        <translation>Steuerung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="16348" />
-        <location filename="../artisanlib/canvas.py" line="16339" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="95" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1552" />
-        <source>FC</source>
-        <translation>FC</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="6116" />
-        <location filename="../artisanlib/pid_dialogs.py" line="479" />
-        <location filename="../artisanlib/pid_dialogs.py" line="347" />
-        <location filename="../tilauscope/alarms.py" line="616" />
-        <location filename="../tilauscope/alarms.py" line="615" />
-        <location filename="../tilauscope/alarms.py" line="614" />
-        <location filename="../tilauscope/alarms.py" line="613" />
-        <source>Slider</source>
-        <translation>Regler</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="8438" />
-        <location filename="../artisanlib/main.py" line="3918" />
-        <location filename="../artisanlib/ports.py" line="1091" />
-        <location filename="../artisanlib/ports.py" line="628" />
-        <location filename="../artisanlib/events.py" line="772" />
-        <location filename="../artisanlib/pid_dialogs.py" line="4795" />
-        <location filename="../artisanlib/pid_dialogs.py" line="447" />
-        <location filename="../artisanlib/pid_dialogs.py" line="178" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="79" />
-        <location filename="../tilauscope/alarms.py" line="631" />
-        <source>SV</source>
-        <translation>SV</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/graph/annotation_text.py" line="104" />
-        <location filename="../tilauscope/alarms.py" line="1208" />
-        <source>from</source>
-        <translation>von</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_asssistant.py" line="4756" />
-        <location filename="../tilauscope/alarms.py" line="1283" />
-        <source>target</source>
-        <translation>Ziel</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/ports.py" line="1274" />
-        <location filename="../tilauscope/devices.py" line="2102" />
-        <source>ID</source>
-        <translation>ID</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/ports.py" line="1677" />
-        <location filename="../artisanlib/ports.py" line="1617" />
-        <location filename="../tilauscope/devices.py" line="2103" />
-        <source>Topic</source>
-        <translation>Thema</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/ports.py" line="1362" />
-        <location filename="../artisanlib/events.py" line="755" />
-        <location filename="../tilauscope/devices.py" line="2104" />
-        <source>Command</source>
-        <translation>Befehl</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/ports.py" line="527" />
-        <location filename="../tilauscope/devices.py" line="2106" />
-        <source>Divider</source>
-        <translation>Teiler</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="3020" />
-        <location filename="../artisanlib/roast_properties.py" line="3019" />
-        <location filename="../artisanlib/roast_properties.py" line="3000" />
-        <location filename="../artisanlib/roast_properties.py" line="116" />
-        <location filename="../artisanlib/events.py" line="777" />
-        <location filename="../tilauscope/devices.py" line="2107" />
-        <source>Unit</source>
-        <translation>Einheit</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/statistics.py" line="98" />
-        <location filename="../tilauscope/cave/viewer.py" line="1971" />
-        <source>From</source>
-        <translation>Von</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2085" />
+        <location filename="../tilauscope/cave/analysis.py" line="605" />
         <location filename="../artisanlib/main.py" line="24743" />
         <location filename="../artisanlib/roast_properties.py" line="1760" />
-        <location filename="../tilauscope/cave/analysis.py" line="605" />
+        <location filename="../plus/schedule.py" line="2085" />
         <source>Defects</source>
         <translation>Defekte</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="7368" />
-        <location filename="../tilauscope/cave/analysis_view.py" line="353" />
-        <source>Swing</source>
-        <translation>Ausschlag</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="28333" />
-        <location filename="../tilauscope/cave/analysis_view.py" line="387" />
-        <source>RMSE BT</source>
-        <translation>RMSE BT</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="28334" />
-        <location filename="../tilauscope/cave/analysis_view.py" line="387" />
-        <source>MSE BT</source>
-        <translation>MSE BT</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/curves.py" line="1051" />
-        <location filename="../tilauscope/cave/analysis_view.py" line="806" />
-        <source>End</source>
-        <translation>Ende</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/pid_dialogs.py" line="466" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="81" />
-        <source>Manual</source>
-        <translation>Manuell</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/sidebar.py" line="116" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="82" />
-        <source>Delta</source>
-        <translation>Delta</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="817" />
-        <location filename="../artisanlib/ports.py" line="1621" />
-        <location filename="../artisanlib/ports.py" line="1488" />
-        <location filename="../artisanlib/ports.py" line="1005" />
-        <location filename="../artisanlib/ports.py" line="528" />
-        <location filename="../artisanlib/pid_dialogs.py" line="464" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="83" />
-        <source>Mode</source>
-        <translation>Modus</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18560" />
-        <location filename="../artisanlib/canvas.py" line="18549" />
-        <location filename="../artisanlib/canvas.py" line="8891" />
-        <location filename="../artisanlib/canvas.py" line="8840" />
-        <location filename="../artisanlib/main.py" line="19628" />
-        <location filename="../artisanlib/main.py" line="6058" />
-        <location filename="../artisanlib/main.py" line="6052" />
-        <location filename="../artisanlib/main.py" line="6028" />
-        <location filename="../artisanlib/main.py" line="6010" />
-        <location filename="../artisanlib/main.py" line="6004" />
-        <location filename="../artisanlib/main.py" line="3483" />
-        <location filename="../artisanlib/main.py" line="3237" />
-        <location filename="../artisanlib/main.py" line="3227" />
-        <location filename="../artisanlib/curves.py" line="2255" />
-        <location filename="../artisanlib/curves.py" line="1607" />
-        <location filename="../artisanlib/curves.py" line="1357" />
-        <location filename="../artisanlib/curves.py" line="553" />
-        <location filename="../artisanlib/curves.py" line="511" />
-        <location filename="../artisanlib/curves.py" line="453" />
-        <location filename="../artisanlib/curves.py" line="434" />
-        <location filename="../artisanlib/curves.py" line="341" />
-        <location filename="../artisanlib/designer.py" line="221" />
-        <location filename="../artisanlib/designer.py" line="79" />
-        <location filename="../artisanlib/events.py" line="622" />
-        <location filename="../artisanlib/events.py" line="308" />
-        <location filename="../artisanlib/comparator.py" line="879" />
-        <location filename="../tilauscope/window/sidebar.py" line="121" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="84" />
-        <source>ET</source>
-        <translation>ET</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2105" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="86" />
         <location filename="../artisanlib/roast_properties.py" line="1090" />
         <location filename="../artisanlib/events.py" line="464" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="86" />
+        <location filename="../plus/schedule.py" line="2105" />
         <source>Color</source>
         <translation>Farbe</translation>
     </message>
     <message>
-        <location filename="../tilauscope/graph/annotation_text.py" line="88" />
-        <source>Segment</source>
-        <translation>Segment</translation>
+        <location filename="../tilauscope/roast_properties.py" line="3283" />
+        <location filename="../tilauscope/beancave_storage_tab.py" line="519" />
+        <location filename="../tilauscope/roast_insights.py" line="144" />
+        <location filename="../tilauscope/label_printer.py" line="919" />
+        <location filename="../artisanlib/canvas.py" line="11675" />
+        <location filename="../artisanlib/roast_properties.py" line="1127" />
+        <location filename="../plus/schedule.py" line="2115" />
+        <source>Moisture</source>
+        <translation>Feuchte</translation>
     </message>
     <message>
-        <location filename="../artisanlib/pid_dialogs.py" line="172" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="90" />
-        <source>Scheduling</source>
-        <translation>Parameteranpassung</translation>
+        <location filename="../artisanlib/statistics.py" line="216" />
+        <location filename="../artisanlib/roast_properties.py" line="1201" />
+        <location filename="../plus/schedule.py" line="2126" />
+        <location filename="../plus/schedule.py" line="2125" />
+        <source>Roasting Notes</source>
+        <translation>Notizen zur Röstung</translation>
     </message>
     <message>
-        <location filename="../artisanlib/pid_dialogs.py" line="175" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="91" />
-        <source>PV</source>
-        <translation>PV</translation>
+        <location filename="../plus/schedule.py" line="2130" />
+        <source>Score</source>
+        <translation>Score</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="994" />
-        <location filename="../artisanlib/devices.py" line="1204" />
-        <location filename="../artisanlib/main.py" line="8213" />
-        <location filename="../artisanlib/main.py" line="8099" />
-        <location filename="../artisanlib/main.py" line="8097" />
-        <location filename="../artisanlib/main.py" line="8085" />
-        <location filename="../artisanlib/main.py" line="8064" />
-        <location filename="../artisanlib/main.py" line="3629" />
-        <location filename="../artisanlib/background.py" line="107" />
-        <location filename="../artisanlib/ports.py" line="1459" />
-        <location filename="../artisanlib/comparator.py" line="1030" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="98" />
-        <source>DRY</source>
-        <translation>TROCKEN</translation>
+        <location filename="../artisanlib/statistics.py" line="217" />
+        <location filename="../plus/schedule.py" line="2131" />
+        <source>Cupping Score</source>
+        <translation>Cupping Score</translation>
     </message>
     <message>
-        <location filename="../tilauscope/graph/annotation_text.py" line="101" />
-        <source>Development Phase</source>
-        <translation>Entwicklungsphase</translation>
+        <location filename="../artisanlib/statistics.py" line="218" />
+        <location filename="../artisanlib/roast_properties.py" line="1206" />
+        <location filename="../plus/schedule.py" line="2138" />
+        <location filename="../plus/schedule.py" line="2137" />
+        <source>Cupping Notes</source>
+        <translation>Cupping Notizen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/window/build.py" line="830" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="102" />
-        <source>Maillard Phase</source>
-        <translation type="unfinished">Maillardphase</translation>
+        <location filename="../artisanlib/roast_properties.py" line="925" />
+        <location filename="../artisanlib/roast_properties.py" line="283" />
+        <location filename="../plus/schedule.py" line="4074" />
+        <location filename="../plus/schedule.py" line="2226" />
+        <source>Roasted</source>
+        <translation>Geröstet</translation>
     </message>
     <message>
-        <location filename="../artisanlib/devices.py" line="1228" />
-        <location filename="../tilauscope/device_setup/artisan_mirror.py" line="262" />
-        <source>Bluetooth</source>
-        <translation>Bluetooth</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/sidebar.py" line="118" />
-        <source>None</source>
-        <translation type="unfinished">Keines</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/sidebar.py" line="128" />
-        <source>Extra</source>
-        <translation type="unfinished">Extras</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/window/sidebar.py" line="152" />
-        <source>Alarm</source>
-        <translation>Alarm</translation>
+        <location filename="../artisanlib/canvas.py" line="11726" />
+        <location filename="../artisanlib/canvas.py" line="11675" />
+        <location filename="../artisanlib/canvas.py" line="11670" />
+        <location filename="../artisanlib/roast_properties.py" line="924" />
+        <location filename="../artisanlib/roast_properties.py" line="209" />
+        <location filename="../plus/schedule.py" line="4072" />
+        <source>Green</source>
+        <translation>Roh</translation>
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="3930" />
@@ -12763,6 +12012,75 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation> dg</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/sidebar.py" line="122" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="85" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1200" />
+        <location filename="../tilauscope/roast_plan_model.py" line="871" />
+        <location filename="../artisanlib/canvas.py" line="18563" />
+        <location filename="../artisanlib/canvas.py" line="18553" />
+        <location filename="../artisanlib/canvas.py" line="8918" />
+        <location filename="../artisanlib/canvas.py" line="8862" />
+        <location filename="../artisanlib/main.py" line="19635" />
+        <location filename="../artisanlib/main.py" line="6061" />
+        <location filename="../artisanlib/main.py" line="6055" />
+        <location filename="../artisanlib/main.py" line="6031" />
+        <location filename="../artisanlib/main.py" line="6007" />
+        <location filename="../artisanlib/main.py" line="6001" />
+        <location filename="../artisanlib/main.py" line="3484" />
+        <location filename="../artisanlib/main.py" line="3242" />
+        <location filename="../artisanlib/main.py" line="3232" />
+        <location filename="../artisanlib/curves.py" line="2260" />
+        <location filename="../artisanlib/curves.py" line="1598" />
+        <location filename="../artisanlib/curves.py" line="1360" />
+        <location filename="../artisanlib/curves.py" line="554" />
+        <location filename="../artisanlib/curves.py" line="517" />
+        <location filename="../artisanlib/curves.py" line="454" />
+        <location filename="../artisanlib/curves.py" line="434" />
+        <location filename="../artisanlib/curves.py" line="346" />
+        <location filename="../artisanlib/designer.py" line="222" />
+        <location filename="../artisanlib/designer.py" line="77" />
+        <location filename="../artisanlib/events.py" line="308" />
+        <location filename="../artisanlib/events.py" line="308" />
+        <location filename="../artisanlib/events.py" line="305" />
+        <location filename="../artisanlib/events.py" line="303" />
+        <location filename="../artisanlib/comm.py" line="215" />
+        <location filename="../artisanlib/comparator.py" line="863" />
+        <source>BT</source>
+        <translation>BT</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="121" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="84" />
+        <location filename="../artisanlib/canvas.py" line="18560" />
+        <location filename="../artisanlib/canvas.py" line="18549" />
+        <location filename="../artisanlib/canvas.py" line="8891" />
+        <location filename="../artisanlib/canvas.py" line="8840" />
+        <location filename="../artisanlib/main.py" line="19628" />
+        <location filename="../artisanlib/main.py" line="6058" />
+        <location filename="../artisanlib/main.py" line="6052" />
+        <location filename="../artisanlib/main.py" line="6028" />
+        <location filename="../artisanlib/main.py" line="6010" />
+        <location filename="../artisanlib/main.py" line="6004" />
+        <location filename="../artisanlib/main.py" line="3483" />
+        <location filename="../artisanlib/main.py" line="3237" />
+        <location filename="../artisanlib/main.py" line="3227" />
+        <location filename="../artisanlib/curves.py" line="2255" />
+        <location filename="../artisanlib/curves.py" line="1607" />
+        <location filename="../artisanlib/curves.py" line="1357" />
+        <location filename="../artisanlib/curves.py" line="553" />
+        <location filename="../artisanlib/curves.py" line="511" />
+        <location filename="../artisanlib/curves.py" line="453" />
+        <location filename="../artisanlib/curves.py" line="434" />
+        <location filename="../artisanlib/curves.py" line="341" />
+        <location filename="../artisanlib/designer.py" line="221" />
+        <location filename="../artisanlib/designer.py" line="79" />
+        <location filename="../artisanlib/events.py" line="622" />
+        <location filename="../artisanlib/events.py" line="308" />
+        <location filename="../artisanlib/comparator.py" line="879" />
+        <source>ET</source>
+        <translation>ET</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/comparator.py" line="911" />
         <location filename="../artisanlib/comparator.py" line="894" />
         <source>Events</source>
@@ -12772,6 +12090,64 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/comparator.py" line="1026" />
         <source>Align</source>
         <translation type="unfinished">Justieren</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="315" />
+        <location filename="../tilauscope/graph/curve.py" line="373" />
+        <location filename="../tilauscope/alarms.py" line="626" />
+        <location filename="../tilauscope/alarms.py" line="79" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1241" />
+        <location filename="../tilauscope/roast_review_panel.py" line="385" />
+        <location filename="../tilauscope/visualalarm.py" line="494" />
+        <location filename="../artisanlib/canvas.py" line="18916" />
+        <location filename="../artisanlib/canvas.py" line="14685" />
+        <location filename="../artisanlib/canvas.py" line="14614" />
+        <location filename="../artisanlib/canvas.py" line="11943" />
+        <location filename="../artisanlib/canvas.py" line="11622" />
+        <location filename="../artisanlib/canvas.py" line="8369" />
+        <location filename="../artisanlib/canvas.py" line="8364" />
+        <location filename="../artisanlib/canvas.py" line="4083" />
+        <location filename="../artisanlib/canvas.py" line="993" />
+        <location filename="../artisanlib/transposer.py" line="1208" />
+        <location filename="../artisanlib/devices.py" line="1203" />
+        <location filename="../artisanlib/alarms.py" line="942" />
+        <location filename="../artisanlib/alarms.py" line="876" />
+        <location filename="../artisanlib/statistics.py" line="100" />
+        <location filename="../artisanlib/curves.py" line="2141" />
+        <location filename="../artisanlib/designer.py" line="631" />
+        <location filename="../artisanlib/designer.py" line="344" />
+        <location filename="../artisanlib/designer.py" line="47" />
+        <location filename="../artisanlib/roast_properties.py" line="4510" />
+        <location filename="../artisanlib/roast_properties.py" line="662" />
+        <location filename="../artisanlib/background.py" line="1084" />
+        <location filename="../artisanlib/background.py" line="106" />
+        <location filename="../artisanlib/ports.py" line="1394" />
+        <location filename="../artisanlib/events.py" line="1317" />
+        <location filename="../artisanlib/events.py" line="584" />
+        <location filename="../artisanlib/events.py" line="573" />
+        <location filename="../artisanlib/events.py" line="569" />
+        <location filename="../artisanlib/events.py" line="566" />
+        <location filename="../artisanlib/events.py" line="563" />
+        <location filename="../artisanlib/pid_dialogs.py" line="861" />
+        <location filename="../artisanlib/comparator.py" line="1028" />
+        <source>CHARGE</source>
+        <translation>FÜLLEN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="98" />
+        <location filename="../artisanlib/canvas.py" line="994" />
+        <location filename="../artisanlib/devices.py" line="1204" />
+        <location filename="../artisanlib/main.py" line="8213" />
+        <location filename="../artisanlib/main.py" line="8099" />
+        <location filename="../artisanlib/main.py" line="8097" />
+        <location filename="../artisanlib/main.py" line="8085" />
+        <location filename="../artisanlib/main.py" line="8064" />
+        <location filename="../artisanlib/main.py" line="3629" />
+        <location filename="../artisanlib/background.py" line="107" />
+        <location filename="../artisanlib/ports.py" line="1459" />
+        <location filename="../artisanlib/comparator.py" line="1030" />
+        <source>DRY</source>
+        <translation>TROCKEN</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="995" />
@@ -12819,6 +12195,63 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>SCe</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/sidebar.py" line="312" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="99" />
+        <location filename="../tilauscope/graph/curve.py" line="385" />
+        <location filename="../tilauscope/roast_asssistant.py" line="5216" />
+        <location filename="../tilauscope/alarms.py" line="623" />
+        <location filename="../tilauscope/alarms.py" line="86" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1242" />
+        <location filename="../tilauscope/roast_review_panel.py" line="389" />
+        <location filename="../tilauscope/visualalarm.py" line="491" />
+        <location filename="../artisanlib/canvas.py" line="18934" />
+        <location filename="../artisanlib/canvas.py" line="11623" />
+        <location filename="../artisanlib/canvas.py" line="4089" />
+        <location filename="../artisanlib/canvas.py" line="999" />
+        <location filename="../artisanlib/transposer.py" line="1212" />
+        <location filename="../artisanlib/transposer.py" line="1141" />
+        <location filename="../artisanlib/devices.py" line="1209" />
+        <location filename="../artisanlib/alarms.py" line="939" />
+        <location filename="../artisanlib/alarms.py" line="883" />
+        <location filename="../artisanlib/curves.py" line="2148" />
+        <location filename="../artisanlib/designer.py" line="637" />
+        <location filename="../artisanlib/designer.py" line="350" />
+        <location filename="../artisanlib/designer.py" line="60" />
+        <location filename="../artisanlib/roast_properties.py" line="4528" />
+        <location filename="../artisanlib/roast_properties.py" line="745" />
+        <location filename="../artisanlib/background.py" line="1102" />
+        <location filename="../artisanlib/background.py" line="112" />
+        <location filename="../artisanlib/ports.py" line="1396" />
+        <location filename="../artisanlib/events.py" line="1395" />
+        <location filename="../artisanlib/events.py" line="622" />
+        <location filename="../artisanlib/events.py" line="594" />
+        <location filename="../artisanlib/events.py" line="591" />
+        <location filename="../artisanlib/pid_dialogs.py" line="858" />
+        <location filename="../artisanlib/comparator.py" line="1035" />
+        <source>DROP</source>
+        <translation>LEEREN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="867" />
+        <location filename="../artisanlib/comparator.py" line="1341" />
+        <location filename="../artisanlib/comparator.py" line="1223" />
+        <source>/min</source>
+        <translation>/Min</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="77" />
+        <location filename="../tilauscope/button_labels.py" line="94" />
+        <location filename="../artisanlib/main.py" line="27649" />
+        <location filename="../artisanlib/main.py" line="27648" />
+        <location filename="../artisanlib/main.py" line="27647" />
+        <location filename="../artisanlib/ports.py" line="1177" />
+        <location filename="../artisanlib/ports.py" line="713" />
+        <location filename="../artisanlib/events.py" line="1421" />
+        <location filename="../artisanlib/comparator.py" line="1589" />
+        <source>ON</source>
+        <translation>EIN</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="24217" />
         <location filename="../artisanlib/main.py" line="22851" />
         <location filename="../artisanlib/main.py" line="6043" />
@@ -12827,6 +12260,32 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/comparator.py" line="1590" />
         <source>Title</source>
         <translation>Titel</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="90" />
+        <location filename="../artisanlib/pid_dialogs.py" line="172" />
+        <source>Scheduling</source>
+        <translation>Parameteranpassung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="91" />
+        <location filename="../artisanlib/pid_dialogs.py" line="175" />
+        <source>PV</source>
+        <translation>PV</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="79" />
+        <location filename="../tilauscope/alarms.py" line="631" />
+        <location filename="../artisanlib/main.py" line="8438" />
+        <location filename="../artisanlib/main.py" line="3918" />
+        <location filename="../artisanlib/ports.py" line="1091" />
+        <location filename="../artisanlib/ports.py" line="628" />
+        <location filename="../artisanlib/events.py" line="772" />
+        <location filename="../artisanlib/pid_dialogs.py" line="4795" />
+        <location filename="../artisanlib/pid_dialogs.py" line="447" />
+        <location filename="../artisanlib/pid_dialogs.py" line="178" />
+        <source>SV</source>
+        <translation>SV</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="243" />
@@ -12856,6 +12315,17 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Negativ</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="616" />
+        <location filename="../tilauscope/alarms.py" line="615" />
+        <location filename="../tilauscope/alarms.py" line="614" />
+        <location filename="../tilauscope/alarms.py" line="613" />
+        <location filename="../artisanlib/main.py" line="6116" />
+        <location filename="../artisanlib/pid_dialogs.py" line="479" />
+        <location filename="../artisanlib/pid_dialogs.py" line="347" />
+        <source>Slider</source>
+        <translation>Regler</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/pid_dialogs.py" line="348" />
         <source>Limit</source>
         <translation>Limit</translation>
@@ -12872,6 +12342,23 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/pid_dialogs.py" line="456" />
         <source>Lookahead</source>
         <translation>Vorlaufzeit</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="83" />
+        <location filename="../artisanlib/devices.py" line="817" />
+        <location filename="../artisanlib/ports.py" line="1621" />
+        <location filename="../artisanlib/ports.py" line="1488" />
+        <location filename="../artisanlib/ports.py" line="1005" />
+        <location filename="../artisanlib/ports.py" line="528" />
+        <location filename="../artisanlib/pid_dialogs.py" line="464" />
+        <source>Mode</source>
+        <translation>Modus</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="81" />
+        <location filename="../artisanlib/pid_dialogs.py" line="466" />
+        <source>Manual</source>
+        <translation>Manuell</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="467" />
@@ -12991,6 +12478,128 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/pid_dialogs.py" line="815" />
         <source>Label</source>
         <translation>Name</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="307" />
+        <location filename="../tilauscope/graph/curve.py" line="375" />
+        <location filename="../tilauscope/roast_asssistant.py" line="5207" />
+        <location filename="../tilauscope/alarms.py" line="618" />
+        <location filename="../tilauscope/alarms.py" line="81" />
+        <location filename="../tilauscope/roast_review_panel.py" line="387" />
+        <location filename="../tilauscope/visualalarm.py" line="486" />
+        <location filename="../artisanlib/canvas.py" line="18919" />
+        <location filename="../artisanlib/canvas.py" line="4084" />
+        <location filename="../artisanlib/transposer.py" line="1209" />
+        <location filename="../artisanlib/transposer.py" line="1138" />
+        <location filename="../artisanlib/alarms.py" line="934" />
+        <location filename="../artisanlib/alarms.py" line="878" />
+        <location filename="../artisanlib/statistics.py" line="102" />
+        <location filename="../artisanlib/curves.py" line="2143" />
+        <location filename="../artisanlib/curves.py" line="1005" />
+        <location filename="../artisanlib/curves.py" line="973" />
+        <location filename="../artisanlib/designer.py" line="632" />
+        <location filename="../artisanlib/designer.py" line="345" />
+        <location filename="../artisanlib/designer.py" line="50" />
+        <location filename="../artisanlib/roast_properties.py" line="4513" />
+        <location filename="../artisanlib/roast_properties.py" line="673" />
+        <location filename="../artisanlib/background.py" line="1087" />
+        <location filename="../artisanlib/events.py" line="1330" />
+        <location filename="../artisanlib/pid_dialogs.py" line="853" />
+        <source>DRY END</source>
+        <translation>TROCKEN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="308" />
+        <location filename="../tilauscope/alarms.py" line="619" />
+        <location filename="../tilauscope/alarms.py" line="82" />
+        <location filename="../tilauscope/visualalarm.py" line="487" />
+        <location filename="../artisanlib/canvas.py" line="18922" />
+        <location filename="../artisanlib/canvas.py" line="4085" />
+        <location filename="../artisanlib/transposer.py" line="1210" />
+        <location filename="../artisanlib/transposer.py" line="1139" />
+        <location filename="../artisanlib/alarms.py" line="935" />
+        <location filename="../artisanlib/alarms.py" line="879" />
+        <location filename="../artisanlib/statistics.py" line="103" />
+        <location filename="../artisanlib/curves.py" line="2144" />
+        <location filename="../artisanlib/designer.py" line="633" />
+        <location filename="../artisanlib/designer.py" line="346" />
+        <location filename="../artisanlib/designer.py" line="52" />
+        <location filename="../artisanlib/roast_properties.py" line="4516" />
+        <location filename="../artisanlib/roast_properties.py" line="687" />
+        <location filename="../artisanlib/background.py" line="1090" />
+        <location filename="../artisanlib/events.py" line="1343" />
+        <location filename="../artisanlib/pid_dialogs.py" line="854" />
+        <source>FC START</source>
+        <translation>FC START</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="309" />
+        <location filename="../tilauscope/graph/curve.py" line="379" />
+        <location filename="../tilauscope/alarms.py" line="620" />
+        <location filename="../tilauscope/alarms.py" line="83" />
+        <location filename="../tilauscope/visualalarm.py" line="488" />
+        <location filename="../artisanlib/canvas.py" line="18925" />
+        <location filename="../artisanlib/canvas.py" line="4086" />
+        <location filename="../artisanlib/alarms.py" line="936" />
+        <location filename="../artisanlib/alarms.py" line="880" />
+        <location filename="../artisanlib/curves.py" line="2145" />
+        <location filename="../artisanlib/designer.py" line="634" />
+        <location filename="../artisanlib/designer.py" line="347" />
+        <location filename="../artisanlib/designer.py" line="54" />
+        <location filename="../artisanlib/roast_properties.py" line="4519" />
+        <location filename="../artisanlib/roast_properties.py" line="702" />
+        <location filename="../artisanlib/background.py" line="1093" />
+        <location filename="../artisanlib/events.py" line="1356" />
+        <location filename="../artisanlib/pid_dialogs.py" line="855" />
+        <source>FC END</source>
+        <translation>FC ENDE</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="310" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="96" />
+        <location filename="../tilauscope/alarms.py" line="621" />
+        <location filename="../tilauscope/alarms.py" line="84" />
+        <location filename="../tilauscope/visualalarm.py" line="489" />
+        <location filename="../artisanlib/canvas.py" line="18928" />
+        <location filename="../artisanlib/canvas.py" line="4087" />
+        <location filename="../artisanlib/transposer.py" line="1211" />
+        <location filename="../artisanlib/transposer.py" line="1140" />
+        <location filename="../artisanlib/alarms.py" line="937" />
+        <location filename="../artisanlib/alarms.py" line="881" />
+        <location filename="../artisanlib/curves.py" line="2146" />
+        <location filename="../artisanlib/designer.py" line="635" />
+        <location filename="../artisanlib/designer.py" line="348" />
+        <location filename="../artisanlib/designer.py" line="56" />
+        <location filename="../artisanlib/roast_properties.py" line="4522" />
+        <location filename="../artisanlib/roast_properties.py" line="716" />
+        <location filename="../artisanlib/background.py" line="1096" />
+        <location filename="../artisanlib/events.py" line="1369" />
+        <location filename="../artisanlib/pid_dialogs.py" line="856" />
+        <source>SC START</source>
+        <translation>SC START</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="311" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="97" />
+        <location filename="../tilauscope/graph/curve.py" line="383" />
+        <location filename="../tilauscope/alarms.py" line="622" />
+        <location filename="../tilauscope/alarms.py" line="85" />
+        <location filename="../tilauscope/visualalarm.py" line="490" />
+        <location filename="../artisanlib/canvas.py" line="18931" />
+        <location filename="../artisanlib/canvas.py" line="4088" />
+        <location filename="../artisanlib/alarms.py" line="938" />
+        <location filename="../artisanlib/alarms.py" line="882" />
+        <location filename="../artisanlib/curves.py" line="2147" />
+        <location filename="../artisanlib/designer.py" line="636" />
+        <location filename="../artisanlib/designer.py" line="349" />
+        <location filename="../artisanlib/designer.py" line="58" />
+        <location filename="../artisanlib/roast_properties.py" line="4525" />
+        <location filename="../artisanlib/roast_properties.py" line="730" />
+        <location filename="../artisanlib/background.py" line="1099" />
+        <location filename="../artisanlib/events.py" line="1382" />
+        <location filename="../artisanlib/pid_dialogs.py" line="857" />
+        <source>SC END</source>
+        <translation>SC ENDE</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="1943" />
@@ -13157,6 +12766,12 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Während der Aufzeichnung:</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_properties.py" line="6362" />
+        <location filename="../artisanlib/events.py" line="178" />
+        <source>Show</source>
+        <translation>Anzeigen</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/events.py" line="182" />
         <source>Annotation</source>
         <translation>Annotation</translation>
@@ -13188,6 +12803,14 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Textfarbe</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_properties.py" line="6444" />
+        <location filename="../artisanlib/main.py" line="908" />
+        <location filename="../artisanlib/designer.py" line="73" />
+        <location filename="../artisanlib/events.py" line="468" />
+        <source>Marker</source>
+        <translation>Marker</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/events.py" line="470" />
         <source>Thickness</source>
         <translation>Linenstärke</translation>
@@ -13203,6 +12826,19 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/events.py" line="474" />
         <source>Size</source>
         <translation>Größe</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="617" />
+        <location filename="../tilauscope/alarms.py" line="78" />
+        <location filename="../tilauscope/button_labels.py" line="97" />
+        <location filename="../artisanlib/main.py" line="27673" />
+        <location filename="../artisanlib/main.py" line="27672" />
+        <location filename="../artisanlib/main.py" line="27668" />
+        <location filename="../artisanlib/events.py" line="1479" />
+        <location filename="../artisanlib/events.py" line="584" />
+        <location filename="../artisanlib/events.py" line="573" />
+        <source>START</source>
+        <translation>START</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="16343" />
@@ -13232,10 +12868,29 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>aktuell:</translation>
     </message>
     <message>
+        <location filename="../tilauscope/beancave_roast_card.py" line="514" />
+        <location filename="../artisanlib/main.py" line="6119" />
+        <location filename="../artisanlib/main.py" line="6113" />
+        <location filename="../artisanlib/main.py" line="6110" />
+        <location filename="../artisanlib/roast_properties.py" line="3004" />
+        <location filename="../artisanlib/ports.py" line="1454" />
+        <location filename="../artisanlib/events.py" line="1039" />
+        <location filename="../artisanlib/events.py" line="751" />
+        <source>Event</source>
+        <translation>Ereignis</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/events.py" line="769" />
         <location filename="../artisanlib/events.py" line="753" />
         <source>Action</source>
         <translation>Aktion</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/devices.py" line="2113" />
+        <location filename="../artisanlib/ports.py" line="1362" />
+        <location filename="../artisanlib/events.py" line="755" />
+        <source>Command</source>
+        <translation>Befehl</translation>
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="3934" />
@@ -13256,6 +12911,25 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Bernoulli</translation>
     </message>
     <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="94" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3456" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2338" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1548" />
+        <location filename="../artisanlib/events.py" line="775" />
+        <source>Temp</source>
+        <translation>Temp</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/devices.py" line="2116" />
+        <location filename="../artisanlib/roast_properties.py" line="3020" />
+        <location filename="../artisanlib/roast_properties.py" line="3019" />
+        <location filename="../artisanlib/roast_properties.py" line="3000" />
+        <location filename="../artisanlib/roast_properties.py" line="116" />
+        <location filename="../artisanlib/events.py" line="777" />
+        <source>Unit</source>
+        <translation>Einheit</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/roast_properties.py" line="3024" />
         <location filename="../artisanlib/roast_properties.py" line="3023" />
         <location filename="../artisanlib/events.py" line="1041" />
@@ -13266,6 +12940,18 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/events.py" line="1203" />
         <source>Cluster</source>
         <translation>Cluster</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="625" />
+        <location filename="../tilauscope/button_labels.py" line="94" />
+        <location filename="../artisanlib/main.py" line="27649" />
+        <location filename="../artisanlib/main.py" line="27648" />
+        <location filename="../artisanlib/main.py" line="27646" />
+        <location filename="../artisanlib/ports.py" line="1174" />
+        <location filename="../artisanlib/ports.py" line="710" />
+        <location filename="../artisanlib/events.py" line="1442" />
+        <source>OFF</source>
+        <translation>AUS</translation>
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="1468" />
@@ -13387,6 +13073,12 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Funktion</translation>
     </message>
     <message>
+        <location filename="../tilauscope/devices.py" line="2115" />
+        <location filename="../artisanlib/ports.py" line="527" />
+        <source>Divider</source>
+        <translation>Teiler</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/ports.py" line="593" />
         <source>little-endian</source>
         <translation>Little-Endian</translation>
@@ -13418,6 +13110,24 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/ports.py" line="611" />
         <source>Host</source>
         <translation>Host</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="1014" />
+        <location filename="../artisanlib/devices.py" line="2334" />
+        <location filename="../artisanlib/devices.py" line="2193" />
+        <location filename="../artisanlib/devices.py" line="1869" />
+        <location filename="../artisanlib/devices.py" line="1822" />
+        <location filename="../artisanlib/devices.py" line="1288" />
+        <location filename="../artisanlib/devices.py" line="1244" />
+        <location filename="../artisanlib/devices.py" line="1195" />
+        <location filename="../artisanlib/devices.py" line="984" />
+        <location filename="../artisanlib/curves.py" line="1308" />
+        <location filename="../artisanlib/ports.py" line="1557" />
+        <location filename="../artisanlib/ports.py" line="1262" />
+        <location filename="../artisanlib/ports.py" line="968" />
+        <location filename="../artisanlib/ports.py" line="616" />
+        <source>Port</source>
+        <translation>Port</translation>
     </message>
     <message>
         <location filename="../artisanlib/ports.py" line="1108" />
@@ -13458,9 +13168,21 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Pfad</translation>
     </message>
     <message>
+        <location filename="../tilauscope/devices.py" line="2111" />
+        <location filename="../artisanlib/ports.py" line="1274" />
+        <source>ID</source>
+        <translation>ID</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/ports.py" line="1323" />
         <source>Connect</source>
         <translation>Verbinden</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/webclient.py" line="959" />
+        <location filename="../artisanlib/ports.py" line="1326" />
+        <source>Reconnect</source>
+        <translation>Wiederverbinden</translation>
     </message>
     <message>
         <location filename="../artisanlib/ports.py" line="1486" />
@@ -13527,6 +13249,13 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/ports.py" line="1603" />
         <source>Keepalive</source>
         <translation>Keepalive</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/devices.py" line="2112" />
+        <location filename="../artisanlib/ports.py" line="1677" />
+        <location filename="../artisanlib/ports.py" line="1617" />
+        <source>Topic</source>
+        <translation>Thema</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="1000" />
@@ -13599,14 +13328,11 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Gewichtseinheit</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2053" />
-        <location filename="../plus/blend.py" line="157" />
-        <location filename="../artisanlib/canvas.py" line="11726" />
-        <location filename="../artisanlib/roast_properties.py" line="926" />
-        <location filename="../artisanlib/roast_properties.py" line="224" />
-        <location filename="../artisanlib/roast_properties.py" line="150" />
-        <source>Weight</source>
-        <translation>Gewicht</translation>
+        <location filename="../tilauscope/roast_properties.py" line="2638" />
+        <location filename="../artisanlib/roast_properties.py" line="222" />
+        <location filename="../artisanlib/roast_properties.py" line="148" />
+        <source>g</source>
+        <translation>g</translation>
     </message>
     <message>
         <location filename="../artisanlib/roast_properties.py" line="988" />
@@ -13616,27 +13342,17 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Volumen</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="4072" />
-        <location filename="../artisanlib/canvas.py" line="11726" />
-        <location filename="../artisanlib/canvas.py" line="11675" />
-        <location filename="../artisanlib/canvas.py" line="11670" />
-        <location filename="../artisanlib/roast_properties.py" line="924" />
-        <location filename="../artisanlib/roast_properties.py" line="209" />
-        <source>Green</source>
-        <translation>Roh</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="4074" />
-        <location filename="../plus/schedule.py" line="2226" />
-        <location filename="../artisanlib/roast_properties.py" line="925" />
-        <location filename="../artisanlib/roast_properties.py" line="283" />
-        <source>Roasted</source>
-        <translation>Geröstet</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/roast_properties.py" line="886" />
         <source>Date</source>
         <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="5190" />
+        <location filename="../tilauscope/roast_properties.py" line="2616" />
+        <location filename="../artisanlib/roast_properties.py" line="3217" />
+        <location filename="../artisanlib/roast_properties.py" line="891" />
+        <source>Batch</source>
+        <translation>Charge</translation>
     </message>
     <message>
         <location filename="../artisanlib/roast_properties.py" line="1072" />
@@ -13660,20 +13376,11 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Umgebungsfeuchtigkeit</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2126" />
-        <location filename="../plus/schedule.py" line="2125" />
-        <location filename="../artisanlib/statistics.py" line="216" />
-        <location filename="../artisanlib/roast_properties.py" line="1201" />
-        <source>Roasting Notes</source>
-        <translation>Notizen zur Röstung</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2138" />
-        <location filename="../plus/schedule.py" line="2137" />
-        <location filename="../artisanlib/statistics.py" line="218" />
-        <location filename="../artisanlib/roast_properties.py" line="1206" />
-        <source>Cupping Notes</source>
-        <translation>Cupping Notizen</translation>
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="347" />
+        <location filename="../tilauscope/beancave_storage_tab.py" line="407" />
+        <location filename="../artisanlib/roast_properties.py" line="1384" />
+        <source>Stock</source>
+        <translation>Bestand</translation>
     </message>
     <message>
         <location filename="../artisanlib/roast_properties.py" line="1386" />
@@ -13757,6 +13464,15 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Zwischen den Chargen</translation>
     </message>
     <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="100" />
+        <location filename="../tilauscope/webclient.py" line="987" />
+        <location filename="../tilauscope/energy_panel.py" line="392" />
+        <location filename="../artisanlib/roast_properties.py" line="5851" />
+        <location filename="../artisanlib/roast_properties.py" line="3032" />
+        <source>Cooling</source>
+        <translation>Kühlung</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/roast_properties.py" line="3033" />
         <source>Between Batches after Pre-Heating</source>
         <translation>Zwischen den Chargen nach dem Vorheizen</translation>
@@ -13776,6 +13492,15 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/roast_properties.py" line="3044" />
         <source>Measured Energy or Output %</source>
         <translation>Energiemenge oder Leistung in %</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="105" />
+        <location filename="../tilauscope/webclient.py" line="983" />
+        <location filename="../tilauscope/energy_panel.py" line="388" />
+        <location filename="../artisanlib/roast_properties.py" line="3645" />
+        <location filename="../artisanlib/roast_properties.py" line="3616" />
+        <source>Preheat</source>
+        <translation>Vorwärmung</translation>
     </message>
     <message>
         <location filename="../artisanlib/roast_properties.py" line="3647" />
@@ -13826,6 +13551,21 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <translation>Modell</translation>
     </message>
     <message>
+        <location filename="../tilauscope/onboarding.py" line="457" />
+        <location filename="../artisanlib/main.py" line="5871" />
+        <location filename="../artisanlib/roast_properties.py" line="4208" />
+        <source>Heating</source>
+        <translation>Beheizung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="1391" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1003" />
+        <location filename="../artisanlib/statistics.py" line="204" />
+        <location filename="../artisanlib/roast_properties.py" line="4209" />
+        <source>Drum Speed</source>
+        <translation>Trommelgeschwindigkeit</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/roast_properties.py" line="5242" />
         <source>organic material</source>
         <translation>organisches Material</translation>
@@ -13841,6 +13581,23 @@ Die Verwendung von mathematischen Formeln im Plotter ermöglicht auch die Verwen
         <location filename="../artisanlib/roasthubs.py" line="230" />
         <source>Token</source>
         <translation>Token</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/curve.py" line="2652" />
+        <location filename="../tilauscope/cave/viewer_multi.py" line="409" />
+        <location filename="../tilauscope/cave/analysis_view.py" line="726" />
+        <location filename="../tilauscope/roast_asssistant.py" line="3761" />
+        <location filename="../tilauscope/roast_asssistant.py" line="3675" />
+        <location filename="../tilauscope/alarms.py" line="134" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="435" />
+        <location filename="../tilauscope/webclient.py" line="984" />
+        <location filename="../tilauscope/roast_insights.py" line="287" />
+        <location filename="../tilauscope/energy_panel.py" line="487" />
+        <location filename="../artisanlib/transposer.py" line="1038" />
+        <location filename="../artisanlib/statistics.py" line="229" />
+        <location filename="../artisanlib/phases.py" line="56" />
+        <source>Drying</source>
+        <translation>Trocknung</translation>
     </message>
     <message>
         <location filename="../artisanlib/transposer.py" line="1040" />
@@ -13884,6 +13641,14 @@ LCDs Alle</translation>
         <translation>Fehleranzahl {0}</translation>
     </message>
     <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="92" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="511" />
+        <location filename="../artisanlib/main.py" line="1309" />
+        <location filename="../artisanlib/designer.py" line="75" />
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/designer.py" line="220" />
         <source>Curviness</source>
         <translation>Rundheit</translation>
@@ -13892,6 +13657,12 @@ LCDs Alle</translation>
         <location filename="../artisanlib/designer.py" line="721" />
         <source>temp</source>
         <translation>Temp</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="395" />
+        <location filename="../artisanlib/designer.py" line="726" />
+        <source>time</source>
+        <translation>Zeit</translation>
     </message>
     <message>
         <location filename="../artisanlib/calculator.py" line="48" />
@@ -14102,6 +13873,12 @@ LCDs Alle</translation>
         <translation>Grad</translation>
     </message>
     <message>
+        <location filename="../tilauscope/cave/analysis_view.py" line="806" />
+        <location filename="../artisanlib/curves.py" line="1051" />
+        <source>End</source>
+        <translation>Ende</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/curves.py" line="1228" />
         <source>Scale Factor</source>
         <translation>Skalierungsfaktor</translation>
@@ -14119,15 +13896,34 @@ LCDs Alle</translation>
         <translation>EREIGNIS</translation>
     </message>
     <message>
+        <location filename="../tilauscope/cave/viewer.py" line="1976" />
+        <location filename="../artisanlib/statistics.py" line="98" />
+        <source>From</source>
+        <translation>Von</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/statistics.py" line="112" />
         <source>Base</source>
         <translation>Basis</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2131" />
-        <location filename="../artisanlib/statistics.py" line="217" />
-        <source>Cupping Score</source>
-        <translation>Cupping Score</translation>
+        <location filename="../tilauscope/graph/annotation_text.py" line="93" />
+        <location filename="../tilauscope/roast_timeline.py" line="817" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3664" />
+        <location filename="../artisanlib/statistics.py" line="128" />
+        <source>Target</source>
+        <translation>Ziel</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/devices.py" line="2800" />
+        <location filename="../tilauscope/devices.py" line="679" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1500" />
+        <location filename="../tilauscope/onboarding.py" line="1012" />
+        <location filename="../tilauscope/energy_panel.py" line="309" />
+        <location filename="../tilauscope/energy_panel.py" line="292" />
+        <location filename="../artisanlib/statistics.py" line="203" />
+        <source>Roaster</source>
+        <translation type="unfinished">Röstmaschine</translation>
     </message>
     <message>
         <location filename="../artisanlib/statistics.py" line="231" />
@@ -14440,6 +14236,12 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Max Delta</translation>
     </message>
     <message>
+        <location filename="../tilauscope/cave/analysis_view.py" line="353" />
+        <location filename="../artisanlib/main.py" line="7368" />
+        <source>Swing</source>
+        <translation>Ausschlag</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="7369" />
         <source>ABC/secs</source>
         <translation>ABC/s</translation>
@@ -14559,10 +14361,125 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Rohkaffee</translation>
     </message>
     <message>
+        <location filename="../tilauscope/button_labels.py" line="95" />
+        <location filename="../artisanlib/main.py" line="27664" />
+        <location filename="../artisanlib/main.py" line="27651" />
+        <location filename="../artisanlib/main.py" line="27650" />
+        <source>AUTO</source>
+        <translation>AUTO</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="4605" />
+        <location filename="../tilauscope/button_labels.py" line="95" />
+        <location filename="../artisanlib/main.py" line="27664" />
+        <location filename="../artisanlib/main.py" line="27663" />
+        <location filename="../artisanlib/main.py" line="27651" />
+        <source>MANUAL</source>
+        <translation>MANUELL</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="105" />
+        <location filename="../artisanlib/main.py" line="27652" />
+        <source>FLAP</source>
+        <translation>KLAPPE</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/pid_autotune.py" line="3087" />
+        <location filename="../tilauscope/pid_autotune.py" line="2006" />
+        <location filename="../tilauscope/button_labels.py" line="96" />
+        <location filename="../artisanlib/main.py" line="27666" />
+        <location filename="../artisanlib/main.py" line="27654" />
+        <location filename="../artisanlib/main.py" line="27653" />
+        <source>CLOSE</source>
+        <translation>SCHLIEßEN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="96" />
+        <location filename="../artisanlib/main.py" line="27666" />
+        <location filename="../artisanlib/main.py" line="27665" />
+        <location filename="../artisanlib/main.py" line="27654" />
+        <source>OPEN</source>
+        <translation>ÖFFNEN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="108" />
+        <location filename="../artisanlib/main.py" line="27655" />
+        <source>CONTROL</source>
+        <translation>STEUERUNG</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="109" />
+        <location filename="../artisanlib/main.py" line="27656" />
+        <source>DISCHARGE</source>
+        <translation>ENTLADEN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="110" />
+        <location filename="../tilauscope/button_labels.py" line="111" />
+        <location filename="../artisanlib/main.py" line="27658" />
+        <source>HEATING</source>
+        <translation>HEIZUNG</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="112" />
+        <location filename="../artisanlib/main.py" line="27659" />
+        <source>STIRRER</source>
+        <translation>RÜHRER</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="113" />
+        <location filename="../artisanlib/main.py" line="27660" />
+        <source>FILL</source>
+        <translation>FÜLLEN</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="3744" />
+        <location filename="../tilauscope/button_labels.py" line="115" />
+        <location filename="../artisanlib/main.py" line="27662" />
+        <source>COOLING</source>
+        <translation>KÜHLUNG</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="97" />
+        <location filename="../artisanlib/main.py" line="27673" />
+        <location filename="../artisanlib/main.py" line="27668" />
+        <location filename="../artisanlib/main.py" line="27667" />
+        <source>STOP</source>
+        <translation>STOPP</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/button_labels.py" line="124" />
+        <location filename="../artisanlib/main.py" line="27671" />
+        <source>RELEASE</source>
+        <translation>FREIGEBEN</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="28332" />
         <source>Fit</source>
         <comment>Curve Fit Type</comment>
         <translation>Anpassung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/analysis_view.py" line="387" />
+        <location filename="../artisanlib/main.py" line="28333" />
+        <source>RMSE BT</source>
+        <translation>RMSE BT</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/analysis_view.py" line="387" />
+        <location filename="../artisanlib/main.py" line="28334" />
+        <source>MSE BT</source>
+        <translation>MSE BT</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/parts.py" line="915" />
+        <location filename="../tilauscope/roast_plan_model.py" line="889" />
+        <location filename="../tilauscope/roast_plan_model.py" line="865" />
+        <location filename="../artisanlib/canvas.py" line="16344" />
+        <location filename="../artisanlib/canvas.py" line="16333" />
+        <location filename="../artisanlib/main.py" line="28335" />
+        <source>RoR</source>
+        <translation>RoR</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="28335" />
@@ -14580,6 +14497,12 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Kurvenanpassungs-Analyse</translation>
     </message>
     <message>
+        <location filename="../tilauscope/sack_manager.py" line="828" />
+        <location filename="../artisanlib/batches.py" line="54" />
+        <source>Prefix</source>
+        <translation>Präfix</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/batches.py" line="57" />
         <source>Counter</source>
         <translation>Zähler</translation>
@@ -14588,6 +14511,13 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <location filename="../artisanlib/devices.py" line="125" />
         <source>Logging</source>
         <translation>Protokollierung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="1604" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1385" />
+        <location filename="../artisanlib/devices.py" line="128" />
+        <source>Control</source>
+        <translation>Steuerung</translation>
     </message>
     <message>
         <location filename="../artisanlib/devices.py" line="177" />
@@ -14707,6 +14637,14 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Temperatur</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="4754" />
+        <location filename="../tilauscope/beancave_social_card.py" line="84" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="620" />
+        <location filename="../artisanlib/devices.py" line="1158" />
+        <source>Humidity</source>
+        <translation>Luftfeuchte</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/devices.py" line="1159" />
         <source>Pressure</source>
         <translation>Luftdruck</translation>
@@ -14726,6 +14664,12 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <location filename="../artisanlib/devices.py" line="1224" />
         <source>WiFi</source>
         <translation>WiFi</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/device_setup/artisan_mirror.py" line="262" />
+        <location filename="../artisanlib/devices.py" line="1228" />
+        <source>Bluetooth</source>
+        <translation>Bluetooth</translation>
     </message>
     <message>
         <location filename="../artisanlib/devices.py" line="1306" />
@@ -14994,6 +14938,14 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>CM</translation>
     </message>
     <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="95" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1552" />
+        <location filename="../artisanlib/canvas.py" line="16348" />
+        <location filename="../artisanlib/canvas.py" line="16339" />
+        <source>FC</source>
+        <translation>FC</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="18499" />
         <source>Designer</source>
         <translation>Designer</translation>
@@ -15029,9 +14981,58 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Verhältnis</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2130" />
-        <source>Score</source>
-        <translation>Score</translation>
+        <location filename="../tilauscope/visualalarm.py" line="104" />
+        <source>Visual Alarm Timeline</source>
+        <translation>Visuelle Alarm-Zeitleiste</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="104" />
+        <location filename="../tilauscope/alarms.py" line="1208" />
+        <source>from</source>
+        <translation>von</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="4756" />
+        <location filename="../tilauscope/alarms.py" line="1283" />
+        <source>target</source>
+        <translation>Ziel</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="116" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="82" />
+        <source>Delta</source>
+        <translation>Delta</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="88" />
+        <source>Segment</source>
+        <translation>Segment</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="101" />
+        <source>Development Phase</source>
+        <translation>Entwicklungsphase</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="830" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="102" />
+        <source>Maillard Phase</source>
+        <translation type="unfinished">Maillardphase</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="118" />
+        <source>None</source>
+        <translation type="unfinished">Keines</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="128" />
+        <source>Extra</source>
+        <translation type="unfinished">Extras</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/sidebar.py" line="152" />
+        <source>Alarm</source>
+        <translation>Alarm</translation>
     </message>
 </context><context>
     <name>MAC_APPLICATION_MENU</name>
@@ -15128,123 +15129,10 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
 </context><context>
     <name>Menu</name>
     <message>
-        <location filename="../tilauscope/menu_extension.py" line="91" />
-        <source>BeanCave</source>
-        <translation>BeanCave</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="99" />
-        <source>Print a Coffee Label...</source>
-        <translation>Kaffeeetikett drucken...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/beancave_app.py" line="119" />
-        <location filename="../tilauscope/menu_extension.py" line="103" />
-        <source>Roast Profile Maintenance...</source>
-        <translation>Röstprofile verwalten...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="107" />
-        <source>Custom button management...</source>
-        <translation>Verwaltung eigener Schaltflächen...</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="2590" />
-        <location filename="../tilauscope/menu_extension.py" line="111" />
-        <source>TilauScope Config...</source>
-        <translation>TilauScope-Konfiguration...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="115" />
-        <source>Devices...</source>
-        <translation>Geräte...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="120" />
-        <source>Redo First-Time Setup...</source>
-        <translation>Ersteinrichtung erneut ausführen...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="124" />
-        <source>TilauScope Debug</source>
-        <translation>TilauScope-Debug</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="129" />
-        <source>Understand and adjust PID...</source>
-        <translation>PID verstehen und anpassen...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="136" />
-        <source>Export Logs...</source>
-        <translation>Protokolle exportieren...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="140" />
-        <source>Back up TilauScope...</source>
-        <translation>TilauScope sichern...</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="142" />
-        <source>Restore TilauScope...</source>
-        <translation>TilauScope wiederherstellen...</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="4153" />
-        <location filename="../tilauscope/cave/viewer.py" line="1717" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1273" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="159" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="69" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="135" />
-        <source>Edit</source>
-        <translation type="unfinished">Bearbeiten</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="2547" />
-        <location filename="../tilauscope/tilau_privacy_ui.py" line="330" />
-        <source>Copy</source>
-        <translation>Kopieren</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="2894" />
-        <location filename="../tilauscope/tilau_updater.py" line="849" />
-        <location filename="../tilauscope/tilau_updater.py" line="832" />
-        <location filename="../tilauscope/beancave_app.py" line="115" />
-        <source>Check for Updates</source>
-        <translation>Aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="2550" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="470" />
-        <source>Paste</source>
-        <translation>Einfügen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="4369" />
-        <location filename="../artisanlib/main.py" line="2707" />
-        <location filename="../tilauscope/cave/analysis_view.py" line="183" />
-        <location filename="../tilauscope/displayscope.py" line="509" />
-        <source>Expert</source>
-        <translation>Experte</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="4229" />
-        <location filename="../tilauscope/cave/viewer.py" line="499" />
-        <source>View</source>
-        <translation type="unfinished">Darstellung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="4371" />
-        <location filename="../artisanlib/main.py" line="2701" />
-        <location filename="../tilauscope/graph/smoothing.py" line="95" />
-        <source>Standard</source>
-        <translation>Standard</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="2640" />
-        <location filename="../tilauscope/device_setup/dialog.py" line="751" />
-        <source>Temperature</source>
-        <translation>Temperatur</translation>
+        <location filename="../artisanlib/main.py" line="2824" />
+        <location filename="../plus/schedule.py" line="2431" />
+        <source>Schedule</source>
+        <translation>Röstplan</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="4172" />
@@ -15494,6 +15382,18 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Ausschneiden</translation>
     </message>
     <message>
+        <location filename="../tilauscope/tilau_privacy_ui.py" line="330" />
+        <location filename="../artisanlib/main.py" line="2547" />
+        <source>Copy</source>
+        <translation>Kopieren</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="470" />
+        <location filename="../artisanlib/main.py" line="2550" />
+        <source>Paste</source>
+        <translation>Einfügen</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="2555" />
         <source>Properties...</source>
         <translation>Eigenschaften...</translation>
@@ -15534,6 +15434,12 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <location filename="../artisanlib/main.py" line="2585" />
         <source>Device...</source>
         <translation>Messgerät...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="111" />
+        <location filename="../artisanlib/main.py" line="2590" />
+        <source>TilauScope Config...</source>
+        <translation>TilauScope-Konfiguration...</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="2593" />
@@ -15596,6 +15502,12 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Chargen...</translation>
     </message>
     <message>
+        <location filename="../tilauscope/device_setup/dialog.py" line="751" />
+        <location filename="../artisanlib/main.py" line="2640" />
+        <source>Temperature</source>
+        <translation>Temperatur</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="2644" />
         <source>Fahrenheit Mode</source>
         <translation>Fahrenheit Modus</translation>
@@ -15621,6 +15533,21 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <location filename="../artisanlib/main.py" line="2695" />
         <source>Production</source>
         <translation>Produktion</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/smoothing.py" line="95" />
+        <location filename="../artisanlib/main.py" line="4371" />
+        <location filename="../artisanlib/main.py" line="2701" />
+        <source>Standard</source>
+        <translation>Standard</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/analysis_view.py" line="183" />
+        <location filename="../tilauscope/displayscope.py" line="509" />
+        <location filename="../artisanlib/main.py" line="4369" />
+        <location filename="../artisanlib/main.py" line="2707" />
+        <source>Expert</source>
+        <translation>Experte</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="2716" />
@@ -15720,12 +15647,6 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Regler</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2431" />
-        <location filename="../artisanlib/main.py" line="2824" />
-        <source>Schedule</source>
-        <translation>Röstplan</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/main.py" line="2862" />
         <source>Full Screen</source>
         <translation>Vollbildmodus</translation>
@@ -15744,6 +15665,14 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <location filename="../artisanlib/main.py" line="2891" />
         <source>Keyboard Shortcuts</source>
         <translation>Tastaturkürzel</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/tilau_updater.py" line="849" />
+        <location filename="../tilauscope/tilau_updater.py" line="832" />
+        <location filename="../tilauscope/beancave_app.py" line="136" />
+        <location filename="../artisanlib/main.py" line="2894" />
+        <source>Check for Updates</source>
+        <translation>Aktualisieren</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="2898" />
@@ -15793,9 +15722,25 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation type="unfinished">Datei</translation>
     </message>
     <message>
+        <location filename="../tilauscope/cave/viewer.py" line="1720" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1276" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="161" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="71" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="150" />
+        <location filename="../artisanlib/main.py" line="4153" />
+        <source>Edit</source>
+        <translation type="unfinished">Bearbeiten</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="4210" />
         <source>Tools</source>
         <translation type="unfinished">Extras</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/viewer.py" line="499" />
+        <location filename="../artisanlib/main.py" line="4229" />
+        <source>View</source>
+        <translation type="unfinished">Darstellung</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="5664" />
@@ -15814,6 +15759,62 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
         <translation>Schema Speichern...</translation>
     </message>
     <message>
+        <location filename="../tilauscope/menu_extension.py" line="91" />
+        <source>BeanCave</source>
+        <translation>BeanCave</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="99" />
+        <source>Print a Coffee Label...</source>
+        <translation>Kaffeeetikett drucken...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_app.py" line="140" />
+        <location filename="../tilauscope/menu_extension.py" line="103" />
+        <source>Roast Profile Maintenance...</source>
+        <translation>Röstprofile verwalten...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="107" />
+        <source>Custom button management...</source>
+        <translation>Verwaltung eigener Schaltflächen...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="115" />
+        <source>Devices...</source>
+        <translation>Geräte...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="120" />
+        <source>Redo First-Time Setup...</source>
+        <translation>Ersteinrichtung erneut ausführen...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="124" />
+        <source>TilauScope Debug</source>
+        <translation>TilauScope-Debug</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="129" />
+        <source>Understand and adjust PID...</source>
+        <translation>PID verstehen und anpassen...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="136" />
+        <source>Export Logs...</source>
+        <translation>Protokolle exportieren...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="140" />
+        <source>Back up TilauScope...</source>
+        <translation>TilauScope sichern...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="142" />
+        <source>Restore TilauScope...</source>
+        <translation>TilauScope wiederherstellen...</translation>
+    </message>
+    <message>
         <source>Switch to Artisan window</source>
         <translation type="vanished">Zum Artisan-Fenster wechseln</translation>
     </message>
@@ -15824,141 +15825,61 @@ Weniger Punkte: Einfachere Kurve, aber möglicherweise Detailverlust</translatio
 </context><context>
     <name>Message</name>
     <message>
-        <location filename="../artisanlib/main.py" line="13943" />
-        <location filename="../tilauscope/device_setup/dialog.py" line="904" />
-        <location filename="../tilauscope/device_setup/dialog.py" line="225" />
-        <location filename="../tilauscope/graph/curve.py" line="715" />
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="177" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="264" />
-        <location filename="../tilauscope/webclient.py" line="944" />
-        <location filename="../tilauscope/beancave_storage_tab.py" line="1174" />
-        <source>Save</source>
-        <translation>Speichern</translation>
+        <location filename="../plus/schedule.py" line="1527" />
+        <source>Register the currently loaded roast profile&lt;br&gt;in the selected entry.&lt;br&gt;This will overwrite some roast properties.</source>
+        <translation>Das aktuell geladene Röstprofil&lt;br&gt;im ausgewählten Eintrag registrieren.&lt;br&gt;Dabei werden einige Rösteigenschaften überschrieben.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14492" />
-        <location filename="../tilauscope/artisan_message_ticker.py" line="110" />
-        <source>Scope recording stopped</source>
-        <translation>Röstoskop Aufzeichnung beendet</translation>
+        <location filename="../plus/schedule.py" line="1541" />
+        <location filename="../plus/schedule.py" line="1532" />
+        <source>Register Roast</source>
+        <translation>Röstung Registrieren</translation>
     </message>
     <message>
-        <location filename="../tilauscope/tilaupid.py" line="425" />
-        <source>Preheat stopped because its controller encountered an error.</source>
-        <translation>Vorheizen gestoppt, weil der Regler einen Fehler meldete.</translation>
+        <location filename="../plus/schedule.py" line="2485" />
+        <source>Scheduler started</source>
+        <translation>Röstplaner gestartet</translation>
     </message>
     <message>
-        <location filename="../tilauscope/tilaupid.py" line="428" />
-        <source>Preheat stopped: no valid temperature reading was received.</source>
-        <translation>Vorheizen gestoppt: Es wurde kein gültiger Temperaturwert empfangen.</translation>
+        <location filename="../plus/schedule.py" line="2796" />
+        <source>Roasts will not adjust the schedule&lt;br&gt;while the schedule window is closed</source>
+        <translation>Röstungen werden nicht im Röstplan registriert,&lt;br&gt;während das Röstplan Fenster geschlossen ist</translation>
     </message>
     <message>
-        <location filename="../tilauscope/tilaupid.py" line="431" />
-        <source>Preheat stopped: the temperature reading is invalid.</source>
-        <translation>Vorheizen gestoppt: Der Temperaturwert ist ungültig.</translation>
+        <location filename="../plus/schedule.py" line="2810" />
+        <location filename="../plus/schedule.py" line="2801" />
+        <source>Close Scheduler</source>
+        <translation>Röstplaner Schliessen</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="5870" />
-        <location filename="../artisanlib/main.py" line="5848" />
-        <location filename="../artisanlib/main.py" line="5808" />
-        <location filename="../artisanlib/main.py" line="5797" />
-        <location filename="../artisanlib/main.py" line="5786" />
-        <location filename="../artisanlib/main.py" line="5775" />
-        <location filename="../artisanlib/main.py" line="5764" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1499" />
-        <source>Machine</source>
-        <translation>Maschine</translation>
+        <location filename="../plus/schedule.py" line="2868" />
+        <source>Scheduler stopped</source>
+        <translation>Röstplaner angehalten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/tilauscope_types.py" line="520" />
-        <source>Profile unsaved</source>
-        <translation>Profile nicht gesichert</translation>
+        <location filename="../plus/schedule.py" line="3584" />
+        <location filename="../plus/schedule.py" line="3176" />
+        <source>Updating completed roast properties failed</source>
+        <translation>Das Aktualisieren der Rösteigenschaften ist fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/tilauscope_types.py" line="521" />
-        <source>Save profile?</source>
-        <translation>Profil sichern?</translation>
+        <location filename="../plus/schedule.py" line="3756" />
+        <location filename="../plus/schedule.py" line="3295" />
+        <source>1 batch</source>
+        <translation>1 Charge</translation>
     </message>
     <message>
-        <location filename="../artisanlib/pid_control.py" line="1565" />
-        <location filename="../tilauscope/graph/curve.py" line="654" />
-        <source>PID OFF</source>
-        <translation>PID AUS</translation>
+        <location filename="../plus/schedule.py" line="3771" />
+        <location filename="../plus/schedule.py" line="3762" />
+        <location filename="../plus/schedule.py" line="3303" />
+        <location filename="../plus/schedule.py" line="3297" />
+        <source>{} batches</source>
+        <translation>{} Chargen</translation>
     </message>
     <message>
-        <location filename="../artisanlib/devices.py" line="4676" />
-        <location filename="../artisanlib/devices.py" line="4643" />
-        <location filename="../artisanlib/devices.py" line="4626" />
-        <location filename="../artisanlib/devices.py" line="4552" />
-        <location filename="../artisanlib/devices.py" line="4545" />
-        <location filename="../artisanlib/devices.py" line="4539" />
-        <location filename="../artisanlib/devices.py" line="4527" />
-        <location filename="../artisanlib/devices.py" line="4521" />
-        <location filename="../artisanlib/devices.py" line="4512" />
-        <location filename="../artisanlib/devices.py" line="4498" />
-        <location filename="../artisanlib/devices.py" line="4459" />
-        <location filename="../artisanlib/devices.py" line="4451" />
-        <location filename="../artisanlib/devices.py" line="4443" />
-        <location filename="../artisanlib/devices.py" line="4426" />
-        <location filename="../artisanlib/devices.py" line="4408" />
-        <location filename="../artisanlib/devices.py" line="4393" />
-        <location filename="../artisanlib/devices.py" line="4387" />
-        <location filename="../artisanlib/devices.py" line="4375" />
-        <location filename="../artisanlib/devices.py" line="4369" />
-        <location filename="../artisanlib/devices.py" line="4363" />
-        <location filename="../artisanlib/devices.py" line="4357" />
-        <location filename="../artisanlib/devices.py" line="4351" />
-        <location filename="../artisanlib/devices.py" line="4345" />
-        <location filename="../artisanlib/devices.py" line="4323" />
-        <location filename="../artisanlib/devices.py" line="4317" />
-        <location filename="../artisanlib/devices.py" line="4311" />
-        <location filename="../artisanlib/devices.py" line="4305" />
-        <location filename="../artisanlib/devices.py" line="4299" />
-        <location filename="../artisanlib/devices.py" line="4293" />
-        <location filename="../artisanlib/devices.py" line="4258" />
-        <location filename="../artisanlib/devices.py" line="4249" />
-        <location filename="../artisanlib/devices.py" line="4245" />
-        <location filename="../artisanlib/devices.py" line="4241" />
-        <location filename="../artisanlib/devices.py" line="4210" />
-        <location filename="../artisanlib/devices.py" line="4204" />
-        <location filename="../artisanlib/devices.py" line="4198" />
-        <location filename="../artisanlib/devices.py" line="4192" />
-        <location filename="../artisanlib/devices.py" line="4186" />
-        <location filename="../artisanlib/devices.py" line="4180" />
-        <location filename="../artisanlib/devices.py" line="4174" />
-        <location filename="../artisanlib/devices.py" line="4162" />
-        <location filename="../artisanlib/devices.py" line="4147" />
-        <location filename="../artisanlib/devices.py" line="4122" />
-        <location filename="../artisanlib/devices.py" line="4118" />
-        <location filename="../artisanlib/devices.py" line="4105" />
-        <location filename="../artisanlib/devices.py" line="4101" />
-        <location filename="../artisanlib/devices.py" line="4076" />
-        <location filename="../artisanlib/devices.py" line="4072" />
-        <location filename="../artisanlib/devices.py" line="4068" />
-        <location filename="../artisanlib/devices.py" line="4058" />
-        <location filename="../artisanlib/devices.py" line="4011" />
-        <location filename="../artisanlib/devices.py" line="3999" />
-        <location filename="../artisanlib/devices.py" line="3990" />
-        <location filename="../artisanlib/devices.py" line="3987" />
-        <location filename="../artisanlib/devices.py" line="3984" />
-        <location filename="../artisanlib/devices.py" line="3969" />
-        <location filename="../artisanlib/devices.py" line="3953" />
-        <location filename="../artisanlib/devices.py" line="3944" />
-        <location filename="../artisanlib/devices.py" line="3860" />
-        <location filename="../tilauscope/device_setup/artisan_mirror.py" line="268" />
-        <location filename="../tilauscope/device_setup/artisan_mirror.py" line="238" />
-        <source>Device set to {0}</source>
-        <translation>Gerät {0} ausgewählt</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="13677" />
-        <location filename="../tilauscope/window/lifecycle.py" line="842" />
-        <source>Profile {0} saved in: {1}</source>
-        <translation>Profile {0} gepeichert in: {1}</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/widgets/dialogs.py" line="108" />
-        <source>WARNING REPLAY AUTOMATISM ARE ACTIVE</source>
-        <translation>WARNUNG: REPLAY-AUTOMATISMEN SIND AKTIV</translation>
+        <location filename="../plus/schedule.py" line="3650" />
+        <source>Fetching completed roast properties failed</source>
+        <translation>Das Abrufen der Eigenschaften der Röstung ist fehlgeschlagen</translation>
     </message>
     <message>
         <location filename="../artisanlib/axis.py" line="899" />
@@ -16790,6 +16711,12 @@ ACHTUNG: Gespeicherte Daten werden ohne Bestätigung gelöscht</translation>
         <translation>PID AN</translation>
     </message>
     <message>
+        <location filename="../tilauscope/graph/curve.py" line="654" />
+        <location filename="../artisanlib/pid_control.py" line="1565" />
+        <source>PID OFF</source>
+        <translation>PID AUS</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/pid_control.py" line="1597" />
         <source>PID turned off</source>
         <translation>PID AUS</translation>
@@ -17029,6 +16956,18 @@ Um es kostenlos und aktuell zu halten, unterstützen Sie uns bitte mit einer Spe
         <location filename="../artisanlib/main.py" line="5712" />
         <source>Action canceled</source>
         <translation>Abgebrochen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1499" />
+        <location filename="../artisanlib/main.py" line="5870" />
+        <location filename="../artisanlib/main.py" line="5848" />
+        <location filename="../artisanlib/main.py" line="5808" />
+        <location filename="../artisanlib/main.py" line="5797" />
+        <location filename="../artisanlib/main.py" line="5786" />
+        <location filename="../artisanlib/main.py" line="5775" />
+        <location filename="../artisanlib/main.py" line="5764" />
+        <source>Machine</source>
+        <translation>Maschine</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="5809" />
@@ -17363,6 +17302,12 @@ Um es kostenlos und aktuell zu halten, unterstützen Sie uns bitte mit einer Spe
         <translation>Tastaturnavigation AUS</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="842" />
+        <location filename="../artisanlib/main.py" line="13677" />
+        <source>Profile {0} saved in: {1}</source>
+        <translation>Profile {0} gepeichert in: {1}</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="13681" />
         <source>Autosave path does not exist. Autosave failed.</source>
         <translation>Der Pfad für die automatische Speicherung existiert nicht. Automatisches Speichern fehlgeschlagen.</translation>
@@ -17387,6 +17332,18 @@ Um es kostenlos und aktuell zu halten, unterstützen Sie uns bitte mit einer Spe
         <location filename="../artisanlib/main.py" line="13925" />
         <source>URL</source>
         <translation>URL</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/device_setup/dialog.py" line="904" />
+        <location filename="../tilauscope/device_setup/dialog.py" line="225" />
+        <location filename="../tilauscope/graph/curve.py" line="715" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="240" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="266" />
+        <location filename="../tilauscope/webclient.py" line="944" />
+        <location filename="../tilauscope/beancave_storage_tab.py" line="1174" />
+        <location filename="../artisanlib/main.py" line="13943" />
+        <source>Save</source>
+        <translation>Speichern</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="13961" />
@@ -17958,6 +17915,71 @@ Korrigieren Sie dies auf der Registerkarte Config &gt; Kurven &gt; Analysieren.<
         <translation>Gerät {0} ausgewählt, equivalent zum Omega HH806AU. Serielleeinstellungen vornehmen</translation>
     </message>
     <message>
+        <location filename="../tilauscope/device_setup/artisan_mirror.py" line="268" />
+        <location filename="../tilauscope/device_setup/artisan_mirror.py" line="238" />
+        <location filename="../artisanlib/devices.py" line="4676" />
+        <location filename="../artisanlib/devices.py" line="4643" />
+        <location filename="../artisanlib/devices.py" line="4626" />
+        <location filename="../artisanlib/devices.py" line="4552" />
+        <location filename="../artisanlib/devices.py" line="4545" />
+        <location filename="../artisanlib/devices.py" line="4539" />
+        <location filename="../artisanlib/devices.py" line="4527" />
+        <location filename="../artisanlib/devices.py" line="4521" />
+        <location filename="../artisanlib/devices.py" line="4512" />
+        <location filename="../artisanlib/devices.py" line="4498" />
+        <location filename="../artisanlib/devices.py" line="4459" />
+        <location filename="../artisanlib/devices.py" line="4451" />
+        <location filename="../artisanlib/devices.py" line="4443" />
+        <location filename="../artisanlib/devices.py" line="4426" />
+        <location filename="../artisanlib/devices.py" line="4408" />
+        <location filename="../artisanlib/devices.py" line="4393" />
+        <location filename="../artisanlib/devices.py" line="4387" />
+        <location filename="../artisanlib/devices.py" line="4375" />
+        <location filename="../artisanlib/devices.py" line="4369" />
+        <location filename="../artisanlib/devices.py" line="4363" />
+        <location filename="../artisanlib/devices.py" line="4357" />
+        <location filename="../artisanlib/devices.py" line="4351" />
+        <location filename="../artisanlib/devices.py" line="4345" />
+        <location filename="../artisanlib/devices.py" line="4323" />
+        <location filename="../artisanlib/devices.py" line="4317" />
+        <location filename="../artisanlib/devices.py" line="4311" />
+        <location filename="../artisanlib/devices.py" line="4305" />
+        <location filename="../artisanlib/devices.py" line="4299" />
+        <location filename="../artisanlib/devices.py" line="4293" />
+        <location filename="../artisanlib/devices.py" line="4258" />
+        <location filename="../artisanlib/devices.py" line="4249" />
+        <location filename="../artisanlib/devices.py" line="4245" />
+        <location filename="../artisanlib/devices.py" line="4241" />
+        <location filename="../artisanlib/devices.py" line="4210" />
+        <location filename="../artisanlib/devices.py" line="4204" />
+        <location filename="../artisanlib/devices.py" line="4198" />
+        <location filename="../artisanlib/devices.py" line="4192" />
+        <location filename="../artisanlib/devices.py" line="4186" />
+        <location filename="../artisanlib/devices.py" line="4180" />
+        <location filename="../artisanlib/devices.py" line="4174" />
+        <location filename="../artisanlib/devices.py" line="4162" />
+        <location filename="../artisanlib/devices.py" line="4147" />
+        <location filename="../artisanlib/devices.py" line="4122" />
+        <location filename="../artisanlib/devices.py" line="4118" />
+        <location filename="../artisanlib/devices.py" line="4105" />
+        <location filename="../artisanlib/devices.py" line="4101" />
+        <location filename="../artisanlib/devices.py" line="4076" />
+        <location filename="../artisanlib/devices.py" line="4072" />
+        <location filename="../artisanlib/devices.py" line="4068" />
+        <location filename="../artisanlib/devices.py" line="4058" />
+        <location filename="../artisanlib/devices.py" line="4011" />
+        <location filename="../artisanlib/devices.py" line="3999" />
+        <location filename="../artisanlib/devices.py" line="3990" />
+        <location filename="../artisanlib/devices.py" line="3987" />
+        <location filename="../artisanlib/devices.py" line="3984" />
+        <location filename="../artisanlib/devices.py" line="3969" />
+        <location filename="../artisanlib/devices.py" line="3953" />
+        <location filename="../artisanlib/devices.py" line="3944" />
+        <location filename="../artisanlib/devices.py" line="3860" />
+        <source>Device set to {0}</source>
+        <translation>Gerät {0} ausgewählt</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/devices.py" line="3865" />
         <source>Device set to {0}{1}</source>
         <translation>Gerät {0}{1} ausgewählt</translation>
@@ -18172,6 +18194,12 @@ Korrigieren Sie dies auf der Registerkarte Config &gt; Kurven &gt; Analysieren.<
         <location filename="../artisanlib/canvas.py" line="14374" />
         <source>Scope recording...</source>
         <translation>Röstoskop zeichnet auf...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/artisan_message_ticker.py" line="110" />
+        <location filename="../artisanlib/canvas.py" line="14492" />
+        <source>Scope recording stopped</source>
+        <translation>Röstoskop Aufzeichnung beendet</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="14655" />
@@ -18397,61 +18425,34 @@ Profile missing [CHARGE] or [DROP]</source>
         <translation>Profilvorlage nicht gefunden</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="1527" />
-        <source>Register the currently loaded roast profile&lt;br&gt;in the selected entry.&lt;br&gt;This will overwrite some roast properties.</source>
-        <translation>Das aktuell geladene Röstprofil&lt;br&gt;im ausgewählten Eintrag registrieren.&lt;br&gt;Dabei werden einige Rösteigenschaften überschrieben.</translation>
+        <location filename="../tilauscope/tilaupid.py" line="425" />
+        <source>Preheat stopped because its controller encountered an error.</source>
+        <translation>Vorheizen gestoppt, weil der Regler einen Fehler meldete.</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="1541" />
-        <location filename="../plus/schedule.py" line="1532" />
-        <source>Register Roast</source>
-        <translation>Röstung Registrieren</translation>
+        <location filename="../tilauscope/tilaupid.py" line="428" />
+        <source>Preheat stopped: no valid temperature reading was received.</source>
+        <translation>Vorheizen gestoppt: Es wurde kein gültiger Temperaturwert empfangen.</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2485" />
-        <source>Scheduler started</source>
-        <translation>Röstplaner gestartet</translation>
+        <location filename="../tilauscope/tilaupid.py" line="431" />
+        <source>Preheat stopped: the temperature reading is invalid.</source>
+        <translation>Vorheizen gestoppt: Der Temperaturwert ist ungültig.</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2796" />
-        <source>Roasts will not adjust the schedule&lt;br&gt;while the schedule window is closed</source>
-        <translation>Röstungen werden nicht im Röstplan registriert,&lt;br&gt;während das Röstplan Fenster geschlossen ist</translation>
+        <location filename="../tilauscope/tilauscope_types.py" line="520" />
+        <source>Profile unsaved</source>
+        <translation>Profile nicht gesichert</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2810" />
-        <location filename="../plus/schedule.py" line="2801" />
-        <source>Close Scheduler</source>
-        <translation>Röstplaner Schliessen</translation>
+        <location filename="../tilauscope/tilauscope_types.py" line="521" />
+        <source>Save profile?</source>
+        <translation>Profil sichern?</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2868" />
-        <source>Scheduler stopped</source>
-        <translation>Röstplaner angehalten</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3584" />
-        <location filename="../plus/schedule.py" line="3176" />
-        <source>Updating completed roast properties failed</source>
-        <translation>Das Aktualisieren der Rösteigenschaften ist fehlgeschlagen</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3756" />
-        <location filename="../plus/schedule.py" line="3295" />
-        <source>1 batch</source>
-        <translation>1 Charge</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3771" />
-        <location filename="../plus/schedule.py" line="3762" />
-        <location filename="../plus/schedule.py" line="3303" />
-        <location filename="../plus/schedule.py" line="3297" />
-        <source>{} batches</source>
-        <translation>{} Chargen</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3650" />
-        <source>Fetching completed roast properties failed</source>
-        <translation>Das Abrufen der Eigenschaften der Röstung ist fehlgeschlagen</translation>
+        <location filename="../tilauscope/widgets/dialogs.py" line="108" />
+        <source>WARNING REPLAY AUTOMATISM ARE ACTIVE</source>
+        <translation>WARNUNG: REPLAY-AUTOMATISMEN SIND AKTIV</translation>
     </message>
     <message>
         <source>artisan-settings</source>
@@ -18543,74 +18544,6 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
     </message>
 </context><context>
     <name>Plus</name>
-    <message>
-        <location filename="../plus/schedule.py" line="1963" />
-        <location filename="../plus/schedule.py" line="1418" />
-        <location filename="../tilauscope/cave/roast_list.py" line="167" />
-        <source>Today</source>
-        <translation>Heute</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1343" />
-        <location filename="../tilauscope/cave/roast_list.py" line="169" />
-        <source>Yesterday</source>
-        <translation>Gestern</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/mqttport.py" line="214" />
-        <source>Keyring Error: Ensure that gnome-keyring is installed.</source>
-        <translation>Schlüsselbund-Fehler: Stellen Sie sicher, dass gnome-keyring installiert ist.</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1224" />
-        <source>debug logging ON</source>
-        <translation>Debug-Logging AN</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1225" />
-        <source>debug logging OFF</source>
-        <translation>Debug-Logging AUS</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1238" />
-        <source>1 day left</source>
-        <translation>1 Tag übrig</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1240" />
-        <source>{} days left</source>
-        <translation>{} Tage übrig</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1242" />
-        <source>Paid until</source>
-        <translation>Bezahlt bis</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1269" />
-        <source>Please visit our {0}shop{1} to extend your subscription</source>
-        <translation>Bitte besuchen Sie unseren {0}Shop{1}, um Ihr Abonnement zu verlängern</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1282" />
-        <source>Do you want to extend your subscription?</source>
-        <translation>Möchtes Du Dein Abonnement verlängern?</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1283" />
-        <source>Your subscription ends on</source>
-        <translation>Dein Abonnement endet am</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="1283" />
-        <source>Your subscription ended on</source>
-        <translation>Dein Abonnement endete am</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="5212" />
-        <source>Sign in to your artisan account</source>
-        <translation>Mit Ihrem artisan-Konto anmelden</translation>
-    </message>
     <message>
         <location filename="../plus/queue.py" line="141" />
         <source>Roast successfully uploaded to {}</source>
@@ -18712,6 +18645,19 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../plus/stock.py" line="477" />
         <source>barrels</source>
         <translation>Fässer</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/roast_list.py" line="169" />
+        <location filename="../plus/schedule.py" line="1343" />
+        <source>Yesterday</source>
+        <translation>Gestern</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/roast_list.py" line="167" />
+        <location filename="../plus/schedule.py" line="1963" />
+        <location filename="../plus/schedule.py" line="1418" />
+        <source>Today</source>
+        <translation>Heute</translation>
     </message>
     <message>
         <location filename="../plus/schedule.py" line="1420" />
@@ -18829,6 +18775,61 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <source>Remember</source>
         <translation>Angemeldet bleiben?</translation>
     </message>
+    <message>
+        <location filename="../artisanlib/mqttport.py" line="214" />
+        <source>Keyring Error: Ensure that gnome-keyring is installed.</source>
+        <translation>Schlüsselbund-Fehler: Stellen Sie sicher, dass gnome-keyring installiert ist.</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1224" />
+        <source>debug logging ON</source>
+        <translation>Debug-Logging AN</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1225" />
+        <source>debug logging OFF</source>
+        <translation>Debug-Logging AUS</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1238" />
+        <source>1 day left</source>
+        <translation>1 Tag übrig</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1240" />
+        <source>{} days left</source>
+        <translation>{} Tage übrig</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1242" />
+        <source>Paid until</source>
+        <translation>Bezahlt bis</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1269" />
+        <source>Please visit our {0}shop{1} to extend your subscription</source>
+        <translation>Bitte besuchen Sie unseren {0}Shop{1}, um Ihr Abonnement zu verlängern</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1282" />
+        <source>Do you want to extend your subscription?</source>
+        <translation>Möchtes Du Dein Abonnement verlängern?</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1283" />
+        <source>Your subscription ends on</source>
+        <translation>Dein Abonnement endet am</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="1283" />
+        <source>Your subscription ended on</source>
+        <translation>Dein Abonnement endete am</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="5212" />
+        <source>Sign in to your artisan account</source>
+        <translation>Mit Ihrem artisan-Konto anmelden</translation>
+    </message>
 </context><context>
     <name>QPlatformTheme</name>
     <message>
@@ -18839,9 +18840,9 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
 </context><context>
     <name>Radio Button</name>
     <message>
-        <location filename="../artisanlib/devices.py" line="133" />
         <location filename="../tilauscope/device_setup/dialog.py" line="268" />
         <location filename="../tilauscope/device_setup/dialog.py" line="251" />
+        <location filename="../artisanlib/devices.py" line="133" />
         <source>Meter</source>
         <translation>Messgerät</translation>
     </message>
@@ -18921,6 +18922,14 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
 </context><context>
     <name>Scope Title</name>
     <message>
+        <location filename="../plus/schedule.py" line="2977" />
+        <source>Roaster Scope</source>
+        <translation>Röstoskop</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="1032" />
+        <location filename="../tilauscope/graph/common.py" line="222" />
+        <location filename="../tilauscope/graph/curve.py" line="1579" />
         <location filename="../artisanlib/canvas.py" line="8753" />
         <location filename="../artisanlib/canvas.py" line="7940" />
         <location filename="../artisanlib/canvas.py" line="1031" />
@@ -18932,26 +18941,11 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/roast_properties.py" line="2221" />
         <location filename="../artisanlib/roast_properties.py" line="2208" />
         <location filename="../artisanlib/orbiter.py" line="567" />
-        <location filename="../tilauscope/window/lifecycle.py" line="1032" />
-        <location filename="../tilauscope/graph/common.py" line="222" />
-        <location filename="../tilauscope/graph/curve.py" line="1579" />
         <source>TilauScope</source>
         <translation>TilauScope</translation>
     </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2977" />
-        <source>Roaster Scope</source>
-        <translation>Röstoskop</translation>
-    </message>
 </context><context>
     <name>StatusBar</name>
-    <message>
-        <location filename="../artisanlib/pid_control.py" line="1495" />
-        <location filename="../artisanlib/pid_dialogs.py" line="2351" />
-        <location filename="../tilauscope/graph/curve.py" line="653" />
-        <source>PID ON</source>
-        <translation>PID EIN</translation>
-    </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="1795" />
         <source>Decimal position successfully set to 1</source>
@@ -19006,6 +19000,13 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/pid_dialogs.py" line="2349" />
         <source>PID OFF</source>
         <translation>PID AUS</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/curve.py" line="653" />
+        <location filename="../artisanlib/pid_control.py" line="1495" />
+        <location filename="../artisanlib/pid_dialogs.py" line="2351" />
+        <source>PID ON</source>
+        <translation>PID EIN</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="2379" />
@@ -19311,78 +19312,21 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
 </context><context>
     <name>Tab</name>
     <message>
-        <location filename="../artisanlib/events.py" line="1812" />
-        <location filename="../tilauscope/custom_buttons.py" line="1154" />
-        <source>Buttons</source>
-        <translation>Tasten</translation>
+        <location filename="../plus/schedule.py" line="2332" />
+        <source>To-Do</source>
+        <translation>To-Do</translation>
     </message>
     <message>
-        <location filename="../artisanlib/events.py" line="1818" />
-        <location filename="../tilauscope/onboarding.py" line="1008" />
-        <location filename="../tilauscope/onboarding.py" line="1006" />
-        <source>Sliders</source>
-        <translation>Regler</translation>
+        <location filename="../plus/schedule.py" line="2333" />
+        <source>Completed</source>
+        <translation>Erledigt</translation>
     </message>
     <message>
-        <location filename="../artisanlib/events.py" line="1838" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1508" />
-        <source>Style</source>
-        <translation>Stil</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="1686" />
-        <location filename="../artisanlib/background.py" line="536" />
-        <location filename="../tilauscope/roast_properties.py" line="6371" />
-        <source>Events</source>
-        <translation>Ereignisse</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="1693" />
-        <location filename="../tilauscope/cave/viewer_detail.py" line="88" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="311" />
-        <source>Energy</source>
-        <translation>Energie</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="2080" />
-        <location filename="../tilauscope/devices.py" line="810" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="312" />
-        <source>Ambient</source>
-        <translation>Umgebung</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="1696" />
-        <location filename="../tilauscope/alarms.py" line="133" />
-        <source>Setup</source>
-        <translation>Einstellungen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/pid_dialogs.py" line="3364" />
-        <location filename="../artisanlib/pid_dialogs.py" line="2203" />
-        <location filename="../tilauscope/window/build.py" line="871" />
-        <location filename="../tilauscope/roast_asssistant.py" line="2240" />
-        <source>SV</source>
-        <translation>SV</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="1682" />
-        <location filename="../tilauscope/cave/bean_tab_build.py" line="641" />
-        <location filename="../tilauscope/roast_asssistant.py" line="3688" />
-        <source>Notes</source>
-        <translation>Notizen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/statistics.py" line="566" />
-        <location filename="../tilauscope/cave/viewer.py" line="405" />
-        <source>Statistics</source>
-        <translation>Statistiken</translation>
-    </message>
-    <message>
+        <location filename="../tilauscope/window/build.py" line="245" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="80" />
         <location filename="../artisanlib/pid_dialogs.py" line="3367" />
         <location filename="../artisanlib/pid_dialogs.py" line="2214" />
         <location filename="../artisanlib/pid_dialogs.py" line="974" />
-        <location filename="../tilauscope/window/build.py" line="245" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="80" />
         <source>PID</source>
         <translation>PID</translation>
     </message>
@@ -19397,6 +19341,14 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/pid_dialogs.py" line="1087" />
         <source>RS</source>
         <translation>RH</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/build.py" line="871" />
+        <location filename="../tilauscope/roast_asssistant.py" line="2240" />
+        <location filename="../artisanlib/pid_dialogs.py" line="3364" />
+        <location filename="../artisanlib/pid_dialogs.py" line="2203" />
+        <source>SV</source>
+        <translation>SV</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="3370" />
@@ -19423,6 +19375,19 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <translation>Konfiguration</translation>
     </message>
     <message>
+        <location filename="../tilauscope/custom_buttons.py" line="1154" />
+        <location filename="../artisanlib/events.py" line="1812" />
+        <source>Buttons</source>
+        <translation>Tasten</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="1023" />
+        <location filename="../tilauscope/onboarding.py" line="1021" />
+        <location filename="../artisanlib/events.py" line="1818" />
+        <source>Sliders</source>
+        <translation>Regler</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/events.py" line="1824" />
         <source>Quantifiers</source>
         <translation>Quantifikatoren</translation>
@@ -19431,6 +19396,12 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/events.py" line="1831" />
         <source>Palettes</source>
         <translation>Paletten</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1508" />
+        <location filename="../artisanlib/events.py" line="1838" />
+        <source>Style</source>
+        <translation>Stil</translation>
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="1842" />
@@ -19444,6 +19415,13 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <translation>ET/BT</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_properties.py" line="6371" />
+        <location filename="../artisanlib/roast_properties.py" line="1686" />
+        <location filename="../artisanlib/background.py" line="536" />
+        <source>Events</source>
+        <translation>Ereignisse</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/roast_properties.py" line="1690" />
         <location filename="../artisanlib/background.py" line="540" />
         <source>Data</source>
@@ -19453,6 +19431,26 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/roast_properties.py" line="1679" />
         <source>Roast</source>
         <translation>Röstung</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/bean_tab_build.py" line="641" />
+        <location filename="../tilauscope/roast_asssistant.py" line="3688" />
+        <location filename="../artisanlib/roast_properties.py" line="1682" />
+        <source>Notes</source>
+        <translation>Notizen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/viewer_detail.py" line="88" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="311" />
+        <location filename="../artisanlib/roast_properties.py" line="1693" />
+        <source>Energy</source>
+        <translation>Energie</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="133" />
+        <location filename="../artisanlib/roast_properties.py" line="1696" />
+        <source>Setup</source>
+        <translation>Einstellungen</translation>
     </message>
     <message>
         <location filename="../artisanlib/roast_properties.py" line="2953" />
@@ -19506,6 +19504,12 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <translation>UI</translation>
     </message>
     <message>
+        <location filename="../tilauscope/cave/viewer.py" line="405" />
+        <location filename="../artisanlib/statistics.py" line="566" />
+        <source>Statistics</source>
+        <translation>Statistiken</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/alarms.py" line="252" />
         <source>Alarm Table</source>
         <translation>Alarm Tabelle</translation>
@@ -19532,6 +19536,13 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <translation>Symb ET/BT</translation>
     </message>
     <message>
+        <location filename="../tilauscope/devices.py" line="810" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="312" />
+        <location filename="../artisanlib/devices.py" line="2080" />
+        <source>Ambient</source>
+        <translation>Umgebung</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/devices.py" line="2083" />
         <source>Networks</source>
         <translation>Netzwerke</translation>
@@ -19551,71 +19562,8 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <source>LCDs</source>
         <translation>LCDs</translation>
     </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2332" />
-        <source>To-Do</source>
-        <translation>To-Do</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2333" />
-        <source>Completed</source>
-        <translation>Erledigt</translation>
-    </message>
 </context><context>
     <name>Table</name>
-    <message>
-        <location filename="../artisanlib/transposer.py" line="199" />
-        <location filename="../artisanlib/alarms.py" line="1083" />
-        <location filename="../artisanlib/curves.py" line="131" />
-        <location filename="../artisanlib/roast_properties.py" line="4581" />
-        <location filename="../artisanlib/roast_properties.py" line="4424" />
-        <location filename="../artisanlib/background.py" line="1014" />
-        <location filename="../artisanlib/background.py" line="926" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1199" />
-        <location filename="../tilauscope/roast_plan_model.py" line="874" />
-        <location filename="../tilauscope/roast_properties.py" line="6442" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2340" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1550" />
-        <source>Time</source>
-        <translation>Zeit</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/dialogs.py" line="752" />
-        <location filename="../tilauscope/custom_label_dialog.py" line="239" />
-        <source>Weight</source>
-        <translation type="unfinished">Gewicht</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/dialogs.py" line="751" />
-        <location filename="../tilauscope/cave/bean_tab_build.py" line="480" />
-        <location filename="../tilauscope/beancave_catalogue.py" line="475" />
-        <location filename="../tilauscope/beancave_catalogue.py" line="354" />
-        <source>Name</source>
-        <translation>Name</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/transposer.py" line="197" />
-        <location filename="../artisanlib/statistics.py" line="229" />
-        <location filename="../artisanlib/statistics.py" line="228" />
-        <location filename="../artisanlib/statistics.py" line="227" />
-        <location filename="../tilauscope/cave/analysis.py" line="609" />
-        <source>Phases</source>
-        <translation>Phasen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/pid_dialogs.py" line="999" />
-        <location filename="../artisanlib/pid_dialogs.py" line="839" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="87" />
-        <source>Ramp</source>
-        <translation>Rampe</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/pid_dialogs.py" line="1000" />
-        <location filename="../artisanlib/pid_dialogs.py" line="840" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="89" />
-        <source>Soak</source>
-        <translation>Haltezeit</translation>
-    </message>
     <message>
         <location filename="../artisanlib/cup_profile.py" line="223" />
         <location filename="../artisanlib/events.py" line="2805" />
@@ -19697,6 +19645,20 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/pid_dialogs.py" line="838" />
         <source>SV</source>
         <translation>SV</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="87" />
+        <location filename="../artisanlib/pid_dialogs.py" line="999" />
+        <location filename="../artisanlib/pid_dialogs.py" line="839" />
+        <source>Ramp</source>
+        <translation>Rampe</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/graph/annotation_text.py" line="89" />
+        <location filename="../artisanlib/pid_dialogs.py" line="1000" />
+        <location filename="../artisanlib/pid_dialogs.py" line="840" />
+        <source>Soak</source>
+        <translation>Haltezeit</translation>
     </message>
     <message>
         <location filename="../artisanlib/alarms.py" line="1087" />
@@ -19804,6 +19766,22 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <translation>Zeitlimit</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="1199" />
+        <location filename="../tilauscope/roast_plan_model.py" line="874" />
+        <location filename="../tilauscope/roast_properties.py" line="6442" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2340" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1550" />
+        <location filename="../artisanlib/transposer.py" line="199" />
+        <location filename="../artisanlib/alarms.py" line="1083" />
+        <location filename="../artisanlib/curves.py" line="131" />
+        <location filename="../artisanlib/roast_properties.py" line="4581" />
+        <location filename="../artisanlib/roast_properties.py" line="4424" />
+        <location filename="../artisanlib/background.py" line="1014" />
+        <location filename="../artisanlib/background.py" line="926" />
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/roast_properties.py" line="4486" />
         <location filename="../artisanlib/background.py" line="1109" />
         <source>#{0} {1}{2}</source>
@@ -19889,6 +19867,29 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/curves.py" line="140" />
         <source>P9</source>
         <translation>P9</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/analysis.py" line="609" />
+        <location filename="../artisanlib/transposer.py" line="197" />
+        <location filename="../artisanlib/statistics.py" line="229" />
+        <location filename="../artisanlib/statistics.py" line="228" />
+        <location filename="../artisanlib/statistics.py" line="227" />
+        <source>Phases</source>
+        <translation>Phasen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/bean_tab_build.py" line="480" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="475" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="354" />
+        <location filename="../artisanlib/dialogs.py" line="751" />
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/custom_label_dialog.py" line="239" />
+        <location filename="../artisanlib/dialogs.py" line="752" />
+        <source>Weight</source>
+        <translation type="unfinished">Gewicht</translation>
     </message>
     <message>
         <location filename="../artisanlib/alarms.py" line="1078" />
@@ -20008,25 +20009,6 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
     </message>
 </context><context>
     <name>Textbox</name>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="581" />
-        <location filename="../tilauscope/roast_properties.py" line="5255" />
-        <source>Defects</source>
-        <translation>Defekte</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="572" />
-        <location filename="../artisanlib/canvas.py" line="540" />
-        <location filename="../tilauscope/alarms.py" line="137" />
-        <source>Finish</source>
-        <translation>Abschluss</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="548" />
-        <location filename="../tilauscope/cave/viewer.py" line="1732" />
-        <source>Taste</source>
-        <translation>Geschmack</translation>
-    </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="589" />
         <location filename="../artisanlib/canvas.py" line="579" />
@@ -20170,6 +20152,13 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <translation>Komplexität</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="137" />
+        <location filename="../artisanlib/canvas.py" line="572" />
+        <location filename="../artisanlib/canvas.py" line="540" />
+        <source>Finish</source>
+        <translation>Abschluss</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="543" />
         <source>Brightness</source>
         <translation>Helligkeit</translation>
@@ -20178,6 +20167,12 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <location filename="../artisanlib/canvas.py" line="544" />
         <source>Wet Aroma</source>
         <translation>Naßaroma</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/viewer.py" line="1735" />
+        <location filename="../artisanlib/canvas.py" line="548" />
+        <source>Taste</source>
+        <translation>Geschmack</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="549" />
@@ -20216,6 +20211,12 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
         <translation>Bitterkeit</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_properties.py" line="5255" />
+        <location filename="../artisanlib/canvas.py" line="581" />
+        <source>Defects</source>
+        <translation>Defekte</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="582" />
         <source>Aroma Intensity</source>
         <translation>Aromaintensität</translation>
@@ -20228,16 +20229,16 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
 </context><context>
     <name>Toolbar</name>
     <message>
-        <location filename="../artisanlib/main.py" line="789" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="340" />
-        <location filename="../tilauscope/onboarding.py" line="312" />
-        <source>Back</source>
-        <translation>Zurück</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/main.py" line="788" />
         <source>Home</source>
         <translation>Startseite</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="340" />
+        <location filename="../tilauscope/onboarding.py" line="312" />
+        <location filename="../artisanlib/main.py" line="789" />
+        <source>Back</source>
+        <translation>Zurück</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="790" />
@@ -20263,95 +20264,9 @@ Unterstützen Sie uns bitte mit einer Spende um es kostenfrei und aktuell zu hal
 </context><context>
     <name>Tooltip</name>
     <message>
-        <location filename="../tilauscope/visualalarm.py" line="189" />
-        <source>Automatically center the timeline in the visualization window.</source>
-        <translation>Zeitleiste im Visualisierungsfenster automatisch zentrieren.</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="209" />
-        <source>Zoom out (Ctrl+scroll down / pinch)</source>
-        <translation>Herauszoomen (Strg+Scrollen nach unten / Pinch)</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="222" />
-        <source>Zoom in (Ctrl+scroll up / pinch)</source>
-        <translation>Hineinzoomen (Strg+Scrollen nach oben / Pinch)</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3044" />
-        <location filename="../tilauscope/window/lifecycle.py" line="979" />
-        <location filename="../tilauscope/window/build.py" line="574" />
-        <location filename="../tilauscope/webclient.py" line="938" />
-        <source>Start recording</source>
-        <translation>Aufzeichnung starten</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3082" />
-        <location filename="../tilauscope/roast_asssistant.py" line="2202" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="517" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="376" />
-        <location filename="../tilauscope/roast_properties.py" line="5026" />
-        <source>Charge</source>
-        <translation>Füllen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3104" />
-        <location filename="../tilauscope/cave/analysis_view.py" line="805" />
-        <location filename="../tilauscope/roast_asssistant.py" line="3168" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1553" />
-        <location filename="../tilauscope/roast_plan_model.py" line="408" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="523" />
-        <location filename="../tilauscope/beancave_roast_card.py" line="382" />
-        <location filename="../tilauscope/roast_properties.py" line="5027" />
-        <source>Drop</source>
-        <translation>Leeren</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="13464" />
-        <location filename="../tilauscope/window/lifecycle.py" line="650" />
-        <location filename="../tilauscope/displayscope.py" line="916" />
-        <source>Stop monitoring</source>
-        <translation>Monitor starten</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="13671" />
-        <location filename="../artisanlib/main.py" line="3033" />
-        <location filename="../tilauscope/window/build.py" line="562" />
-        <location filename="../tilauscope/displayscope.py" line="939" />
-        <source>Start monitoring</source>
-        <translation>Monitor beenden</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3055" />
-        <location filename="../tilauscope/window/lifecycle.py" line="803" />
-        <location filename="../tilauscope/window/build.py" line="586" />
-        <source>Reset</source>
-        <translation>Zurücksetzen</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="14380" />
-        <location filename="../tilauscope/window/lifecycle.py" line="957" />
-        <location filename="../tilauscope/window/lifecycle.py" line="667" />
-        <source>Stop recording</source>
-        <translation>Aufzeichnung beenden</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27795" />
-        <location filename="../tilauscope/window/parts.py" line="343" />
-        <source>&lt;b&gt;Type &lt;/b&gt;= </source>
-        <translation>&lt;b&gt;Typ &lt;/b&gt;= </translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27797" />
-        <location filename="../tilauscope/window/parts.py" line="345" />
-        <source>&lt;b&gt;Value &lt;/b&gt;= </source>
-        <translation>&lt;b&gt;Wert &lt;/b&gt;= </translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27799" />
-        <location filename="../tilauscope/window/parts.py" line="347" />
-        <source>&lt;b&gt;Documentation &lt;/b&gt;= </source>
-        <translation>&lt;b&gt;Dokumentation &lt;/b&gt;= </translation>
+        <location filename="../plus/schedule.py" line="2266" />
+        <source>Update schedule</source>
+        <translation>Röstplan abrufen</translation>
     </message>
     <message>
         <location filename="../artisanlib/axis.py" line="86" />
@@ -21799,6 +21714,38 @@ Deaktiviert: Passt eine glatte Spline an, um die Kurvenform beizubehalten.</tran
         <translation>Linienstile</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/build.py" line="562" />
+        <location filename="../tilauscope/displayscope.py" line="939" />
+        <location filename="../artisanlib/canvas.py" line="13671" />
+        <location filename="../artisanlib/main.py" line="3033" />
+        <source>Start monitoring</source>
+        <translation>Monitor beenden</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="979" />
+        <location filename="../tilauscope/window/build.py" line="574" />
+        <location filename="../tilauscope/webclient.py" line="938" />
+        <location filename="../artisanlib/main.py" line="3044" />
+        <source>Start recording</source>
+        <translation>Aufzeichnung starten</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="803" />
+        <location filename="../tilauscope/window/build.py" line="586" />
+        <location filename="../artisanlib/main.py" line="3055" />
+        <source>Reset</source>
+        <translation>Zurücksetzen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="2202" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="517" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="376" />
+        <location filename="../tilauscope/roast_properties.py" line="5026" />
+        <location filename="../artisanlib/main.py" line="3082" />
+        <source>Charge</source>
+        <translation>Füllen</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="3087" />
         <source>First Crack Start</source>
         <translation>Beginn Erstes Knacken</translation>
@@ -21817,6 +21764,18 @@ Deaktiviert: Passt eine glatte Spline an, um die Kurvenform beizubehalten.</tran
         <location filename="../artisanlib/main.py" line="3099" />
         <source>Second Crack End</source>
         <translation>Ende Zweites Knacken</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/analysis_view.py" line="805" />
+        <location filename="../tilauscope/roast_asssistant.py" line="3168" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1553" />
+        <location filename="../tilauscope/roast_plan_model.py" line="408" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="523" />
+        <location filename="../tilauscope/beancave_roast_card.py" line="382" />
+        <location filename="../tilauscope/roast_properties.py" line="5027" />
+        <location filename="../artisanlib/main.py" line="3104" />
+        <source>Drop</source>
+        <translation>Leeren</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="3109" />
@@ -21976,6 +21935,24 @@ Momentan in TEMP Modus</translation>
         <location filename="../artisanlib/main.py" line="27794" />
         <source>&lt;b&gt;Description &lt;/b&gt;= </source>
         <translation>&lt;b&gt;Beschreibung &lt;/b&gt;= </translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/parts.py" line="343" />
+        <location filename="../artisanlib/main.py" line="27795" />
+        <source>&lt;b&gt;Type &lt;/b&gt;= </source>
+        <translation>&lt;b&gt;Typ &lt;/b&gt;= </translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/parts.py" line="345" />
+        <location filename="../artisanlib/main.py" line="27797" />
+        <source>&lt;b&gt;Value &lt;/b&gt;= </source>
+        <translation>&lt;b&gt;Wert &lt;/b&gt;= </translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/parts.py" line="347" />
+        <location filename="../artisanlib/main.py" line="27799" />
+        <source>&lt;b&gt;Documentation &lt;/b&gt;= </source>
+        <translation>&lt;b&gt;Dokumentation &lt;/b&gt;= </translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="27800" />
@@ -22156,6 +22133,20 @@ so dass weitere Chargen hinzugefügt werden können</translation>
         <translation>Beispiel: 100 + x</translation>
     </message>
     <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="650" />
+        <location filename="../tilauscope/displayscope.py" line="916" />
+        <location filename="../artisanlib/canvas.py" line="13464" />
+        <source>Stop monitoring</source>
+        <translation>Monitor starten</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/window/lifecycle.py" line="957" />
+        <location filename="../tilauscope/window/lifecycle.py" line="667" />
+        <location filename="../artisanlib/canvas.py" line="14380" />
+        <source>Stop recording</source>
+        <translation>Aufzeichnung beenden</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/colors.py" line="123" />
         <source>Background curve: 0=fully transparent, 10=fully opaque</source>
         <translation>Hintergrundkurve: 0=vollständig transparent, 10=vollständig undurchsichtig</translation>
@@ -22191,9 +22182,19 @@ so dass weitere Chargen hinzugefügt werden können</translation>
         <translation>Stellt die Tastenfarben auf Graustufen und die LCD-Farben auf Schwarz und Weiß ein</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2266" />
-        <source>Update schedule</source>
-        <translation>Röstplan abrufen</translation>
+        <location filename="../tilauscope/visualalarm.py" line="189" />
+        <source>Automatically center the timeline in the visualization window.</source>
+        <translation>Zeitleiste im Visualisierungsfenster automatisch zentrieren.</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="209" />
+        <source>Zoom out (Ctrl+scroll down / pinch)</source>
+        <translation>Herauszoomen (Strg+Scrollen nach unten / Pinch)</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="222" />
+        <source>Zoom in (Ctrl+scroll up / pinch)</source>
+        <translation>Hineinzoomen (Strg+Scrollen nach oben / Pinch)</translation>
     </message>
     <message>
         <source>Reset original view</source>
@@ -22240,29 +22241,6 @@ so dass weitere Chargen hinzugefügt werden können</translation>
 </context><context>
     <name>tilauscope</name>
     <message>
-        <location filename="../tilauscope/tilauscope_types.py" line="82" />
-        <source>Purchase price per kg of green beans. Leave 0 if unknown.</source>
-        <translation>Einkaufspreis pro kg grüne Bohnen. 0 lassen, falls unbekannt.</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/tilauscope_types.py" line="1337" />
-        <location filename="../tilauscope/tilauscope_types.py" line="1325" />
-        <location filename="../tilauscope/tilauscope_types.py" line="1148" />
-        <location filename="../tilauscope/tilauscope_types.py" line="1033" />
-        <source>{0} of {1}</source>
-        <translation>{0} von {1}</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/tilauscope_types.py" line="1177" />
-        <source>Dismiss</source>
-        <translation>Verwerfen</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/tilauscope_types.py" line="1206" />
-        <source>Stop after the label being printed</source>
-        <translation>Nach dem Drucken des Etiketts stoppen</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/main.py" line="29120" />
         <source>TilauScope is already running</source>
         <translation>TilauScope wird bereits ausgeführt</translation>
@@ -22294,6 +22272,29 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <location filename="../artisanlib/main.py" line="29127" />
         <source>Open the control client</source>
         <translation>Öffnen Sie den Steuerclient</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/tilauscope_types.py" line="82" />
+        <source>Purchase price per kg of green beans. Leave 0 if unknown.</source>
+        <translation>Einkaufspreis pro kg grüne Bohnen. 0 lassen, falls unbekannt.</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/tilauscope_types.py" line="1337" />
+        <location filename="../tilauscope/tilauscope_types.py" line="1325" />
+        <location filename="../tilauscope/tilauscope_types.py" line="1148" />
+        <location filename="../tilauscope/tilauscope_types.py" line="1033" />
+        <source>{0} of {1}</source>
+        <translation>{0} von {1}</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/tilauscope_types.py" line="1177" />
+        <source>Dismiss</source>
+        <translation>Verwerfen</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/tilauscope_types.py" line="1206" />
+        <source>Stop after the label being printed</source>
+        <translation>Nach dem Drucken des Etiketts stoppen</translation>
     </message>
 </context><context>
     <name>tilauscope_ai</name>
@@ -22389,6 +22390,11 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
     </message>
 </context><context>
     <name>tilauscope_alarms</name>
+    <message>
+        <location filename="../artisanlib/alarms.py" line="125" />
+        <source>Visual Timeline</source>
+        <translation>Visueller Zeitstrahl</translation>
+    </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="78" />
         <source>Alarm Narrative</source>
@@ -22749,11 +22755,6 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Alarm-Konsistenzprüfung</translation>
     </message>
     <message>
-        <location filename="../artisanlib/alarms.py" line="125" />
-        <source>Visual Timeline</source>
-        <translation>Visueller Zeitstrahl</translation>
-    </message>
-    <message>
         <source>at</source>
         <translation type="vanished">um</translation>
     </message>
@@ -22990,16 +22991,67 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Es teilt der nächsten Röstung mit, was zu ändern ist.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="517" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="566" />
         <location filename="../tilaucore/tasting_log.py" line="92" />
         <source>Almost</source>
         <translation>Fast</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="518" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="567" />
+        <location filename="../tilaucore/tasting_log.py" line="111" />
         <location filename="../tilaucore/tasting_log.py" line="93" />
         <source>No</source>
         <translation>Nein</translation>
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="99" />
+        <source>Acidity &amp; florals</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="100" />
+        <source>Sweetness</source>
+        <translation type="unfinished">Süße</translation>
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="101" />
+        <source>Body</source>
+        <translation type="unfinished">Körper</translation>
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="104" />
+        <source>Did it bring out its acidity and florals?</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="105" />
+        <source>Did it bring out its sweetness?</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="106" />
+        <source>Did it bring out its body?</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="110" />
+        <source>Partly</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="115" />
+        <source>brought out</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="116" />
+        <source>partly</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilaucore/tasting_log.py" line="117" />
+        <source>missed</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/roast_coach.py" line="315" />
@@ -23283,12 +23335,12 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>ohne Lager, Beutel oder Preis</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="372" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="362" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="373" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="363" />
         <location filename="../tilauscope/cave/analysis_view.py" line="613" />
         <location filename="../tilauscope/cave/analysis_view.py" line="433" />
-        <location filename="../tilauscope/cave/viewer.py" line="1790" />
-        <location filename="../tilauscope/cave/viewer.py" line="1775" />
+        <location filename="../tilauscope/cave/viewer.py" line="1793" />
+        <location filename="../tilauscope/cave/viewer.py" line="1778" />
         <location filename="../tilauscope/coffee_share_dialog.py" line="128" />
         <source>Reference roast</source>
         <translation>Referenzröstung</translation>
@@ -23331,7 +23383,7 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
     <message>
         <location filename="../tilauscope/cave/lifecycle.py" line="1166" />
         <location filename="../tilauscope/cave/viewer.py" line="564" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="360" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="375" />
         <location filename="../tilauscope/coffee_share_dialog.py" line="245" />
         <location filename="../tilauscope/coffee_share_dialog.py" line="151" />
         <source>Roasts</source>
@@ -23490,349 +23542,369 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
     </message>
     <message>
         <location filename="../tilauscope/cave/analysis.py" line="344" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="150" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="165" />
         <source>ground</source>
         <translation>gemahlen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="151" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="166" />
         <source>ground (est.)</source>
         <translation>gemahlen (gesch.)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="152" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="167" />
         <source>whole</source>
         <translation>ganz</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="307" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="322" />
         <source>Edit name, origin, year and stock</source>
         <translation>Name, Herkunft, Jahr und Bestand bearbeiten</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="180" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="315" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="330" />
         <source>BLEND</source>
         <translation>MISCHUNG</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="218" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="329" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="344" />
         <source>≈ {0} batches</source>
         <translation>≈ {0} Röstungen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="337" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="352" />
         <source>Stock value: {0}</source>
         <translation>Bestandswert: {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="894" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="707" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="895" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="708" />
         <location filename="../tilauscope/beancave_catalogue.py" line="186" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="350" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="365" />
         <source>Harvest is {0} years old</source>
         <translation>Ernte ist {0} Jahre alt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="371" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="388" />
         <source>No flavour notes yet</source>
         <translation>Noch keine Geschmacksnotizen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="391" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="424" />
+        <source>INTENTION</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="431" />
+        <source>What should the cup bring out? Choose it in Edit.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="439" />
         <source>Roast memory</source>
         <translation>Röst-Gedächtnis</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="394" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="442" />
         <source>Not roasted yet</source>
         <translation>Noch nicht geröstet</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="399" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="447" />
         <source>The first plan starts from this coffee's characteristics. Taste the result: what you note here steers the next roast.</source>
         <translation>Der erste Plan basiert auf den Charakteristiken dieses Kaffees. Kosten Sie das Ergebnis: Was Sie hier notieren, lenkt die nächste Röstung.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="407" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="455" />
         <source>All {0} roasts →</source>
         <translation>Alle {0} Röstungen →</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="409" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="457" />
         <source>Open the roast →</source>
         <translation>Röstung öffnen →</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="417" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="465" />
         <source>LAST ROAST</source>
         <translation>LETZTE RÖSTUNG</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="441" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="490" />
         <source>Tasted:</source>
         <translation>Verkostet:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="443" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="492" />
         <source>Tasted {0}:</source>
         <translation>Verkostet {0}:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="466" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="515" />
         <source>Next time:</source>
         <translation>Nächstes Mal:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="478" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="527" />
         <source>Rested {0} days — how did it taste?</source>
         <translation>Ruht seit {0} Tagen – wie hat es geschmeckt?</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/viewer.py" line="205" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="481" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="530" />
         <source>Taste…</source>
         <translation>Probieren…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="507" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="556" />
         <source>NEXT PLAN</source>
         <translation>NÄCHSTER PLAN</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="510" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="559" />
         <source>Reference not used: its roast file was not found</source>
         <translation>Referenz nicht verwendet: Die Röstdatei wurde nicht gefunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="513" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="562" />
         <source>{0} crop</source>
         <translation>{0} Ernte</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="525" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="574" />
         <source>the last roast followed it and was off</source>
         <translation>die letzte Röstung folgte ihr und lag daneben</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="527" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="576" />
         <source>not used, excluded from learning</source>
         <translation>nicht verwendet, vom Lernen ausgeschlossen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="529" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="578" />
         <source>not used, tasted {0} since</source>
         <translation>nicht verwendet, seitdem {0} verkostet</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="531" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="580" />
         <source>not used, no longer tasted Yes</source>
         <translation>nicht verwendet, nicht mehr mit Ja verkostet</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="573" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="622" />
         <source>aw</source>
         <translation type="unfinished">aw</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="576" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="625" />
         <source>Not measured</source>
         <translation>Nicht gemessen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="596" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="645" />
         <source>Bean family</source>
         <translation>Bohnenfamilie</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="641" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="690" />
         <source>Edit farm, supplier, altitude and price</source>
         <translation>Farm, Lieferant, Höhe und Preis bearbeiten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="654" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="703" />
         <source>Price</source>
         <translation>Preis</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="669" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="718" />
         <source>Farm, altitude and supplier not entered</source>
         <translation>Farm, Höhe und Lieferant nicht eingegeben</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="692" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="741" />
         <source>✕ releases the label (reusable)</source>
         <translation>✕ gibt das Etikett frei (wiederverwendbar)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="703" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="752" />
         <source>Start the next harvest of the selected coffee: origin, process and variety are inherited, you only enter the new year, the weight and the measurements of the lot.</source>
         <translation>Starten Sie die nächste Ernte des ausgewählten Kaffees: Herkunft, Verfahren und Sorte werden übernommen, Sie geben nur das neue Jahr, das Gewicht und die Messwerte des Loses ein.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="68" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="70" />
         <source>New bean (expert)</source>
         <translation>Neuer Rohkaffee (Experte)</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/widgets.py" line="830" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="104" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="106" />
         <source>WATER ACTIVITY</source>
         <translation>WASSERAKTIVITÄT</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="112" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="114" />
         <source>Click to transfer the reading</source>
         <translation>Klicken Sie hier, um die Lesung zu übertragen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="114" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="116" />
         <source>waiting for probe…</source>
         <translation>warte auf Sonde…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="212" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="214" />
         <source>Fill from URL</source>
         <translation>Aus URL ausfüllen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="214" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="216" />
         <source>Fetch a supplier's product page and let AI fill this form automatically.</source>
         <translation>Rufen Sie eine Produktseite des Lieferanten auf und lassen Sie die KI dieses Formular automatisch ausfüllen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="222" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="224" />
         <source>Fill what you know — everything can be refined later from the sheet.</source>
         <translation>Füllen Sie aus, was Sie wissen – alles kann später aus dem Blatt verfeinert werden.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="224" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="226" />
         <source>Only this section is changed. Save writes the record immediately.</source>
         <translation>Nur dieser Abschnitt wurde geändert. Speichern schreibt den Datensatz sofort.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="264" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="266" />
         <source>Create</source>
         <translation>Erstellen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="318" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="320" />
         <source>Country:</source>
         <translation>Land:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="327" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="329" />
         <source>Crop year:</source>
         <translation>Erntejahr:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="334" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="336" />
         <source>Remaining stock. With a scale configured, click the ⚖ reading to capture the exact weight.</source>
         <translation>Restbestand. Wenn eine Waage konfiguriert ist, klicken Sie auf die ⚖-Lesung, um das genaue Gewicht zu erfassen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="360" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="362" />
         <source>Blend</source>
         <translation type="unfinished">Mischung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="363" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="365" />
         <source>Type:</source>
         <translation>Typ:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="379" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="381" />
         <source>This bean:</source>
         <translation>Dieser Rohkaffee:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="440" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="442" />
         <source>Measure</source>
         <translation>Messen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="442" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="444" />
         <source>Measure density with the connected scale (fixed-volume container).</source>
         <translation>Dichte mit der angeschlossenen Waage messen (Behälter mit festem Volumen).</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="500" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="502" />
+        <source>Not set</source>
+        <translation type="unfinished">Nicht festgelegt</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_zone_editors.py" line="506" />
+        <source>What should the cup bring out?</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_zone_editors.py" line="511" />
         <source>Roasting tips / memo:</source>
         <translation>Röst-Tipps / Notiz:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1465" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="551" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1467" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="562" />
         <source>Reading the supplier page…</source>
         <translation>Lieferantenseite wird gelesen…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1467" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="553" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1469" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="564" />
         <source>about 20 seconds</source>
         <translation>etwa 20 Sekunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="651" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="662" />
         <source>Fill the required fields (*) : name, country, category, process, species, varieties.</source>
         <translation>Erforderliche Felder ausfüllen (*) : Name, Land, Kategorie, Verfahren, Sorte, Sorten.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="772" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="783" />
         <source>probe connected — measure to read</source>
         <translation>Sonde verbunden — Messwert zum Lesen</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/ambient.py" line="89" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="804" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="815" />
         <source>Pair your scale in TilauScope Config › Sensors to measure density.</source>
         <translation>Waage in TilauScope Config › Sensoren koppeln, um Dichte zu messen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="888" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="899" />
         <source>Missing name</source>
         <translation>Name fehlt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="889" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="900" />
         <source>The bean needs a name.</source>
         <translation>Die Bohne benötigt einen Namen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="238" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="974" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="947" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="352" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="987" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="960" />
         <source>Save failed</source>
         <translation>Speichern fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="948" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="961" />
         <source>The bean cave is not available.</source>
         <translation>Das Bean Cave ist nicht verfügbar.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_zone_editors.py" line="975" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="988" />
         <source>The record could not be saved. See the log for details.</source>
         <translation>Der Datensatz konnte nicht gespeichert werden. Siehe Protokoll für Details.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_app.py" line="107" />
+        <location filename="../tilauscope/beancave_app.py" line="128" />
         <source>Settings…</source>
         <translation>Einstellungen…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_app.py" line="123" />
+        <location filename="../tilauscope/beancave_app.py" line="144" />
         <source>Back up BeanCave…</source>
         <translation>BeanCave sichern…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_app.py" line="126" />
+        <location filename="../tilauscope/beancave_app.py" line="147" />
         <source>Restore BeanCave…</source>
         <translation>BeanCave wiederherstellen…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_app.py" line="131" />
+        <location filename="../tilauscope/beancave_app.py" line="152" />
         <source>Quit</source>
         <translation>Beenden</translation>
     </message>
@@ -23968,13 +24040,13 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Ergebnis aufzeichnen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="210" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="325" />
         <location filename="../tilauscope/cave/viewer_detail.py" line="398" />
         <source>Reference roast — click to remove</source>
         <translation>Referenzröstung — zum Entfernen klicken</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="211" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="326" />
         <location filename="../tilauscope/cave/viewer_detail.py" line="399" />
         <source>Make it the reference roast</source>
         <translation>Zur Referenzröstung machen</translation>
@@ -23996,7 +24068,7 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
     </message>
     <message>
         <location filename="../tilauscope/cave/roast_list.py" line="178" />
-        <location filename="../tilauscope/cave/viewer.py" line="1404" />
+        <location filename="../tilauscope/cave/viewer.py" line="1405" />
         <location filename="../tilauscope/cave/first_run.py" line="127" />
         <source>{0} roasts</source>
         <translation>{0} Röstungen</translation>
@@ -24097,7 +24169,7 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Etikett (PDF)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1894" />
+        <location filename="../tilauscope/cave/viewer.py" line="1899" />
         <location filename="../tilauscope/cave/viewer.py" line="180" />
         <source>Print label</source>
         <translation>Etikett drucken</translation>
@@ -24234,7 +24306,7 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Kaffee, Prozess, Chargen-Nr. durchsuchen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1313" />
+        <location filename="../tilauscope/cave/viewer.py" line="1314" />
         <location filename="../tilauscope/cave/viewer.py" line="592" />
         <source>All coffees</source>
         <translation>Alle Kaffees</translation>
@@ -24255,7 +24327,7 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Kaffee A–Z</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1472" />
+        <location filename="../tilauscope/cave/viewer.py" line="1473" />
         <location filename="../tilauscope/cave/viewer.py" line="662" />
         <source>Clear filters</source>
         <translation>Filter löschen</translation>
@@ -24271,8 +24343,8 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Keine Datei gefunden.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="819" />
-        <location filename="../tilauscope/cave/viewer.py" line="800" />
+        <location filename="../tilauscope/cave/viewer.py" line="820" />
+        <location filename="../tilauscope/cave/viewer.py" line="801" />
         <location filename="../tilauscope/cave/viewer.py" line="768" />
         <source>Could not open this roast file.</source>
         <translation>Diese Röstdatei konnte nicht geöffnet werden.</translation>
@@ -24280,280 +24352,280 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
     <message>
         <location filename="../tilauscope/cave/printing.py" line="158" />
         <location filename="../tilauscope/cave/printing.py" line="145" />
-        <location filename="../tilauscope/cave/viewer.py" line="778" />
+        <location filename="../tilauscope/cave/viewer.py" line="779" />
         <source>Loading error</source>
         <translation>Ladefehler</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="159" />
         <location filename="../tilauscope/cave/printing.py" line="146" />
-        <location filename="../tilauscope/cave/viewer.py" line="779" />
+        <location filename="../tilauscope/cave/viewer.py" line="780" />
         <source>An error occurred while loading file</source>
         <translation>Fehler beim Laden der Datei</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="992" />
+        <location filename="../tilauscope/cave/viewer.py" line="993" />
         <source>The specified ALog directory does not exist or is not a directory.</source>
         <translation>Das angegebene ALog-Verzeichnis existiert nicht oder ist kein Verzeichnis.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2028" />
-        <location filename="../tilauscope/cave/viewer.py" line="1121" />
+        <location filename="../tilauscope/cave/viewer.py" line="2033" />
+        <location filename="../tilauscope/cave/viewer.py" line="1122" />
         <source>Select one roast to analyze; its readings will load first.</source>
         <translation>Wählen Sie einen Röstvorgang zur Analyse; seine Messwerte werden zuerst geladen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1474" />
-        <location filename="../tilauscope/cave/viewer.py" line="1351" />
+        <location filename="../tilauscope/cave/viewer.py" line="1475" />
+        <location filename="../tilauscope/cave/viewer.py" line="1352" />
         <source>Show all coffees</source>
         <translation>Alle Kaffees anzeigen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1402" />
+        <location filename="../tilauscope/cave/viewer.py" line="1403" />
         <source>no roast</source>
         <translation>keine Röstung</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/roast_list.py" line="177" />
-        <location filename="../tilauscope/cave/viewer.py" line="1403" />
+        <location filename="../tilauscope/cave/viewer.py" line="1404" />
         <source>1 roast</source>
         <translation>1 Röstung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1431" />
+        <location filename="../tilauscope/cave/viewer.py" line="1432" />
         <source>{0} of {1} roasts</source>
         <translation>{0} von {1} Röstungen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1441" />
+        <location filename="../tilauscope/cave/viewer.py" line="1442" />
         <source>Roast folder not found</source>
         <translation>Röstordner nicht gefunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1444" />
+        <location filename="../tilauscope/cave/viewer.py" line="1445" />
         <source>No roasts yet</source>
         <translation>Noch keine Röstungen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1445" />
+        <location filename="../tilauscope/cave/viewer.py" line="1446" />
         <source>Your roasts appear here once the first one is saved.</source>
         <translation>Ihre Röstungen werden hier angezeigt, sobald die erste gespeichert wird.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1448" />
+        <location filename="../tilauscope/cave/viewer.py" line="1449" />
         <source>{0} has no roast yet</source>
         <translation>{0} wurde noch nicht geröstet</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1450" />
+        <location filename="../tilauscope/cave/viewer.py" line="1451" />
         <source>Its first roast will appear here. The plan starts from its characteristics.</source>
         <translation>Seine erste Röstung wird hier angezeigt. Der Plan basiert auf seinen Charakteristiken.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1454" />
+        <location filename="../tilauscope/cave/viewer.py" line="1455" />
         <source>No roast matches “{0}”</source>
         <translation>Keine Röstung entspricht „{0}„</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1458" />
+        <location filename="../tilauscope/cave/viewer.py" line="1459" />
         <source>No roast matches the filters</source>
         <translation>Keine Röstung erfüllt die Filter</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1468" />
+        <location filename="../tilauscope/cave/viewer.py" line="1469" />
         <source>Choose folder</source>
         <translation>Ordner auswählen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1470" />
+        <location filename="../tilauscope/cave/viewer.py" line="1471" />
         <source>Clear search</source>
         <translation>Suche löschen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1556" />
+        <location filename="../tilauscope/cave/viewer.py" line="1557" />
         <source>Crop {0}</source>
         <translation>Zuschneiden {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1558" />
+        <location filename="../tilauscope/cave/viewer.py" line="1559" />
         <source>Batch {0}</source>
         <translation>Charge {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1601" />
+        <location filename="../tilauscope/cave/viewer.py" line="1602" />
         <source>Select one roast to read its coffee's journal.</source>
         <translation>Wählen Sie eine Röstung aus, um das Journal ihres Kaffees zu lesen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1604" />
+        <location filename="../tilauscope/cave/viewer.py" line="1605" />
         <source>This roast is not linked to a coffee.</source>
         <translation>Diese Röstung ist mit keinem Kaffee verknüpft.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1677" />
+        <location filename="../tilauscope/cave/viewer.py" line="1678" />
         <source>Opens the energy details of this roast</source>
         <translation>Öffnet die Energiedetails dieses Röstvorgangs</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1714" />
+        <location filename="../tilauscope/cave/viewer.py" line="1717" />
         <source>Their tasting: {0}</source>
         <translation>Ihre Verkostung: {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1716" />
+        <location filename="../tilauscope/cave/viewer.py" line="1719" />
         <source>Tasted: {0}</source>
         <translation>Gekostet: {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1721" />
+        <location filename="../tilauscope/cave/viewer.py" line="1724" />
         <source>No tasting came with this roast.</source>
         <translation>Zu dieser Röstung wurde keine Verkostung mitgeliefert.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1731" />
+        <location filename="../tilauscope/cave/viewer.py" line="1734" />
         <source>Rested and ready — how did it taste?</source>
         <translation>Ausgeruht und bereit — wie schmeckte sie?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1747" />
+        <location filename="../tilauscope/cave/viewer.py" line="1750" />
         <source>Roasted on a {0}. Replay it on your roaster: the roast you make will teach your plan.</source>
         <translation>Geröstet auf einem {0}. Spiele sie auf deinem Röster ab: Die Röstung, die du machst, trainiert deinen Plan.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1751" />
+        <location filename="../tilauscope/cave/viewer.py" line="1754" />
         <source>Your plan does not learn from a shared roast until you choose to. Once it does, the roast can take the ★ and guide your next roasts of this coffee.</source>
         <translation>Dein Plan lernt nicht aus einer geteilten Röstung, bis du es wählst. Sobald er es tut, kann die Röstung den ★ erhalten und deine nächsten Röstungen dieses Kaffees leiten.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1754" />
+        <location filename="../tilauscope/cave/viewer.py" line="1757" />
         <source>Learn from this roast</source>
         <translation>Aus dieser Röstung lernen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1756" />
+        <location filename="../tilauscope/cave/viewer.py" line="1759" />
         <source>Your plan learns from this roast. It can take the ★ and guide your next roasts of this coffee.</source>
         <translation>Dein Plan lernt aus dieser Röstung. Sie kann den ★ erhalten und deine nächsten Röstungen dieses Kaffees leiten.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1759" />
+        <location filename="../tilauscope/cave/viewer.py" line="1762" />
         <source>Stop learning from this roast</source>
         <translation>Aus dieser Röstung nicht mehr lernen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1776" />
+        <location filename="../tilauscope/cave/viewer.py" line="1779" />
         <source>This roast is the reference of this coffee. Stop learning from it and remove its ★?</source>
         <translation>Diese Röstung ist die Referenz dieses Kaffees. Nicht mehr daraus lernen und ihren ★ entfernen?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1779" />
+        <location filename="../tilauscope/cave/viewer.py" line="1782" />
         <source>Stop learning</source>
         <translation>Lernen beenden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="62" />
-        <location filename="../tilauscope/cave/viewer.py" line="1801" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="92" />
+        <location filename="../tilauscope/cave/viewer.py" line="1804" />
         <source>Tasting</source>
         <translation>Verkostung</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/analysis.py" line="152" />
-        <location filename="../tilauscope/cave/viewer.py" line="1802" />
+        <location filename="../tilauscope/cave/viewer.py" line="1805" />
         <source>Please select a roast file first.</source>
         <translation>Bitte wählen Sie zunächst eine Röstdatei aus.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1877" />
-        <location filename="../tilauscope/cave/viewer.py" line="1860" />
+        <location filename="../tilauscope/cave/viewer.py" line="1882" />
+        <location filename="../tilauscope/cave/viewer.py" line="1865" />
         <source>{0} roasts compared</source>
         <translation>{0} Röstungen verglichen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1864" />
+        <location filename="../tilauscope/cave/viewer.py" line="1869" />
         <source>Only the first five selected roasts are drawn.</source>
         <translation>Es werden nur die ersten fünf ausgewählten Röstungen gezeichnet.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1896" />
+        <location filename="../tilauscope/cave/viewer.py" line="1901" />
         <source>Print label — printer not connected</source>
         <translation>Etikett drucken — Drucker nicht verbunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1973" />
+        <location filename="../tilauscope/cave/viewer.py" line="1978" />
         <source>To</source>
         <translation>Bis</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2021" />
+        <location filename="../tilauscope/cave/viewer.py" line="2026" />
         <source>Burner &amp; air</source>
         <translation>Brenner &amp; Luft</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="501" />
-        <location filename="../tilauscope/cave/viewer.py" line="2031" />
+        <location filename="../tilauscope/cave/viewer.py" line="2036" />
         <source>Select a roast file to see the curve preview.</source>
         <translation>Wählen Sie eine Röstdatei, um die Kurvenvorschau anzuzeigen.</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="505" />
-        <location filename="../tilauscope/cave/viewer.py" line="2032" />
+        <location filename="../tilauscope/cave/viewer.py" line="2037" />
         <source>Roast Information will appear here.</source>
         <translation>Röstinformationen werden hier angezeigt.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2202" />
+        <location filename="../tilauscope/cave/viewer.py" line="2207" />
         <source>Loading was interrupted — select the roast again to see its curve.</source>
         <translation>Das Laden wurde unterbrochen – wählen Sie die Röstung erneut aus, um ihre Kurve zu sehen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2455" />
-        <location filename="../tilauscope/cave/viewer.py" line="2390" />
-        <location filename="../tilauscope/cave/viewer.py" line="2309" />
+        <location filename="../tilauscope/cave/viewer.py" line="2460" />
+        <location filename="../tilauscope/cave/viewer.py" line="2395" />
+        <location filename="../tilauscope/cave/viewer.py" line="2314" />
         <source>Please, select a roast session first.</source>
         <translation>Bitte wählen Sie zunächst eine Röstung aus.</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="933" />
-        <location filename="../tilauscope/cave/viewer.py" line="2354" />
+        <location filename="../tilauscope/cave/viewer.py" line="2359" />
         <source>Missing Bean</source>
         <translation>Fehlende Bohne</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2355" />
+        <location filename="../tilauscope/cave/viewer.py" line="2360" />
         <source>This roast is not linked to any bean in your cave. Please select the bean in the 'Green Beans' tab first.</source>
         <translation>Diese Röstung ist in Ihrer Beancave nicht mit einer Rohkaffee verknüpft. Bitte wählen Sie zunächst die Rohkaffee in der Registerkarte „Rohkaffee" aus.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2415" />
+        <location filename="../tilauscope/cave/viewer.py" line="2420" />
         <source>Save Roast Card</source>
         <translation>Röstenkarte speichern</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2417" />
+        <location filename="../tilauscope/cave/viewer.py" line="2422" />
         <source>PNG Images (*.png)</source>
         <translation>PNG-Bilder (*.png)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2436" />
+        <location filename="../tilauscope/cave/viewer.py" line="2441" />
         <source>Roast card saved to</source>
         <translation>Röstenkarte gespeichert in</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2442" />
+        <location filename="../tilauscope/cave/viewer.py" line="2447" />
         <source>The roast card could not be generated.</source>
         <translation>Die Röstenkarte konnte nicht generiert werden.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2492" />
+        <location filename="../tilauscope/cave/viewer.py" line="2497" />
         <source>Error reading/parsing file</source>
         <translation>Fehler beim Lesen/Analysieren der Datei</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2493" />
+        <location filename="../tilauscope/cave/viewer.py" line="2498" />
         <source>Error reading/parsing file.</source>
         <translation>Fehler beim Lesen/Analysieren der Datei.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2494" />
+        <location filename="../tilauscope/cave/viewer.py" line="2499" />
         <source>The roast could not be read. Select it again to retry.</source>
         <translation>Der Röstvorgang konnte nicht gelesen werden. Wählen Sie ihn erneut aus, um es zu versuchen.</translation>
     </message>
@@ -24777,38 +24849,58 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Aktuelle Dichte ist &lt;b&gt;{0} g/l&lt;/b&gt;.&lt;br&gt;Durch gemessene &lt;b&gt;{1} g/l&lt;/b&gt; ersetzen?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="378" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="379" />
         <location filename="../tilauscope/cave/ambient.py" line="163" />
         <source>Replace</source>
         <translation>Ersetzen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="106" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="59" />
+        <source>{0}: {1}</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="68" />
+        <source>Found {0} of {1} notes</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="142" />
         <source>Roasted {0} · {1} days of rest</source>
         <translation>Geröstet {0} · {1} Tage Ruhe</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="111" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="148" />
         <source>Would you roast it the same way again?</source>
         <translation>Würden Sie sie genauso rösten?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="135" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="184" />
+        <source>What did you taste?</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="200" />
         <source>What was off?</source>
         <translation>Was war nicht in Ordnung?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="151" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="217" />
         <source>Notes — e.g. lovely body, fruit fades fast</source>
         <translation>Notizen — z. B. schöner Körper, Frucht verblasst schnell</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="160" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="227" />
         <source>NEXT TIME</source>
         <translation>NÄCHSTES MAL</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="239" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="281" />
+        <source>Announced</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="353" />
         <source>The tasting could not be saved. See the log for details.</source>
         <translation>Die Verkostung konnte nicht gespeichert werden. Weitere Informationen finden Sie im Log.</translation>
     </message>
@@ -24976,7 +25068,7 @@ Da die Remote-Steuerung aktiviert ist, können Sie stattdessen den Steuerclient 
         <translation>Ein oder mehrere beim Start konfigurierte Verzeichnisse sind nicht mehr gültig. Bitte wählen Sie diese erneut in TilauScope-Konfiguration &gt; BeanCave aus.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="622" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="623" />
         <location filename="../tilauscope/cave/lifecycle.py" line="892" />
         <source>Directory Error</source>
         <translation>Verzeichnisfehler</translation>
@@ -25670,7 +25762,7 @@ BT-Anpassung und Fehler verwenden Rohlesungen; die Referenz-RoR ist die Ableitun
         <translation>Geschmacksnoten wie vom Lieferanten oder der Verkostungssitzung angegeben</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="889" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="890" />
         <location filename="../tilauscope/cave/bean_tab_build.py" line="113" />
         <source>Year of Harvesting.</source>
         <translation>Jahr der Ernte.</translation>
@@ -25992,7 +26084,7 @@ BT-Anpassung und Fehler verwenden Rohlesungen; die Referenz-RoR ist die Ableitun
         <translation>Kaffee:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="847" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="848" />
         <location filename="../tilauscope/cave/bean_tab_build.py" line="730" />
         <source>Single Origin</source>
         <translation>Single Origin</translation>
@@ -26243,131 +26335,131 @@ BT-Anpassung und Fehler verwenden Rohlesungen; die Referenz-RoR ist die Ableitun
         <translation>Deine BeanCave ist leer. Füge deine erste grüne Bohne hinzu oder importiere einen Kaffee mit der Schaltfläche „Neue Bohne“.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="363" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="364" />
         <source>A shared roast takes the ★ once you choose to learn from it.</source>
         <translation>Eine geteilte Röstung erhält den ★, sobald du wählst, daraus zu lernen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="373" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="374" />
         <source>Replace the reference roast of {0} with this one?</source>
         <translation>Die Referenzröstung von {0} durch diese ersetzen?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="375" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="376" />
         <source>Replace the reference roast with this one?</source>
         <translation>Die Referenzröstung durch diese ersetzen?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="538" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="539" />
         <source>QR scan unavailable</source>
         <translation>QR-Scan nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="559" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="560" />
         <source>Roast not found</source>
         <translation>Röstung nicht gefunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="560" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="561" />
         <source>No roast with this identifier in the ALog directory.
 If the application just started, indexing may still be running — try again in a few seconds.</source>
         <translation>Keine Röstung mit diesem Bezeichner im ALog-Verzeichnis.
 Wenn die Anwendung gerade gestartet wurde, wird die Indizierung möglicherweise noch ausgeführt – versuchen Sie es in ein paar Sekunden erneut.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="570" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="571" />
         <source>The roast file could not be read.</source>
         <translation>Die Röstungsdatei konnte nicht gelesen werden.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="591" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="592" />
         <source>Bean not found</source>
         <translation>Kaffee nicht gefunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="592" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="593" />
         <source>No green bean with this identifier in the BeanCave catalogue.</source>
         <translation>Kein Grünkaffee mit diesem Bezeichner im BeanCave-Katalog.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="609" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="610" />
         <source>Sack not found</source>
         <translation>Sack nicht gefunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="610" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="611" />
         <source>This label is not currently attached to any coffee in the BeanCave catalogue.</source>
         <translation>Dieses Etikett ist derzeit an keinen Kaffee im BeanCave-Katalog angebunden.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="841" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="842" />
         <source>Blend</source>
         <translation type="unfinished">Mischung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="859" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="860" />
         <source>Start a roast with this bean</source>
         <translation>Starten Sie eine Röstung mit diesem Kaffee</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="861" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="862" />
         <source>Out of stock — refill this bean before roasting</source>
         <translation>Nicht auf Lager – füllen Sie diesen Kaffee vor dem Rösten nach</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1092" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1094" />
         <source>Confirm Deletion</source>
         <translation>Löschen bestätigen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1093" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1095" />
         <source>Delete &lt;b&gt;{0}&lt;/b&gt;?&lt;br&gt;This action cannot be undone.</source>
         <translation>Löschen Sie &lt;b&gt;{0}&lt;/b&gt;?&lt;br&gt;Diese Aktion kann nicht rückgängig gemacht werden.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1240" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1242" />
         <source>Read Error</source>
         <translation>Lesefehler</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1241" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1243" />
         <source>Unable to read file</source>
         <translation>Datei konnte nicht gelesen werden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1243" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1245" />
         <source>The file might be corrupted.</source>
         <translation>Die Datei ist möglicherweise beschädigt.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1246" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1248" />
         <source>Unexpected error while reading beancave.json</source>
         <translation>Unerwarteter Fehler beim Lesen von beancave.json</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1256" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1255" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1258" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1257" />
         <source>Directory or file access is not possible</source>
         <translation>Der Zugriff auf das Verzeichnis oder die Datei ist nicht möglich</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1304" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1306" />
         <source>Another program has this library open, so nothing was saved.</source>
         <translation>Ein anderes Programm hat diese Bibliothek geöffnet, daher wurde nichts gespeichert.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1310" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1312" />
         <source>The bean library file could not be read, so nothing is saved over it. Repair or restore beancave.json, then reopen BeanCave.</source>
         <translation>Die Bohnenbibliotheksdatei konnte nicht gelesen werden, daher wird nichts darüber gespeichert. Reparieren oder stellen Sie beancave.json wieder her, dann öffnen Sie BeanCave erneut.</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="1002" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1338" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1340" />
         <source>Unable to save file</source>
         <translation>Datei konnte nicht gespeichert werden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1344" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1346" />
         <source>Please select a directory to store the JSON beancave file and where your alog files are located. Then exit BeanCave and relaunch it!</source>
         <translation>Bitte wählen Sie ein Verzeichnis zur Speicherung der JSON-BeanCave-Datei und wo sich Ihre ALog-Dateien befinden. Beenden Sie dann BeanCave und starten Sie es neu!</translation>
     </message>
@@ -28617,7 +28709,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     <name>tilauscope_common</name>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1062" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="341" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="343" />
         <location filename="../tilaucore/bean_text.py" line="20" />
         <source>Farm:</source>
         <translation>Hof:</translation>
@@ -28641,7 +28733,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1064" />
         <location filename="../tilauscope/roast_properties.py" line="2770" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="349" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="351" />
         <location filename="../tilaucore/bean_text.py" line="23" />
         <source>Altitude:</source>
         <translation>Höhe:</translation>
@@ -28697,13 +28789,13 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="78" />
         <location filename="../tilauscope/roast_properties.py" line="1181" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="651" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="700" />
         <location filename="../tilaucore/roast_label.py" line="129" />
         <source>Altitude</source>
         <translation>Höhe</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1417" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1420" />
         <location filename="../tilaucore/roast_label.py" line="131" />
         <source>SCA score</source>
         <translation>SCA-Bewertung</translation>
@@ -28727,7 +28819,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
         <location filename="../tilauscope/cave/viewer_detail.py" line="112" />
         <location filename="../tilauscope/devices.py" line="940" />
         <location filename="../tilauscope/beancave_roast_card.py" line="287" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="158" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="173" />
         <location filename="../tilaucore/roast_summary.py" line="106" />
         <source>Colour</source>
         <translation>Farbe</translation>
@@ -28772,7 +28864,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
         <translation>WENN KEIN ALARM</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1376" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1379" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1082" />
         <location filename="../tilauscope/beancave_social_card.py" line="128" />
         <location filename="../tilauscope/label_printer.py" line="600" />
@@ -28792,7 +28884,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="65" />
         <location filename="../tilauscope/roast_properties.py" line="2772" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="352" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="367" />
         <location filename="../tilauscope/label_printer.py" line="895" />
         <location filename="../tilauscope/label_printer.py" line="681" />
         <source>Crop</source>
@@ -28805,7 +28897,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1081" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="360" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="362" />
         <location filename="../tilauscope/label_printer.py" line="837" />
         <source>Single origin</source>
         <translation>Monoorigin</translation>
@@ -28848,7 +28940,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
         <translation>ENTWICKLUNG</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="939" />
+        <location filename="../tilauscope/alog_repair.py" line="948" />
         <location filename="../tilauscope/roast_review_panel.py" line="429" />
         <source>WEIGHT LOSS</source>
         <translation>GEWICHTSVERLUST</translation>
@@ -28892,7 +28984,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="686" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="687" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="736" />
         <location filename="../tilauscope/beancave_storage_tab.py" line="407" />
         <source>Sacks</source>
         <translation>Säcke</translation>
@@ -28939,7 +29031,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
         <location filename="../tilauscope/cave/printing.py" line="1103" />
         <location filename="../tilauscope/cave/printing.py" line="996" />
         <location filename="../tilauscope/cave/printing.py" line="949" />
-        <location filename="../tilauscope/cave/viewer.py" line="2435" />
+        <location filename="../tilauscope/cave/viewer.py" line="2440" />
         <location filename="../tilauscope/tilau_exceptions.py" line="265" />
         <location filename="../tilauscope/routine_check.py" line="522" />
         <source>Success</source>
@@ -28953,7 +29045,7 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="351" />
-        <location filename="../tilauscope/onboarding.py" line="1115" />
+        <location filename="../tilauscope/onboarding.py" line="1130" />
         <location filename="../tilauscope/onboarding.py" line="317" />
         <source>Next</source>
         <translation>Weiter</translation>
@@ -28971,13 +29063,13 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
         <translation>USB-Anschluss</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1250" />
+        <location filename="../tilauscope/alog_repair.py" line="1259" />
         <location filename="../tilauscope/onboarding.py" line="685" />
         <source>Scan again</source>
         <translation>Erneut scannen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2810" />
+        <location filename="../tilauscope/devices.py" line="2819" />
         <location filename="../tilauscope/roast_properties.py" line="2961" />
         <location filename="../tilauscope/onboarding.py" line="887" />
         <source>Choose…</source>
@@ -28985,49 +29077,50 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/custom_label_dialog.py" line="228" />
-        <location filename="../tilauscope/onboarding.py" line="992" />
+        <location filename="../tilauscope/onboarding.py" line="1007" />
         <source>Roasted by</source>
         <translation>Geröstet von</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="954" />
-        <location filename="../tilauscope/onboarding.py" line="1072" />
+        <location filename="../tilauscope/onboarding.py" line="1087" />
         <source>Pair</source>
         <translation>Koppeln</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1756" />
-        <location filename="../tilauscope/onboarding.py" line="1156" />
+        <location filename="../tilauscope/onboarding.py" line="1171" />
         <source>detected ✓</source>
         <translation>erkannt ✓</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2055" />
-        <location filename="../tilauscope/onboarding.py" line="1283" />
+        <location filename="../tilauscope/devices.py" line="2064" />
+        <location filename="../tilauscope/onboarding.py" line="1298" />
         <source>recognised · not configured</source>
         <translation>erkannt · nicht konfiguriert</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="240" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="64" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="306" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="66" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="321" />
         <source>Essentials</source>
         <translation>Wesentliches</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="358" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="373" />
         <source>SCA</source>
         <translation>SCA</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1307" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="376" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1310" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="416" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="393" />
         <source>Edit SCA score, flavour notes and memo</source>
         <translation>SCA-Bewertung, Geschmacksnotizen und Memo bearbeiten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1304" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="549" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1307" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="598" />
         <source>Edit type, category, process, species, varieties, density, humidity</source>
         <translation>Typ, Kategorie, Verfahren, Art, Sorten, Dichte, Feuchte bearbeiten</translation>
     </message>
@@ -29035,26 +29128,26 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1046" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="242" />
         <location filename="../tilauscope/beancave_social_card.py" line="185" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="65" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="640" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="67" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="689" />
         <source>Provenance</source>
         <translation>Herkunft</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="89" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="649" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="698" />
         <source>Farm</source>
         <translation>Hof</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="652" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="701" />
         <source>Supplier</source>
         <translation>Lieferant</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="752" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="246" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="696" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="745" />
         <source>New crop</source>
         <translation>Neue Ernte</translation>
     </message>
@@ -29081,15 +29174,15 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/cave/ambient.py" line="88" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="803" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="814" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2450" />
         <source>No scale configured</source>
         <translation>Keine Waage konfiguriert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1215" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1218" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="244" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="67" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="69" />
         <source>Sensory &amp; notes</source>
         <translation>Sensorisch &amp; Notizen</translation>
     </message>
@@ -29097,160 +29190,161 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
         <location filename="../tilauscope/cave/widgets.py" line="663" />
         <location filename="../tilauscope/roast_properties.py" line="521" />
         <location filename="../tilauscope/roast_properties.py" line="482" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="127" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="129" />
         <source>tap to use</source>
         <translation>zum Verwenden antippen</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="609" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="312" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="314" />
         <source>Bean name:</source>
         <translation>Rohkaffe-Name:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1348" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="335" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1351" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="337" />
         <source>Stock:</source>
         <translation>Bestand:</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1063" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="763" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="344" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="346" />
         <source>Supplier:</source>
         <translation>Lieferant:</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="765" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="352" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="354" />
         <source>Price:</source>
         <translation>Preis:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1511" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1513" />
         <location filename="../tilauscope/cave/bean_tab.py" line="195" />
         <location filename="../tilauscope/cave/bean_tab.py" line="112" />
         <location filename="../tilauscope/cave/bean_tab.py" line="98" />
         <location filename="../tilauscope/cave/bean_tab_build.py" line="363" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1204" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1193" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1207" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1196" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1102" />
         <location filename="../tilauscope/tilauscope_types.py" line="96" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="523" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="513" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="367" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="534" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="524" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="369" />
         <source>Other</source>
         <translation>Sonstiges</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1129" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="391" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="393" />
         <source>Component 2:</source>
         <translation>Komponente 2:</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1130" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="403" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="405" />
         <source>Component 3:</source>
         <translation>Komponente 3:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1165" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="411" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1168" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="413" />
         <source>Category:</source>
         <translation>Kategorie:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1166" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="417" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1169" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="419" />
         <source>Process:</source>
         <translation>Verfahren:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1167" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="424" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1170" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="426" />
         <source>Species:</source>
         <translation>Art:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1168" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="430" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1171" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="432" />
         <source>Varieties:</source>
         <translation>Sorten:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1169" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1172" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="824" />
         <location filename="../tilauscope/roast_properties.py" line="3273" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="451" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="449" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="447" />
         <source>Density:</source>
         <translation type="unfinished">Dichte:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1170" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1173" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="825" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="456" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="458" />
         <source>Humidity:</source>
         <translation>Feuchte:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1171" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1174" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="826" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="463" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="465" />
         <source>Water activity:</source>
         <translation>Wasseraktivität:</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="769" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="470" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="472" />
         <source>Use the size given on the supplier sheet (AA, Supremo, 17/18…). Leave Unknown if it is not stated.</source>
         <translation>Verwenden Sie die Größe aus dem Lieferantendatenblatt (AA, Supremo, 17/18…). Lassen Sie „Unbekannt„, falls nicht angegeben.</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="771" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="472" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="474" />
         <source>Screen size:</source>
         <translation>Siebgröße:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1243" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="486" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1246" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="488" />
         <source>SCA score:</source>
         <translation>SCA-Bewertung:</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="357" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1233" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="490" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="189" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1236" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="492" />
         <source>Flavors</source>
         <translation>Aromen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1244" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1247" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="853" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="496" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="498" />
         <source>Flavour notes:</source>
         <translation>Geschmacksnoten:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1545" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1547" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="561" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="625" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="636" />
         <source>AI Error</source>
         <translation>KI-Fehler</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1546" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1548" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="562" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="626" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="637" />
         <source>Failed to extract bean data</source>
         <translation>Fehler beim Extrahieren von Rohkaffe-Daten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1590" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="776" />
-        <location filename="../tilauscope/beancave_zone_editors.py" line="754" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1593" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="787" />
+        <location filename="../tilauscope/beancave_zone_editors.py" line="765" />
         <source>probe not connected…</source>
         <translation>Sonde nicht verbunden…</translation>
     </message>
@@ -29309,17 +29403,17 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="1001" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1343" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1337" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1309" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1303" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1345" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1339" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1311" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1305" />
         <location filename="../tilauscope/cave/viewer_plot.py" line="301" />
         <location filename="../tilauscope/cave/viewer_plot.py" line="222" />
         <location filename="../tilauscope/cave/widgets.py" line="581" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1830" />
-        <location filename="../tilauscope/alog_repair.py" line="1960" />
-        <location filename="../tilauscope/alog_repair.py" line="1633" />
-        <location filename="../tilauscope/alog_repair.py" line="1583" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1833" />
+        <location filename="../tilauscope/alog_repair.py" line="1977" />
+        <location filename="../tilauscope/alog_repair.py" line="1649" />
+        <location filename="../tilauscope/alog_repair.py" line="1599" />
         <location filename="../tilauscope/roast_properties.py" line="6045" />
         <location filename="../tilauscope/roast_properties.py" line="6023" />
         <source>Save Error</source>
@@ -29365,24 +29459,25 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/device_setup/dialog.py" line="207" />
-        <location filename="../tilauscope/alog_repair.py" line="888" />
+        <location filename="../tilauscope/alog_repair.py" line="897" />
         <source>ROASTER</source>
         <translation>RÖSTER</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="623" />
-        <location filename="../tilauscope/alog_repair.py" line="1297" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="624" />
+        <location filename="../tilauscope/alog_repair.py" line="1306" />
         <source>Please select a valid ALog directory first.</source>
         <translation>Bitte wählen Sie zunächst ein gültiges ALog-Verzeichnis.</translation>
     </message>
     <message>
         <location filename="../tilauscope/graph/curve.py" line="711" />
-        <location filename="../tilauscope/alog_repair.py" line="1786" />
+        <location filename="../tilauscope/alog_repair.py" line="1802" />
         <source>Undo</source>
         <translation>Rückgängig</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/tasting_dialog.py" line="136" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="201" />
+        <location filename="../tilauscope/cave/tasting_dialog.py" line="185" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="403" />
         <source>optional</source>
         <translation>optional</translation>
@@ -29402,15 +29497,15 @@ Modern: eine feste kurze Vorinfusion (2-3 s Blüte, 7-8 s Tränkung), dann ein s
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="359" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1234" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1237" />
         <source>Select flavor notes based on a Flavor Wheel.</source>
         <translation>Wählen Sie Aromanotizen basierend auf einem Flavor Wheel.</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="1025" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1247" />
-        <location filename="../tilauscope/cave/viewer.py" line="1791" />
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1831" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1249" />
+        <location filename="../tilauscope/cave/viewer.py" line="1794" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1834" />
         <source>An unexpected error occurred</source>
         <translation>Ein unerwarteter Fehler ist aufgetreten</translation>
     </message>
@@ -29507,7 +29602,7 @@ Check the printer is on and the roll is loaded, then try again.</source>
         <translation>Drucken gestoppt – siehe Meldung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2204" />
+        <location filename="../tilauscope/devices.py" line="2213" />
         <location filename="../tilauscope/roast_plan_model.py" line="1389" />
         <location filename="../tilauscope/roast_plan_model.py" line="1036" />
         <location filename="../tilauscope/roast_plan_model.py" line="995" />
@@ -29639,7 +29734,7 @@ Check the printer is on and the roll is loaded, then try again.</source>
         <translation>Widerrufen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/difluid.py" line="636" />
+        <location filename="../tilauscope/difluid.py" line="638" />
         <source>Extractor did not confirm '{0}' ({1})</source>
         <translation>Extraktor hat '{0}' ({1}) nicht bestätigt</translation>
     </message>
@@ -29654,7 +29749,7 @@ Check the printer is on and the roll is loaded, then try again.</source>
         <translation>Keine Nachricht innerhalb des Zeitlimits empfangen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="3097" />
+        <location filename="../tilauscope/devices.py" line="3106" />
         <location filename="../tilauscope/devices.py" line="441" />
         <source>BEANCAVE SETTINGS</source>
         <translation>BEANCAVE-EINSTELLUNGEN</translation>
@@ -29736,13 +29831,13 @@ Check the printer is on and the roll is loaded, then try again.</source>
         <translation>— Maschinenmodell wählen —</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2792" />
+        <location filename="../tilauscope/devices.py" line="2801" />
         <location filename="../tilauscope/devices.py" line="680" />
         <source>Machine Profile</source>
         <translation>Maschinenprofil</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2795" />
+        <location filename="../tilauscope/devices.py" line="2804" />
         <location filename="../tilauscope/devices.py" line="683" />
         <source>Model:</source>
         <translation>Modell:</translation>
@@ -30233,200 +30328,200 @@ Check the printer is on and the roll is loaded, then try again.</source>
         <translation>wird gescannt…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="1965" />
+        <location filename="../tilauscope/devices.py" line="1974" />
         <source>Other hardware detected nearby</source>
         <translation>Andere Hardware in der Nähe erkannt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="1971" />
+        <location filename="../tilauscope/devices.py" line="1980" />
         <source>nothing else recognised nearby — these are identified, not configured</source>
         <translation>nichts anderes in der Nähe erkannt – diese sind identifiziert, nicht konfiguriert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2053" />
+        <location filename="../tilauscope/devices.py" line="2062" />
         <source>detected · not linked</source>
         <translation>erkannt · nicht verbunden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2380" />
-        <location filename="../tilauscope/devices.py" line="2097" />
+        <location filename="../tilauscope/devices.py" line="2389" />
+        <location filename="../tilauscope/devices.py" line="2106" />
         <source>Sensors</source>
         <translation>Sensoren</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2105" />
+        <location filename="../tilauscope/devices.py" line="2114" />
         <source>Multiplier</source>
         <translation>Multiplikator</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2136" />
+        <location filename="../tilauscope/devices.py" line="2145" />
         <source>Add sensor</source>
         <translation>Sensor hinzufügen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2462" />
-        <location filename="../tilauscope/devices.py" line="2450" />
-        <location filename="../tilauscope/devices.py" line="2146" />
+        <location filename="../tilauscope/devices.py" line="2471" />
+        <location filename="../tilauscope/devices.py" line="2459" />
+        <location filename="../tilauscope/devices.py" line="2155" />
         <source>Check sensor</source>
         <translation>Sensor überprüfen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2149" />
+        <location filename="../tilauscope/devices.py" line="2158" />
         <source>Connect to the broker with the settings above and read the selected sensor once.</source>
         <translation>Mit den obigen Einstellungen eine Verbindung zum Broker herstellen und den ausgewählten Sensor einmal lesen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2162" />
+        <location filename="../tilauscope/devices.py" line="2171" />
         <source>Extractor is plugged into the roaster meter</source>
         <translation>Der Extraktor ist ins Röster-Messgerät eingesteckt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2164" />
+        <location filename="../tilauscope/devices.py" line="2173" />
         <source>Counts the extractor inside the roaster reading instead of adding it. Applies from the next monitoring session, or now before START.</source>
         <translation>Zählt den Extraktor in der Röster-Messung mit, statt ihn hinzuzufügen. Wird ab der nächsten Überwachungssitzung angewendet oder jetzt vor START.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2178" />
+        <location filename="../tilauscope/devices.py" line="2187" />
         <source>Without a meter</source>
         <translation>Ohne Messgerät</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2188" />
+        <location filename="../tilauscope/devices.py" line="2197" />
         <source>● A meter named "roaster" is set — it always comes first; the estimate only fills the moments it falls silent.</source>
         <translation>● Ein Messgerät namens "roaster" ist eingestellt – es kommt immer zuerst; die Schätzung füllt nur die Momente, wenn es stumm ist.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2192" />
+        <location filename="../tilauscope/devices.py" line="2201" />
         <source>◑ Estimated from TilauScope's power curve for {0}</source>
         <translation>◑ Geschätzt aus TilauScope's Leistungskurve für {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2195" />
+        <location filename="../tilauscope/devices.py" line="2204" />
         <source>◑ Estimated from TilauScope's rated power for {0} ({1} kW)</source>
         <translation>◑ Geschätzt aus TilauScope's Nennleistung für {0} ({1} kW)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2199" />
+        <location filename="../tilauscope/devices.py" line="2208" />
         <source>◑ Estimated from the heater power below</source>
         <translation>◑ Geschätzt aus der Heizleistung unten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2201" />
+        <location filename="../tilauscope/devices.py" line="2210" />
         <source>◑ Estimated from the heater Artisan rates for this roaster</source>
         <translation>◑ Geschätzt aus der Heizung, die Artisan für diesen Röster angibt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2203" />
+        <location filename="../tilauscope/devices.py" line="2212" />
         <source>{0} · {1} kW · follows {2}</source>
         <translation>{0} · {1} kW · folgt {2}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2206" />
+        <location filename="../tilauscope/devices.py" line="2215" />
         <source>○ No estimate for this roaster. Add a power meter above to track its energy.</source>
         <translation>○ Keine Schätzung für diesen Röster. Fügen Sie oben ein Leistungsmessgerät hinzu, um seine Energie zu verfolgen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2220" />
+        <location filename="../tilauscope/devices.py" line="2229" />
         <source> W</source>
         <translation> W</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2221" />
+        <location filename="../tilauscope/devices.py" line="2230" />
         <source>none</source>
         <translation>keine</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2222" />
+        <location filename="../tilauscope/devices.py" line="2231" />
         <source>The power the heater draws at full burner, as on the roaster's rating plate. Without a meter, the roast energy is estimated from it and the burner setting.</source>
         <translation>Die Leistung, die das Heizelement bei vollem Brenner zieht, wie auf dem Typenschild des Rösters angegeben. Ohne Messer wird die Röstenergie davon und von der Brennereinstellung geschätzt.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2225" />
+        <location filename="../tilauscope/devices.py" line="2234" />
         <source>Heater power:</source>
         <translation>Heizleistung:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2246" />
+        <location filename="../tilauscope/devices.py" line="2255" />
         <source>Unit the sensor publishes in. A temperature is converted to the unit the application works in; W marks a power reading for the energy view; leave empty for anything else.</source>
         <translation>Einheit, die der Sensor veröffentlicht. Eine Temperatur wird in die Einheit umgewandelt, mit der die Anwendung arbeitet; W markiert eine Stromlesung für die Energieansicht; leer lassen für alles andere.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2261" />
+        <location filename="../tilauscope/devices.py" line="2270" />
         <source>Power reading detected.</source>
         <translation>Stromlesung erkannt.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2266" />
+        <location filename="../tilauscope/devices.py" line="2275" />
         <source>⚡ Use as roaster</source>
         <translation>⚡ Als Röster verwenden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2267" />
+        <location filename="../tilauscope/devices.py" line="2276" />
         <source>💨 Use as extractor</source>
         <translation>💨 Als Extraktor verwenden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2271" />
+        <location filename="../tilauscope/devices.py" line="2280" />
         <source>Names this sensor for the energy view and sets its unit to W</source>
         <translation>Benennt diesen Sensor für die Energieansicht und setzt seine Einheit auf W</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2316" />
+        <location filename="../tilauscope/devices.py" line="2325" />
         <source>Name this sensor — "{0}" moved to the row you chose.</source>
         <translation>Benennen Sie diesen Sensor – "{0}" wurde in die gewählte Zeile verschoben.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2346" />
+        <location filename="../tilauscope/devices.py" line="2355" />
         <source>Used as the roaster meter for energy</source>
         <translation>Wird als Messer des Rösters für Energie verwendet</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2350" />
+        <location filename="../tilauscope/devices.py" line="2359" />
         <source>Used as the extractor meter for energy</source>
         <translation>Wird als Extraktor-Messer für Energie verwendet</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2356" />
+        <location filename="../tilauscope/devices.py" line="2365" />
         <source>⚠ Two sensors are named "{0}" — rename one. Until then, neither is used for energy and its curve may show the other.</source>
         <translation>⚠ Zwei Sensoren sind mit "{0}" benannt – benennen Sie einen um. Bis dahin werden weder für Energie verwendet und die Kurve kann die andere anzeigen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2369" />
+        <location filename="../tilauscope/devices.py" line="2378" />
         <source>This sensor has no name. Name it, then save again.</source>
         <translation>Dieser Sensor hat keinen Namen. Benennen Sie ihn und speichern Sie erneut.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2372" />
+        <location filename="../tilauscope/devices.py" line="2381" />
         <source>Two sensors are named "{0}". Rename one, then save again.</source>
         <translation>Zwei Sensoren sind mit "{0}" benannt. Benennen Sie einen um und speichern Sie erneut.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2451" />
+        <location filename="../tilauscope/devices.py" line="2460" />
         <source>Select a sensor row first.</source>
         <translation>Zuerst eine Sensoren-Zeile auswählen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2463" />
+        <location filename="../tilauscope/devices.py" line="2472" />
         <source>This row needs an ID and a topic before it can be checked.</source>
         <translation>Diese Zeile benötigt eine ID und ein Thema, bevor sie überprüft werden kann.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2483" />
+        <location filename="../tilauscope/devices.py" line="2492" />
         <source>MQTT Sensor OK</source>
         <translation>MQTT-Sensor OK</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2484" />
+        <location filename="../tilauscope/devices.py" line="2493" />
         <source>Value read for {0}: {1} {2}</source>
         <translation>Wert gelesen für {0}: {1} {2}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2492" />
+        <location filename="../tilauscope/devices.py" line="2501" />
         <source>MQTT Sensor Check Failed</source>
         <translation>MQTT-Sensor-Überprüfung fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2493" />
+        <location filename="../tilauscope/devices.py" line="2502" />
         <source>No value could be read for {0}.
 {1}
 
@@ -30437,155 +30532,155 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
 Der Sensor wird beibehalten: Ein Thema, das derzeit still ist, kann immer noch gültig sein.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2546" />
-        <location filename="../tilauscope/devices.py" line="2540" />
+        <location filename="../tilauscope/devices.py" line="2555" />
+        <location filename="../tilauscope/devices.py" line="2549" />
         <source>MQTT Connection Test</source>
         <translation>MQTT-Verbindungstest</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2541" />
+        <location filename="../tilauscope/devices.py" line="2550" />
         <source>Connection to MQTT broker successful!</source>
         <translation>Verbindung zum MQTT-Broker erfolgreich!</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2547" />
+        <location filename="../tilauscope/devices.py" line="2556" />
         <source>Failed to connect to MQTT broker.</source>
         <translation>Verbindung zum MQTT-Broker fehlgeschlagen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2566" />
+        <location filename="../tilauscope/devices.py" line="2575" />
         <source>Not configured — AI features disabled</source>
         <translation>Nicht konfiguriert – KI-Funktionen deaktiviert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2603" />
+        <location filename="../tilauscope/devices.py" line="2612" />
         <source>Ask me again</source>
         <translation>Fragen Sie mich erneut</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2626" />
+        <location filename="../tilauscope/devices.py" line="2635" />
         <source>acknowledged for {0}</source>
         <translation>bestätigt für {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2645" />
-        <location filename="../tilauscope/devices.py" line="2632" />
+        <location filename="../tilauscope/devices.py" line="2654" />
+        <location filename="../tilauscope/devices.py" line="2641" />
         <source>not asked yet</source>
         <translation>noch nicht gefragt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2640" />
+        <location filename="../tilauscope/devices.py" line="2649" />
         <source>allowed</source>
         <translation>zulässig</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2723" />
+        <location filename="../tilauscope/devices.py" line="2732" />
         <source>Remote control is off</source>
         <translation>Fernsteuerung ist aus</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2724" />
+        <location filename="../tilauscope/devices.py" line="2733" />
         <source>Enable remote control, click OK, restart TilauScope, then pair a phone.</source>
         <translation>Aktivieren Sie die Fernsteuerung, klicken Sie auf OK, starten Sie TilauScope neu, und koppeln Sie dann ein Telefon.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2737" />
+        <location filename="../tilauscope/devices.py" line="2746" />
         <source>BeanCave files</source>
         <translation>BeanCave-Dateien</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2740" />
+        <location filename="../tilauscope/devices.py" line="2749" />
         <source>Choose where the green-bean database and the Artisan roast logs (.alog) are stored.</source>
         <translation>Wählen Sie aus, wo die Rohkaffee-Datenbank und die Artisan-Röstprotokolle (.alog) gespeichert sind.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2748" />
+        <location filename="../tilauscope/devices.py" line="2757" />
         <source>Directories</source>
         <translation>Verzeichnisse</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2757" />
+        <location filename="../tilauscope/devices.py" line="2766" />
         <source>BeanCave database:</source>
         <translation>BeanCave-Datenbank:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2763" />
+        <location filename="../tilauscope/devices.py" line="2772" />
         <source>Roast logs (.alog):</source>
         <translation>Röstprotokolle (.alog):</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2770" />
+        <location filename="../tilauscope/devices.py" line="2779" />
         <source>Currency</source>
         <translation>Währung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2772" />
+        <location filename="../tilauscope/devices.py" line="2781" />
         <source>Purchase prices</source>
         <translation>Einkaufspreise</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2783" />
+        <location filename="../tilauscope/devices.py" line="2792" />
         <source>Currency of the green-bean prices and of the roast and stock costs shown in BeanCave.</source>
         <translation>Währung der Grünbohnenpreise und der Röst- und Lagerkosten in BeanCave.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2786" />
+        <location filename="../tilauscope/devices.py" line="2795" />
         <source>Currency:</source>
         <translation>Währung:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2809" />
+        <location filename="../tilauscope/devices.py" line="2818" />
         <source>Not configured</source>
         <translation>Nicht konfiguriert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2823" />
+        <location filename="../tilauscope/devices.py" line="2832" />
         <source>Select BeanCave directory</source>
         <translation>BeanCave-Verzeichnis auswählen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2825" />
+        <location filename="../tilauscope/devices.py" line="2834" />
         <source>Select ALog directory</source>
         <translation>Wählen Sie das ALog-Verzeichnis</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2833" />
+        <location filename="../tilauscope/devices.py" line="2842" />
         <source>Invalid directory</source>
         <translation>Ungültiges Verzeichnis</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="2834" />
+        <location filename="../tilauscope/devices.py" line="2843" />
         <source>Choose an existing directory where TilauScope has write permission.</source>
         <translation>Wählen Sie ein vorhandenes Verzeichnis, in dem TilauScope Schreibberechtigung hat.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="3075" />
-        <location filename="../tilauscope/devices.py" line="3059" />
+        <location filename="../tilauscope/devices.py" line="3084" />
+        <location filename="../tilauscope/devices.py" line="3068" />
         <source>Restart required</source>
         <translation>Neustart erforderlich</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="3060" />
+        <location filename="../tilauscope/devices.py" line="3069" />
         <source>The record web server will take effect the next time you start TilauScope. Labels printed from now on will encode the new port.</source>
         <translation>Der Datensatz-Webserver wird beim nächsten Start von TilauScope wirksam. Etiketten, die ab sofort gedruckt werden, codieren den neuen Port.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="3076" />
+        <location filename="../tilauscope/devices.py" line="3085" />
         <source>Remote control will take effect the next time you start TilauScope.</source>
         <translation>Die Fernsteuerung wird beim nächsten Start von TilauScope wirksam.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="3098" />
+        <location filename="../tilauscope/devices.py" line="3107" />
         <source>BeanCave uses the new devices after it restarts.</source>
         <translation>BeanCave verwendet die neuen Geräte nach einem Neustart.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="3100" />
+        <location filename="../tilauscope/devices.py" line="3109" />
         <source>Restart now</source>
         <translation>Jetzt neu starten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/devices.py" line="3101" />
+        <location filename="../tilauscope/devices.py" line="3110" />
         <source>Later</source>
         <translation>Später</translation>
     </message>
@@ -33063,7 +33158,7 @@ Gib deine Passwörter und API-Schlüssel erneut ein: KI-Assistent, MQTT.</transl
         <translation>Von diesem Röster</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1019" />
+        <location filename="../tilauscope/onboarding.py" line="1034" />
         <location filename="../tilauscope/onboarding.py" line="458" />
         <source>First batch</source>
         <translation>Erste Charge</translation>
@@ -33254,134 +33349,134 @@ Gib deine Passwörter und API-Schlüssel erneut ein: KI-Assistent, MQTT.</transl
         <translation>Wählen Sie die Ordner für Ihre BeanCave-Rohkaffee-Datenbank und Ihre Röst-Protokolle (.alog). Vorhandene Ordner werden vorausgefüllt.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1022" />
+        <location filename="../tilauscope/onboarding.py" line="1037" />
         <location filename="../tilauscope/onboarding.py" line="858" />
         <source>BeanCave folder</source>
         <translation>BeanCave-Ordner</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1024" />
+        <location filename="../tilauscope/onboarding.py" line="1039" />
         <location filename="../tilauscope/onboarding.py" line="859" />
         <source>Roast logs folder</source>
         <translation>Röst-Protokoll-Ordner</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="909" />
+        <location filename="../tilauscope/onboarding.py" line="925" />
         <source>Select folder</source>
         <translation>Ordner wählen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="927" />
+        <location filename="../tilauscope/onboarding.py" line="942" />
         <source>not set — click Choose…</source>
         <translation>nicht gesetzt – auf »Wählen …« klicken</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="936" />
+        <location filename="../tilauscope/onboarding.py" line="951" />
         <source>Ready to set up</source>
         <translation>Bereit zum Einrichten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="937" />
+        <location filename="../tilauscope/onboarding.py" line="952" />
         <source>Here is what Finish changes. Anything under “Kept as it is” stays yours.</source>
         <translation>Das wird sich ändern. Alles unter „Unverändert„ bleibt so wie es ist.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="942" />
+        <location filename="../tilauscope/onboarding.py" line="957" />
         <source>Will be set</source>
         <translation>Wird gesetzt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="943" />
+        <location filename="../tilauscope/onboarding.py" line="958" />
         <source>Kept as it is</source>
         <translation>Unverändert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="948" />
+        <location filename="../tilauscope/onboarding.py" line="963" />
         <source>Next: add your first green coffee, then start a roast.</source>
         <translation>Nächster Schritt: Fügen Sie Ihren ersten grünen Kaffee hinzu, dann starten Sie einen Röstvorgang.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="993" />
+        <location filename="../tilauscope/onboarding.py" line="1008" />
         <source>Units</source>
         <translation>Einheiten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="996" />
+        <location filename="../tilauscope/onboarding.py" line="1011" />
         <source>set up later in Devices…</source>
         <translation>später in Geräten einrichten…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1001" />
+        <location filename="../tilauscope/onboarding.py" line="1016" />
         <source>Address</source>
         <translation>Adresse</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1006" />
+        <location filename="../tilauscope/onboarding.py" line="1021" />
         <source>none · read-only roaster</source>
         <translation>keine · Nur-Lese-Röster</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1010" />
+        <location filename="../tilauscope/onboarding.py" line="1025" />
         <source>Milestone buttons</source>
         <translation>Meilenstein-Schaltflächen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1011" />
+        <location filename="../tilauscope/onboarding.py" line="1026" />
         <source>{0} send commands</source>
         <translation>{0} Befehle senden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1013" />
+        <location filename="../tilauscope/onboarding.py" line="1028" />
         <source>Command buttons</source>
         <translation>Befehlsschaltflächen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1020" />
+        <location filename="../tilauscope/onboarding.py" line="1035" />
         <source>Theme and curves</source>
         <translation>Design und Kurven</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1028" />
+        <location filename="../tilauscope/onboarding.py" line="1043" />
         <source>Your alarms</source>
         <translation>Ihre Alarme</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1028" />
+        <location filename="../tilauscope/onboarding.py" line="1043" />
         <source>Sounds</source>
         <translation>Töne</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1028" />
+        <location filename="../tilauscope/onboarding.py" line="1043" />
         <source>Batch counter</source>
         <translation>Chargenzähler</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1028" />
+        <location filename="../tilauscope/onboarding.py" line="1043" />
         <source>Paired devices</source>
         <translation>Gekoppelte Geräte</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1029" />
+        <location filename="../tilauscope/onboarding.py" line="1044" />
         <source>unchanged</source>
         <translation>unverändert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1077" />
+        <location filename="../tilauscope/onboarding.py" line="1092" />
         <source>searching…</source>
         <translation>Suche läuft …</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1115" />
+        <location filename="../tilauscope/onboarding.py" line="1130" />
         <source>Finish</source>
         <translation type="unfinished">Abschluss</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1146" />
+        <location filename="../tilauscope/onboarding.py" line="1161" />
         <source>Monitoring is on</source>
         <translation>Überwachung ist aktiviert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1147" />
+        <location filename="../tilauscope/onboarding.py" line="1162" />
         <source>Turn monitoring off, then press Finish again. The roaster setup cannot change while it is being read.</source>
         <translation>Schalten Sie die Überwachung aus und drücken Sie dann erneut auf Fertig stellen. Die Rösterkonfiguration kann nicht geändert werden, während sie gelesen wird.</translation>
     </message>
@@ -34762,7 +34857,7 @@ Aktuelles BT: {temperature}   •   Driftend {drift:+.1f} °C/min   •   {remai
         <translation>🔧  Röstprofil-Verwaltung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1068" />
+        <location filename="../tilauscope/alog_repair.py" line="1077" />
         <location filename="../tilauscope/alog_repair.py" line="736" />
         <source>Stop reading the roast files. Those already read stay listed.</source>
         <translation>Beenden Sie das Lesen der Röstdateien. Bereits gelesene Dateien bleiben in der Liste.</translation>
@@ -34848,430 +34943,430 @@ Aktuelles BT: {temperature}   •   Driftend {drift:+.1f} °C/min   •   {remai
         <translation>Von Bohne ausfüllen (nur leere Felder)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="883" />
+        <location filename="../tilauscope/alog_repair.py" line="892" />
         <source>TITLE</source>
         <translation>TITEL</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="891" />
+        <location filename="../tilauscope/alog_repair.py" line="900" />
         <source>— not listed / leave empty —</source>
         <translation>— nicht aufgeführt / leer lassen —</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="898" />
+        <location filename="../tilauscope/alog_repair.py" line="907" />
         <source>BEANS</source>
         <translation>BOHNEN</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="927" />
+        <location filename="../tilauscope/alog_repair.py" line="936" />
         <source>Green bean density, typical 550–900 g/l</source>
         <translation>Rohkaffee-Dichte, typisch 550–900 g/l</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="929" />
+        <location filename="../tilauscope/alog_repair.py" line="938" />
         <source>Green moisture, typical 8–14 %</source>
         <translation>Grüne Feuchte, typisch 8–14 %</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="931" />
+        <location filename="../tilauscope/alog_repair.py" line="940" />
         <source>Ambient temperature at roast (feeds historical analysis)</source>
         <translation>Umgebungstemperatur beim Rösten (speist historische Analyse)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="933" />
+        <location filename="../tilauscope/alog_repair.py" line="942" />
         <source>Ambient humidity at roast (feeds historical analysis)</source>
         <translation>Umgebungsfeuchte beim Rösten (speist historische Analyse)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="943" />
+        <location filename="../tilauscope/alog_repair.py" line="952" />
         <source>DENSITY</source>
         <translation>DICHTE</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="944" />
+        <location filename="../tilauscope/alog_repair.py" line="953" />
         <source>MOISTURE %</source>
         <translation>FEUCHTE %</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="945" />
+        <location filename="../tilauscope/alog_repair.py" line="954" />
         <source>GREENS TEMP</source>
         <translation>ROHKAFFEE-TEMP</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="949" />
+        <location filename="../tilauscope/alog_repair.py" line="958" />
         <source>AMBIENT °C</source>
         <translation>UMGEBUNG °C</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="950" />
+        <location filename="../tilauscope/alog_repair.py" line="959" />
         <source>HUMIDITY %</source>
         <translation>FEUCHTE %</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="953" />
+        <location filename="../tilauscope/alog_repair.py" line="962" />
         <source>COLOR WHOLE</source>
         <translation>FARBE GANZ</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="954" />
+        <location filename="../tilauscope/alog_repair.py" line="963" />
         <source>COLOR GROUND</source>
         <translation>FARBE GEMAHLEN</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="955" />
+        <location filename="../tilauscope/alog_repair.py" line="964" />
         <source>COLOR SYSTEM</source>
         <translation>FARBSYSTEM</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="959" />
+        <location filename="../tilauscope/alog_repair.py" line="968" />
         <source>Agtron…</source>
         <translation>Agtron …</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="965" />
+        <location filename="../tilauscope/alog_repair.py" line="974" />
         <source>→ NEW FILENAME</source>
         <translation>→ NEUER DATEINAME</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="977" />
+        <location filename="../tilauscope/alog_repair.py" line="986" />
         <source>Record</source>
         <translation>Aufnahme</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="980" />
+        <location filename="../tilauscope/alog_repair.py" line="989" />
         <source>Next incomplete ▸</source>
         <translation>Nächste unvollständige ▸</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1052" />
+        <location filename="../tilauscope/alog_repair.py" line="1061" />
         <source>ALog directory not set.</source>
         <translation>ALog-Verzeichnis nicht gesetzt.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1095" />
+        <location filename="../tilauscope/alog_repair.py" line="1104" />
         <source>Reading roast files… {0} / {1}</source>
         <translation>Röstdateien werden gelesen… {0} / {1}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1192" />
+        <location filename="../tilauscope/alog_repair.py" line="1201" />
         <source>damaged</source>
         <translation>beschädigt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1251" />
+        <location filename="../tilauscope/alog_repair.py" line="1260" />
         <source>Read the roast files that were left out.</source>
         <translation>Lesen Sie die Röstdateien, die ausgelassen wurden.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1253" />
+        <location filename="../tilauscope/alog_repair.py" line="1262" />
         <source>Stopped · {0} of {1} files read · {2} incomplete</source>
         <translation>Gestoppt · {0} von {1} Dateien gelesen · {2} unvollständig</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1269" />
+        <location filename="../tilauscope/alog_repair.py" line="1278" />
         <source>{0} files · {1} incomplete · {2} damaged · {3} to review · {4} shown</source>
         <translation>{0} Dateien · {1} unvollständig · {2} beschädigt · {3} zu prüfen · {4} angezeigt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1309" />
+        <location filename="../tilauscope/alog_repair.py" line="1318" />
         <source>Scanning roast profiles...</source>
         <translation>Röstprofile werden gescannt...</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1374" />
+        <location filename="../tilauscope/alog_repair.py" line="1383" />
         <source>Update finished</source>
         <translation>Aktualisierung abgeschlossen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1375" />
+        <location filename="../tilauscope/alog_repair.py" line="1384" />
         <source>Orphaned roasts were detected and logged.</source>
         <translation>Verwaiste Röstungen wurden erkannt und protokolliert.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="2083" />
-        <location filename="../tilauscope/alog_repair.py" line="1397" />
+        <location filename="../tilauscope/alog_repair.py" line="2102" />
+        <location filename="../tilauscope/alog_repair.py" line="1406" />
         <source>Unsaved changes</source>
         <translation>Nicht gespeicherte Änderungen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1398" />
+        <location filename="../tilauscope/alog_repair.py" line="1407" />
         <source>Discard unsaved changes to this profile?</source>
         <translation>Nicht gespeicherte Änderungen an diesem Profil verwerfen?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1430" />
+        <location filename="../tilauscope/alog_repair.py" line="1439" />
         <source>WEIGHT IN ({0})</source>
         <translation>EINGABEGEWICHT ({0})</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1432" />
+        <location filename="../tilauscope/alog_repair.py" line="1441" />
         <source>WEIGHT OUT ({0})</source>
         <translation>AUSGABEGEWICHT ({0})</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1465" />
+        <location filename="../tilauscope/alog_repair.py" line="1474" />
         <source>— none —</source>
         <translation>— keine —</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1997" />
-        <location filename="../tilauscope/alog_repair.py" line="1487" />
+        <location filename="../tilauscope/alog_repair.py" line="2014" />
+        <location filename="../tilauscope/alog_repair.py" line="1497" />
         <source>No bean</source>
         <translation>Keine Bohne</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1998" />
-        <location filename="../tilauscope/alog_repair.py" line="1488" />
+        <location filename="../tilauscope/alog_repair.py" line="2015" />
+        <location filename="../tilauscope/alog_repair.py" line="1498" />
         <source>Select a green bean first.</source>
         <translation>Wählen Sie zunächst einen Rohkaffee aus.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1531" />
+        <location filename="../tilauscope/alog_repair.py" line="1541" />
         <source>Invalid weights</source>
         <translation>Ungültige Gewichte</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1532" />
+        <location filename="../tilauscope/alog_repair.py" line="1542" />
         <source>Weight out ({0}) must be lower than weight in ({1}).</source>
         <translation>Ausgangsgewicht ({0}) muss kleiner als Einganggewicht ({1}) sein.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1572" />
+        <location filename="../tilauscope/alog_repair.py" line="1588" />
         <source>File exists</source>
         <translation>Datei vorhanden</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1573" />
+        <location filename="../tilauscope/alog_repair.py" line="1589" />
         <source>{0} already exists. Overwrite it?</source>
         <translation>{0} existiert bereits. Überschreiben?</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1961" />
-        <location filename="../tilauscope/alog_repair.py" line="1634" />
-        <location filename="../tilauscope/alog_repair.py" line="1584" />
+        <location filename="../tilauscope/alog_repair.py" line="1978" />
+        <location filename="../tilauscope/alog_repair.py" line="1650" />
+        <location filename="../tilauscope/alog_repair.py" line="1600" />
         <source>Could not write the ALog file:&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</source>
         <translation>ALog-Datei konnte nicht geschrieben werden:&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1593" />
+        <location filename="../tilauscope/alog_repair.py" line="1609" />
         <source>Rename Error</source>
         <translation>Umbenennungsfehler</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1594" />
+        <location filename="../tilauscope/alog_repair.py" line="1610" />
         <source>The repair was recorded, but the file could not be renamed to &lt;b&gt;{0}&lt;/b&gt;:&lt;br&gt;{1}&lt;br&gt;It keeps its previous name.</source>
         <translation>Die Reparatur wurde aufgezeichnet, aber die Datei konnte nicht in &lt;b&gt;{0}&lt;/b&gt; umbenannt werden:&lt;br&gt;{1}&lt;br&gt;Sie behält ihren vorherigen Namen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1723" />
+        <location filename="../tilauscope/alog_repair.py" line="1739" />
         <source>Missing: {0}</source>
         <translation>Fehlend: {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1726" />
+        <location filename="../tilauscope/alog_repair.py" line="1742" />
         <source>✓ All required fields filled</source>
         <translation>✓ Alle erforderlichen Felder ausgefüllt</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1734" />
+        <location filename="../tilauscope/alog_repair.py" line="1750" />
         <source>out ≥ in!</source>
         <translation>Ausgang ≥ Eingang!</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1749" />
+        <location filename="../tilauscope/alog_repair.py" line="1765" />
         <source>Check: {0}</source>
         <translation>Überprüfung: {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1782" />
+        <location filename="../tilauscope/alog_repair.py" line="1798" />
         <source>✓ Preheat burner commands rebuilt</source>
         <translation>✓ Vorheiz-Brennerbefehle neu aufgebaut</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1783" />
+        <location filename="../tilauscope/alog_repair.py" line="1799" />
         <source>{0} commands rebuilt from the burner channel.</source>
         <translation>{0} Befehle aus dem Brennerkanal neu aufgebaut.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1794" />
+        <location filename="../tilauscope/alog_repair.py" line="1810" />
         <source>If the curve is unusable, set Plan learning to Excluded.</source>
         <translation>Ist die Kurve unbrauchbar, Planlernen auf „Ausgeschlossen“ setzen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1796" />
+        <location filename="../tilauscope/alog_repair.py" line="1812" />
         <source>Channel {0} of {1} reads {2} to {3}, which this device cannot produce.</source>
         <translation>Kanal {0} von {1} liest {2} bis {3}, was dieses Gerät nicht liefern kann.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1799" />
+        <location filename="../tilauscope/alog_repair.py" line="1815" />
         <source>A change in device numbering left this roast pointing at the wrong devices: opened as it is, it attaches these readings to them.</source>
         <translation>Eine Änderung der Gerätenummerierung hat diese Röstung auf die falschen Geräte zeigen lassen: So geöffnet, ordnet sie diese Messwerte den falschen Geräten zu.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1803" />
+        <location filename="../tilauscope/alog_repair.py" line="1819" />
         <source>⚑ Devices do not match this roast</source>
         <translation>⚑ Geräte passen nicht zu dieser Röstung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1919" />
-        <location filename="../tilauscope/alog_repair.py" line="1855" />
-        <location filename="../tilauscope/alog_repair.py" line="1804" />
+        <location filename="../tilauscope/alog_repair.py" line="1935" />
+        <location filename="../tilauscope/alog_repair.py" line="1871" />
+        <location filename="../tilauscope/alog_repair.py" line="1820" />
         <source>Open this roast</source>
         <translation>Diese Röstung öffnen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1805" />
+        <location filename="../tilauscope/alog_repair.py" line="1821" />
         <source>Then Devices › Change device, and save.</source>
         <translation>Dann Geräte › Gerät ändern, und speichern.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1809" />
+        <location filename="../tilauscope/alog_repair.py" line="1825" />
         <source>⚑ Preheat burner commands missing</source>
         <translation>⚑ Vorheiz-Brennerbefehle fehlen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1810" />
+        <location filename="../tilauscope/alog_repair.py" line="1826" />
         <source>The PID ran this preheat, but its burner commands were not written. The burner channel recorded them: {0} commands from {1} to {2} %. Without them, the PID does not learn its hold power from this roast.</source>
         <translation>Der PID hat diese Vorheizung gefahren, aber seine Brennerbefehle wurden nicht geschrieben. Der Brennerkanal hat sie aufgezeichnet: {0} Befehle von {1} bis {2} %. Ohne sie lernt der PID aus dieser Röstung seine Haltleistung nicht.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1815" />
+        <location filename="../tilauscope/alog_repair.py" line="1831" />
         <source>Rebuild {0} commands</source>
         <translation>{0} Befehle neu aufbauen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1819" />
+        <location filename="../tilauscope/alog_repair.py" line="1835" />
         <source>⚑ Same roast saved twice</source>
         <translation>⚑ Dieselbe Röstung zweimal gespeichert</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1820" />
+        <location filename="../tilauscope/alog_repair.py" line="1836" />
         <source>Same start time as {0}. The plan counts this roast twice: exclude one copy from learning.</source>
         <translation>Gleiche Startzeit wie {0}. Der Plan zählt diese Röstung doppelt: eine Kopie vom Lernen ausschließen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1986" />
-        <location filename="../tilauscope/alog_repair.py" line="1824" />
+        <location filename="../tilauscope/alog_repair.py" line="2003" />
+        <location filename="../tilauscope/alog_repair.py" line="1840" />
         <source>Show the other file</source>
         <translation>Die andere Datei anzeigen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1828" />
+        <location filename="../tilauscope/alog_repair.py" line="1844" />
         <source>The power meter recorded nothing.</source>
         <translation>Das Leistungsmessgerät hat nichts aufgezeichnet.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1830" />
+        <location filename="../tilauscope/alog_repair.py" line="1846" />
         <source>The power meter fell silent for {0} min {1} s.</source>
         <translation>Das Leistungsmessgerät war {0} Min {1} s lang stumm.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1833" />
+        <location filename="../tilauscope/alog_repair.py" line="1849" />
         <source>The power meter read no heating during the roast.</source>
         <translation>Das Leistungsmessgerät hat während der Röstung keine Heizleistung registriert.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1835" />
+        <location filename="../tilauscope/alog_repair.py" line="1851" />
         <source>⚑ Power meter incomplete</source>
         <translation>⚑ Leistungsmessung unvollständig</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1836" />
+        <location filename="../tilauscope/alog_repair.py" line="1852" />
         <source>Energy figures for this roast are incomplete.</source>
         <translation>Die Energiewerte dieser Röstung sind unvollständig.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1840" />
+        <location filename="../tilauscope/alog_repair.py" line="1856" />
         <source>⚑ Bean temperature gaps</source>
         <translation>⚑ Lücken bei der Bohnentemperatur</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1841" />
+        <location filename="../tilauscope/alog_repair.py" line="1857" />
         <source>{0} readings missing between CHARGE and DROP; the longest gap lasts {1} s.</source>
         <translation>{0} Messwerte fehlen zwischen FÜLLEN und LEEREN; die längste Lücke dauert {1} s.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1847" />
+        <location filename="../tilauscope/alog_repair.py" line="1863" />
         <source>DRY END is marked before the turning point.</source>
         <translation>TROCKEN ist vor dem Wendepunkt markiert.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1848" />
+        <location filename="../tilauscope/alog_repair.py" line="1864" />
         <source>FIRST CRACK is marked before DRY END.</source>
         <translation>ERSTES KNACKEN ist vor TROCKEN markiert.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1849" />
+        <location filename="../tilauscope/alog_repair.py" line="1865" />
         <source>FIRST CRACK is marked after DROP.</source>
         <translation>ERSTES KNACKEN ist nach LEEREN markiert.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1852" />
+        <location filename="../tilauscope/alog_repair.py" line="1868" />
         <source>Phase durations read from this roast are wrong.</source>
         <translation>Die aus dieser Röstung gelesenen Phasendauern sind falsch.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1854" />
+        <location filename="../tilauscope/alog_repair.py" line="1870" />
         <source>⚑ Milestones out of order</source>
         <translation>⚑ Meilensteine in falscher Reihenfolge</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1856" />
+        <location filename="../tilauscope/alog_repair.py" line="1872" />
         <source>Then move the marks, and save.</source>
         <translation>Dann die Markierungen verschieben und speichern.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1859" />
+        <location filename="../tilauscope/alog_repair.py" line="1875" />
         <source>⚑ Bean probe jumps</source>
         <translation>⚑ Sprünge der Bohnensonde</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1860" />
+        <location filename="../tilauscope/alog_repair.py" line="1876" />
         <source>The rate of rise reaches {0} °C/min, far outside any roast: the probe reading jumped.</source>
         <translation>Der Anstieg erreicht {0} °C/min, weit außerhalb jeder Röstung: Der Sondenwert ist gesprungen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1866" />
+        <location filename="../tilauscope/alog_repair.py" line="1882" />
         <source>⚑ Coffee link broken</source>
         <translation>⚑ Kaffeeverknüpfung unterbrochen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1867" />
+        <location filename="../tilauscope/alog_repair.py" line="1883" />
         <source>This roast is linked to a coffee that is no longer in BeanCave.</source>
         <translation>Diese Röstung ist mit einem Kaffee verknüpft, der nicht mehr in BeanCave ist.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1869" />
+        <location filename="../tilauscope/alog_repair.py" line="1885" />
         <source>Relink to the selected coffee</source>
         <translation>Mit dem gewählten Kaffee neu verknüpfen</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1870" />
+        <location filename="../tilauscope/alog_repair.py" line="1886" />
         <source>Choose it under Green bean, then Record.</source>
         <translation>Unter Rohkaffee wählen, dann Aufzeichnen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1872" />
+        <location filename="../tilauscope/alog_repair.py" line="1888" />
         <source>⚑ Simulated roast</source>
         <translation>⚑ Simulierte Röstung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1873" />
+        <location filename="../tilauscope/alog_repair.py" line="1889" />
         <source>Recorded by the simulator: never used for learning.</source>
         <translation>Vom Simulator aufgezeichnet: nie zum Lernen verwendet.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1920" />
+        <location filename="../tilauscope/alog_repair.py" line="1936" />
         <source>Turn monitoring off first: opening a roast replaces the live curve.</source>
         <translation>Zuerst die Überwachung ausschalten: Das Öffnen einer Röstung ersetzt die Live-Kurve.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="1987" />
+        <location filename="../tilauscope/alog_repair.py" line="2004" />
         <source>{0} is hidden by the filter. Choose All to see it.</source>
         <translation>{0} wird vom Filter ausgeblendet. Wählen Sie Alle, um es zu sehen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/alog_repair.py" line="2084" />
+        <location filename="../tilauscope/alog_repair.py" line="2103" />
         <source>Discard unsaved changes and close?</source>
         <translation>Ungespeicherte Änderungen verwerfen und schließen?</translation>
     </message>
@@ -39475,7 +39570,7 @@ Phaseneinspritzung wird in einer zukünftigen Version verfügbar sein.</translat
         <translation>Überprüfung</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1697" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1700" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="249" />
         <source>New sack</source>
         <translation>Neuer Sack</translation>
@@ -39782,92 +39877,92 @@ Phaseneinspritzung wird in einer zukünftigen Version verfügbar sein.</translat
         <translation>Physikalische Daten, üblicherweise im Lieferantenblatt zu finden. Dichte und Feuchte speisen den Röstplan – füllen Sie sie aus, wenn Sie sie haben.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1217" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1220" />
         <source>What this coffee should taste like, plus any memo for future you.</source>
         <translation>Wie dieser Kaffee schmecken sollte, plus eine Notiz für Sie selbst.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1227" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1230" />
         <source>e.g. red fruits, floral, honey</source>
         <translation>z. B. rote Früchte, blumig, Honig</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1241" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1244" />
         <source>Roasting tips / memo</source>
         <translation>Röst-Tipps / Notiz</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1245" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1248" />
         <source>Tips / memo:</source>
         <translation>Tipps / Notiz:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1288" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1291" />
         <source>Edit name, origin, year and weight</source>
         <translation>Name, Herkunft, Jahr und Gewicht bearbeiten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1302" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1305" />
         <source>Edit farm, supplier and altitude</source>
         <translation>Hof, Lieferant und Höhe bearbeiten</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1306" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1309" />
         <source>Sensory</source>
         <translation>Sensorisch</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1409" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1412" />
         <source>farm</source>
         <translation>Bauernhof</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1411" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1414" />
         <source>altitude</source>
         <translation>Höhe</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1413" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1416" />
         <source>density</source>
         <translation>Dichte</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1415" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1418" />
         <source>humidity</source>
         <translation>Feuchte</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1420" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1423" />
         <source>Not extracted by the AI:</source>
         <translation>Nicht von der KI extrahiert:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1422" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1425" />
         <source>No density or humidity for this crop. The roast plan will use the average for this kind of coffee. You can add the values later from the bean sheet.</source>
         <translation>Keine Dichte oder Feuchte für diese Ernte. Der Röstplan verwendet den Durchschnitt für diese Kaffesorte. Sie können die Werte später aus dem Bohnendatenblatt hinzufügen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1429" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1432" />
         <source>Initial weight is 0 g — use the Essentials ✎ Edit if you know how much the sack weighs.</source>
         <translation>Anfangsgewicht ist 0 g – nutzen Sie Essentials ✎ Bearbeiten, wenn Sie das Gewicht des Sackes kennen.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1441" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1444" />
         <source>Sack</source>
         <translation>Sack</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1691" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1694" />
         <source>New sack</source>
         <translation>Neuer Sack</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1692" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1695" />
         <source>Please give the bean a name before continuing.</source>
         <translation>Bitte geben Sie dem Kaffee einen Namen, bevor Sie fortfahren.</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_sack_wizard.py" line="1698" />
+        <location filename="../tilauscope/beancave_sack_wizard.py" line="1701" />
         <source>Please pick the catalogue bean this sack belongs to.</source>
         <translation>Bitte wählen Sie den Katalogkaffee aus, zu dem dieser Sack gehört.</translation>
     </message>

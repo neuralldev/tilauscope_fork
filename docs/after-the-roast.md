@@ -503,10 +503,15 @@ A roast is judged in the cup, once it has rested. When a roast in the Roasts tab
 long enough, a line under its figures asks *Rested and ready — how did it taste?* with
 **Taste**; **⋯ → Taste…** opens the same form at any time.
 
-The form asks three things: *Would you roast it the same way again?* — **👍 Yes**, **🤏 Almost**
-or **👎 No** — then what was off, if anything, among six tastes in plain words, and a free note.
-As you tick, a **Next time** card names the one change it asks of the next roast of the same
-coffee:
+The form asks one question per block. First *Would you roast it the same way again?* —
+**👍 Yes**, **🤏 Almost** or **👎 No**. When the coffee has an
+[intention](beancave.md#the-bean-record), the next block asks whether the cup brought it out —
+*Did it bring out its sweetness?*, for instance — **Yes**, **Partly** or **No**. Then *What did
+you taste?*: **🎡 Flavors** opens the flavour wheel to pick the notes found in the cup; those the
+coffee announced turn green with a ✓, and a line under them lists the announced notes and counts
+how many were found. Notes are matched on their name in the wheel. Last, what was off, if
+anything, among six tastes in plain words, and a free note. As you tick, a **Next time** line
+names the one change it asks of the next roast of the same coffee:
 
 | What was off | Next time |
 |---|---|
@@ -519,7 +524,8 @@ coffee:
 
 A notch is 5 % of burner. With several tastes ticked, the first in this list decides: one change
 at a time, judged on the next roast. Once saved, the line under the roast recalls what you said —
-*Tasted: 🤏 Almost · Flat, papery* — with **Edit** to change it.
+*Tasted: 🤏 Almost · Flat, papery · 🎯 Sweetness: partly · Found 2 of 4 notes* — with **Edit** to change it.
+The intention and the notes found change nothing in the next plan.
 
 The next plan of that coffee makes the change; see
 [The roast plan](the-roast-plan.md#which-previous-roasts-count). Only the tasting of the coffee's
@@ -623,8 +629,9 @@ again** picks the reading back up.
 roasts and how much weight each green coffee has behind it — the figures shown in
 [BeanCave's catalogue](beancave.md#the-catalogue).
 
-**Complete from bean** fills only the fields still empty, from the linked coffee's own
-record — nothing already filled is touched. **Record** validates and writes the file, and
+**Complete from bean** fills only the fields still empty, from the coffee chosen under
+**Green bean** — nothing already filled is touched; it stays grey until a coffee is chosen.
+**Record** links the roast to the coffee chosen under **Green bean**, validates and writes the file, and
 keeps the same roast selected so you can check what was saved. The file takes the name Artisan
 would give it — the title followed by the roast date and time, previewed under **→ NEW FILENAME**.
 A roast without a readable date keeps the date and time already in its name. If the system refuses

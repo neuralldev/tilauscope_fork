@@ -94,6 +94,44 @@ VERDICT_WORDS: Final[dict[str, tuple[str, tuple[str, str]]]] = {
 }
 
 
+# What the cup of a coffee should bring out, the question its tasting asks, and the answers.
+INTENTION_WORDS: Final[dict[str, tuple[str, str]]] = {
+    'acidity': QT_TRANSLATE_NOOP("tilauscope_beancave", "Acidity & florals"),
+    'sweetness': QT_TRANSLATE_NOOP("tilauscope_beancave", "Sweetness"),
+    'body': QT_TRANSLATE_NOOP("tilauscope_beancave", "Body"),
+}
+INTENTION_QUESTIONS: Final[dict[str, tuple[str, str]]] = {
+    'acidity': QT_TRANSLATE_NOOP("tilauscope_beancave", "Did it bring out its acidity and florals?"),
+    'sweetness': QT_TRANSLATE_NOOP("tilauscope_beancave", "Did it bring out its sweetness?"),
+    'body': QT_TRANSLATE_NOOP("tilauscope_beancave", "Did it bring out its body?"),
+}
+REACHED_WORDS: Final[dict[str, tuple[str, str]]] = {
+    'yes': QT_TRANSLATE_NOOP("HelpDlg", "Yes"),
+    'partly': QT_TRANSLATE_NOOP("tilauscope_beancave", "Partly"),
+    'no': QT_TRANSLATE_NOOP("tilauscope_beancave", "No"),
+}
+# The same answers once saved, after the intention: "Sweetness: partly".
+REACHED_SAID: Final[dict[str, tuple[str, str]]] = {
+    'yes': QT_TRANSLATE_NOOP("tilauscope_beancave", "brought out"),
+    'partly': QT_TRANSLATE_NOOP("tilauscope_beancave", "partly"),
+    'no': QT_TRANSLATE_NOOP("tilauscope_beancave", "missed"),
+}
+
+
+def flavour_notes(text: str) -> list[str]:
+    """The notes of a comma-separated list, as the flavour wheel and the record write them."""
+    return [part.strip() for part in (text or '').split(',') if part.strip()]
+
+
+def notes_found(tasted: list[str], announced: list[str]) -> list[str]:
+    """The announced notes found in the cup, in their announced order.
+
+    Compared on the English names the wheel writes, whatever case the operator typed.
+    """
+    found = {note.strip().casefold() for note in tasted}
+    return [note for note in announced if note.strip().casefold() in found]
+
+
 def next_change(tasting: RoastTasting | None) -> tuple[str, str, float] | None:
     """(defect, lever, delta) this tasting asks of the next roast, or None."""
     if tasting is None:

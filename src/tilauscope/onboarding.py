@@ -895,6 +895,22 @@ class OnboardingWizard(QDialog):
         return row
 
     def _pick_dir(self, kind: str) -> None:
+        # Windows: a stay-on-top wizard covers the system folder picker, parented to BeanCave behind it.
+        on_top = not _IS_MACOS
+        if on_top:
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+            self.show()
+        try:
+            self._run_dir_picker(kind)
+        finally:
+            if on_top:
+                self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+                self.show()
+                self.raise_()
+                self.activateWindow()
+        self._refresh_dir_labels()
+
+    def _run_dir_picker(self, kind: str) -> None:
         bc = self._beancave
         method = "select_beancave_directory" if kind == "beancave" else "select_alog_directory"
         if hasattr(bc, method):
@@ -912,7 +928,6 @@ class OnboardingWizard(QDialog):
                 if kind != "beancave":
                     from tilauscope.alogmanager import directory_changed
                     directory_changed(d)
-        self._refresh_dir_labels()
 
     def _refresh_dir_labels(self) -> None:
         bc = self._beancave

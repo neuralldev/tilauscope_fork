@@ -14,6 +14,7 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 
 ## ☕ After the roast
 
+* **What the cup should bring out.** Give a coffee its intention on its record — acidity & florals, sweetness or body — and its tasting asks whether the cup brought it out. Pick the notes you found on the flavour wheel: those the coffee announced light up, with a count. The tasting form is lighter too, one question at a time.
 * **Your coffee's water activity and moisture, over time.** In BeanCave's Storage tab, a small chart under the water activity shows every value you entered, with its date — enough to see whether a bag is keeping its coffee as it should. It starts with the moisture your roasts already recorded.
 
 * **Your reference roast.** Tasted a roast and would roast it the same way again? Mark it with a ★, from the tasting line under the roast or the tasting form. The next plans of that coffee start from that roast instead of your most typical one — even if it is the only roast you have of it. The coffee's record and the setup sheet show the roast the next plan stands on — or why it cannot serve this batch — and a new harvest starts from the previous harvest's reference until it has roasts of its own. The Analysis page can compare any roast with it.

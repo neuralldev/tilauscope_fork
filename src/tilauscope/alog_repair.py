@@ -877,6 +877,15 @@ class AlogRepairDialog(QDialog):
         self._complete_btn = QPushButton(
             QApplication.translate("tilauscope_repair", "Complete from bean (empty fields only)"))
         self._complete_btn.clicked.connect(self._complete_from_bean)
+        # Lit once a coffee is chosen: it is the next step then, and has nothing to do before.
+        self._complete_btn.setStyleSheet(
+            f"QPushButton {{ color:{THEME['ACCENT']}; border:1px solid {THEME['ACCENT']};"
+            f" border-radius:8px; padding:6px 14px; background:{tint('ACCENT', 0.12)}; }}"
+            f"QPushButton:disabled {{ color:{THEME['OVERLAY0']}; border-color:{THEME['BORDER']};"
+            f" background:transparent; }}")
+        self._complete_btn.setEnabled(False)
+        self._bean_combo.currentIndexChanged.connect(
+            lambda _i: self._complete_btn.setEnabled(self._bean_combo.currentData() is not None))
         form.addWidget(self._complete_btn)
 
         # title
@@ -1471,6 +1480,7 @@ class AlogRepairDialog(QDialog):
                 sel_idx = i
         self._bean_combo.setCurrentIndex(sel_idx)
         self._bean_combo.blockSignals(False)
+        self._complete_btn.setEnabled(self._bean_combo.currentData() is not None)
 
         self._loading = False
         self._dirty = False
@@ -1539,6 +1549,12 @@ class AlogRepairDialog(QDialog):
         # as it is on disk now, not over the copy taken at selection.
         data: dict = {}
         data['title'] = self._title_edit.text().strip()
+        # The coffee chosen is the link: Record writes it, as Complete from bean does.
+        bean = self._bean_combo.currentData()
+        if bean is not None and bean.uuid:
+            linked = link_beans_text(self._beans_edit.toPlainText(), bean)
+            if linked != self._beans_edit.toPlainText():
+                self._beans_edit.setPlainText(linked)
         data['beans'] = self._beans_edit.toPlainText().strip()
 
         unit = self._weight_unit(self._current_data)
@@ -2031,13 +2047,15 @@ class AlogRepairDialog(QDialog):
             QMessageBox.Icon.Question) == QMessageBox.StandardButton.Ok
 
     def _set_editor_enabled(self, on: bool) -> None:
-        for w in (self._bean_combo, self._complete_btn, self._title_edit,
+        for w in (self._bean_combo, self._title_edit,
                   self._roaster_combo, self._beans_edit,
                   self._w_in_edit, self._w_out_edit, self._density_edit, self._moisture_edit,
                   self._greens_edit, self._ambient_edit, self._humidity_edit, self._whole_edit,
                   self._ground_edit, self._color_sys_combo, self._record_btn,
                   *self._learn_btns.values()):
             w.setEnabled(on)
+        # Its own rule besides: only a chosen coffee has something to complete from.
+        self._complete_btn.setEnabled(on and self._bean_combo.currentData() is not None)
         if not on:
             # No file selected: show no state at all rather than the previous
             # file's, which would read as a decision about nothing.

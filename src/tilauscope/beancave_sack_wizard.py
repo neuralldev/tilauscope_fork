@@ -1149,6 +1149,9 @@ class NewSackWizard(QDialog):
         self.species_combo = QComboBox()
         self.species_combo.addItems([""] + list(getattr(self._host, 'coffee_beans_species', []) or []))
         self.varieties_combo = QComboBox()
+        # Filled after they are sized: without a width of their own they shrink to nothing.
+        for combo in (self.category_combo, self.process_combo, self.species_combo, self.varieties_combo):
+            combo.setMinimumWidth(340)
         self.density_spin = QDoubleSpinBox()
         self.density_spin.setRange(0.0, 800.0)
         self.density_spin.setDecimals(0)

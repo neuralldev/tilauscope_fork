@@ -17,16 +17,23 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from PyQt6.QtCore import QDate, QLocale, Qt
 from PyQt6.QtWidgets import (QApplication, QButtonGroup, QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
-                             QPlainTextEdit, QPushButton, QVBoxLayout)
+                             QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 from tilauscope import tasting_log
-from tilaucore.tasting_log import DEFECT_WORDS, VERDICT_WORDS
+from tilaucore.tasting_log import (DEFECT_WORDS, INTENTION_QUESTIONS, INTENTION_WORDS, REACHED_SAID, REACHED_WORDS,
+                                   VERDICT_WORDS, flavour_notes, notes_found)
 from tilauscope.tilauscope_types import THEME, RoastTasting, show_styled_message
 from tilauscope.theme_qss import apply_tilau_theme
+from tilauscope.widgets.controls import SegmentedControl
+from tilauscope.widgets.flow_layout import FlowLayout
+
+_log = logging.getLogger(__name__)
+_REACHED_KEYS: tuple[str, ...] = tuple(REACHED_WORDS)
 
 
 def defect_labels() -> dict[str, str]:
@@ -44,11 +51,30 @@ def change_text(defect: str, mode: str = 'C') -> tuple[str, str]:
     return tasting_log.change_text(defect, mode, lambda text: QApplication.translate(*text))
 
 
+def intention_said(tasting: RoastTasting) -> str:
+    """'🎯 Sweetness: partly' once the cup was judged against the coffee's intention, else ''."""
+    word, said = INTENTION_WORDS.get(tasting.intention), REACHED_SAID.get(tasting.intention_reached)
+    if word is None or said is None:
+        return ''
+    return "🎯 " + QApplication.translate("tilauscope_beancave", "{0}: {1}").format(
+        QApplication.translate(*word), QApplication.translate(*said))
+
+
+def found_said(tasting: RoastTasting, announced: str) -> str:
+    """'Found 2 of 4 notes' when notes were tasted on a coffee that announces some, else ''."""
+    expected = flavour_notes(announced)
+    if not tasting.tasted_notes or not expected:
+        return ''
+    return QApplication.translate("tilauscope_beancave", "Found {0} of {1} notes").format(
+        len(notes_found(tasting.tasted_notes, expected)), len(expected))
+
+
 class TastingDialog(QDialog):
     """Would you roast it the same way again, what was off, and what to change next time."""
 
     def __init__(self, parent, *, directory: str, roast_uuid: str, bean_uuid: str,
-                 coffee: str, roast_epoch: int, mode: str = 'C', is_reference: bool = False) -> None:
+                 coffee: str, roast_epoch: int, mode: str = 'C', is_reference: bool = False,
+                 intention: str = '', announced: str = '') -> None:
         super().__init__(parent)
         # frameless translucent window: ground=False, else the grounded base
         # paints the rectangle opaque and squares off the rounded card.
@@ -58,6 +84,10 @@ class TastingDialog(QDialog):
         self._bean_uuid = bean_uuid
         self._mode = mode
         existing = tasting_log.load(directory).entries.get(roast_uuid) or RoastTasting()
+        # Judged against the intention the coffee has now: the tasting keeps which one it was.
+        self._intention = intention if intention in INTENTION_WORDS else ''
+        self._announced = flavour_notes(announced)
+        self._tasted = list(existing.tasted_notes)
 
         self.setWindowTitle(QApplication.translate("tilauscope_beancave", "Tasting"))
         self.setMinimumWidth(520)
@@ -86,13 +116,19 @@ class TastingDialog(QDialog):
                 border:1px solid {THEME['BORDER']}; border-radius:14px; padding:6px 12px; font-size:12px; }}
             QPushButton#defect:checked {{ color:{THEME['TODAY']}; border-color:{THEME['TODAY']};
                 background:rgba(250,179,135,0.10); }}
-            #NextCard {{ border:1px solid {THEME['TODAY']}; border-radius:12px;
+            #NextCard {{ border:1px solid {THEME['TODAY']}; border-radius:10px;
                          background:rgba(250,179,135,0.07); }}
+            #Block {{ border:none; border-top:1px solid {THEME['BORDER']}; }}
+            QLabel#note {{ color:{THEME['TEXT']}; border:1px solid {THEME['BORDER']}; border-radius:11px;
+                padding:2px 9px; font-size:12px; }}
+            QLabel#note[found="true"] {{ color:{THEME['SUCCESS']}; border-color:{THEME['SUCCESS']}; }}
+            QPushButton#wheel {{ color:{THEME['ACCENT']}; background:transparent;
+                border:1px solid {THEME['BORDER']}; border-radius:11px; padding:3px 10px; font-size:12px; }}
         """)
         outer.addWidget(card)
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(24, 18, 24, 18)
-        lay.setSpacing(12)
+        lay.setContentsMargins(22, 16, 22, 16)
+        lay.setSpacing(8)
 
         roasted = datetime.fromtimestamp(roast_epoch, tz=UTC).astimezone().date() if roast_epoch > 0 else None
         title = QLabel(coffee)
@@ -108,13 +144,15 @@ class TastingDialog(QDialog):
             sub.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:12px;")
             lay.addWidget(sub)
 
-        lay.addWidget(self._question(QApplication.translate("tilauscope_beancave", "Would you roast it the same way again?")))
+        block = self._block(lay, first=True)
+        block.addWidget(self._question(QApplication.translate("tilauscope_beancave", "Would you roast it the same way again?")))
         row = QHBoxLayout()
         self._verdicts = QButtonGroup(self)
         self._verdicts.setExclusive(True)
         for key, text in verdict_labels().items():
             b = QPushButton(text)
             b.setObjectName("verdict")
+            b.setStyleSheet("padding:7px;")
             b.setCheckable(True)
             b.setProperty('key', key)
             b.setChecked(existing.verdict == key)
@@ -125,49 +163,74 @@ class TastingDialog(QDialog):
         self._reference.setCheckable(True)
         self._reference.setChecked(is_reference)
         self._is_reference = is_reference
-        self._reference.setFixedSize(46, 46)
+        self._reference.setFixedSize(38, 38)
         self._reference.setCursor(Qt.CursorShape.PointingHandCursor)
         self._reference.toggled.connect(self._refresh_reference)
         row.addWidget(self._reference)
         self._verdicts.buttonToggled.connect(lambda *_: self._refresh_next())
-        lay.addLayout(row)
+        block.addLayout(row)
 
-        lay.addWidget(self._question(QApplication.translate("tilauscope_beancave", "What was off?"),
-                                     QApplication.translate("tilauscope_common", "optional")))
+        # Only a coffee with an intention asks about it.
+        self._reached = SegmentedControl([QApplication.translate(*word) for word in REACHED_WORDS.values()],
+                                         compact=True)
+        self._reached.set_current(_REACHED_KEYS.index(existing.intention_reached)
+                                  if existing.intention_reached in _REACHED_KEYS else -1)
+        if self._intention:
+            block = self._block(lay)
+            block.addWidget(self._question("🎯 " + QApplication.translate(*INTENTION_QUESTIONS[self._intention])))
+            block.addWidget(self._reached)
+
+        block = self._block(lay)
+        block.addWidget(self._question(QApplication.translate("tilauscope_beancave", "What did you taste?"),
+                                       QApplication.translate("tilauscope_common", "optional")))
+        notes_host = QWidget()
+        self._notes_flow = FlowLayout(notes_host, margin=0, spacing=6)
+        block.addWidget(notes_host)
+        self._wheel = QPushButton("🎡 " + QApplication.translate("tilauscope_common", "Flavors"))
+        self._wheel.setObjectName("wheel")
+        self._wheel.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._wheel.clicked.connect(self._open_wheel)
+        self._found = QLabel()
+        self._found.setWordWrap(True)
+        self._found.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:12px;")
+        block.addWidget(self._found)
+        self._refresh_notes()
+
+        block = self._block(lay)
+        block.addWidget(self._question(QApplication.translate("tilauscope_beancave", "What was off?"),
+                                       QApplication.translate("tilauscope_common", "optional")))
         chips = QGridLayout()
-        chips.setSpacing(8)
+        chips.setSpacing(6)
         self._defects: dict[str, QPushButton] = {}
         for i, (key, text) in enumerate(defect_labels().items()):
             b = QPushButton(text)
             b.setObjectName("defect")
+            b.setStyleSheet("padding:4px 10px;")
             b.setCheckable(True)
             b.setChecked(key in existing.defects)
             b.toggled.connect(lambda *_: self._refresh_next())
             self._defects[key] = b
             chips.addWidget(b, i // 3, i % 3)
-        lay.addLayout(chips)
+        block.addLayout(chips)
 
         self._notes = QPlainTextEdit(existing.notes)
         self._notes.setPlaceholderText(QApplication.translate("tilauscope_beancave", "Notes — e.g. lovely body, fruit fades fast"))
-        self._notes.setMaximumHeight(64)
-        lay.addWidget(self._notes)
+        self._notes.setMaximumHeight(52)
+        block.addWidget(self._notes)
 
+        # One line: the change only.
         self._next = QFrame()
         self._next.setObjectName("NextCard")
-        nl = QVBoxLayout(self._next)
-        nl.setContentsMargins(14, 10, 14, 10)
-        nl.setSpacing(3)
+        nl = QHBoxLayout(self._next)
+        nl.setContentsMargins(12, 7, 12, 7)
+        nl.setSpacing(10)
         head = QLabel(QApplication.translate("tilauscope_beancave", "NEXT TIME"))
         head.setStyleSheet(f"color:{THEME['TODAY']};font-size:11px;font-weight:700;letter-spacing:1px;")
         self._next_what = QLabel()
         self._next_what.setWordWrap(True)
-        self._next_what.setStyleSheet("font-size:14px;font-weight:600;")
-        self._next_why = QLabel()
-        self._next_why.setWordWrap(True)
-        self._next_why.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:12px;")
-        nl.addWidget(head)
-        nl.addWidget(self._next_what)
-        nl.addWidget(self._next_why)
+        self._next_what.setStyleSheet("font-size:13px;font-weight:600;")
+        nl.addWidget(head, 0, Qt.AlignmentFlag.AlignTop)
+        nl.addWidget(self._next_what, 1)
         lay.addWidget(self._next)
 
         nav = QHBoxLayout()
@@ -184,20 +247,72 @@ class TastingDialog(QDialog):
         self._refresh_next()
 
     @staticmethod
+    def _block(lay: QVBoxLayout, first: bool = False) -> QVBoxLayout:
+        """One question and its answers, set apart from the next by a thin rule."""
+        frame = QFrame()
+        if not first:
+            frame.setObjectName("Block")
+        inner = QVBoxLayout(frame)
+        inner.setContentsMargins(0, 0 if first else 9, 0, 2)
+        inner.setSpacing(6)
+        lay.addWidget(frame)
+        return inner
+
+    def _refresh_notes(self) -> None:
+        """The tasted notes as chips, the announced ones found in green, then the wheel."""
+        found = {note.casefold() for note in notes_found(self._tasted, self._announced)}
+        while self._notes_flow.count():
+            item = self._notes_flow.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None and widget is not self._wheel:
+                widget.deleteLater()
+        for note in self._tasted:
+            hit = note.casefold() in found
+            chip = QLabel(("✓ " if hit else "") + note)
+            chip.setObjectName("note")
+            chip.setProperty("found", hit)
+            self._notes_flow.addWidget(chip)
+        self._notes_flow.addWidget(self._wheel)
+        if self._announced:
+            names = " · ".join(f"<span style='color:{THEME['SUCCESS']}'>{n}</span>" if n.casefold() in found else n
+                               for n in self._announced)
+            self._found.setText(
+                f"<span style='color:{THEME['OVERLAY0']}'>"
+                + QApplication.translate("tilauscope_beancave", "Announced") + "</span>  " + names
+                + (f"  ·  {found_said(RoastTasting(tasted_notes=self._tasted), ', '.join(self._announced))}"
+                   if self._tasted else ""))
+        self._found.setVisible(bool(self._announced))
+
+    def _open_wheel(self) -> None:
+        # Reached from a click slot: an escape here would close the application.
+        try:
+            from tilauscope.tilau_wheel import FlavorSelectorDialog  # noqa: PLC0415
+            dlg = FlavorSelectorDialog(", ".join(self._tasted), self)
+            if dlg.exec():
+                self._tasted = flavour_notes(dlg.get_notes())
+                self._refresh_notes()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("tasting: flavour wheel failed")
+
+    @staticmethod
     def _question(text: str, hint: str = '') -> QLabel:
         q = QLabel(text + (f"  <span style='color:{THEME['OVERLAY0']};font-weight:400;font-size:11px'>{hint}</span>"
                            if hint else ""))
-        q.setStyleSheet("font-size:13px;font-weight:600;")
+        q.setStyleSheet("font-size:13.5px;font-weight:600;")
         return q
 
     def _tasting(self) -> RoastTasting:
         checked = self._verdicts.checkedButton()
+        answered = bool(self._intention) and self._reached.current() >= 0
         return RoastTasting(
             bean_uuid=self._bean_uuid,
             iso_date=datetime.now().astimezone().date().isoformat(),
             verdict=str(checked.property('key')) if checked is not None else '',
             defects=[k for k, b in self._defects.items() if b.isChecked()],
-            notes=self._notes.toPlainText().strip())
+            notes=self._notes.toPlainText().strip(),
+            intention=self._intention if answered else '',
+            intention_reached=_REACHED_KEYS[self._reached.current()] if answered else '',
+            tasted_notes=list(self._tasted))
 
     def reference_choice(self) -> bool | None:
         """Whether this roast should be the coffee's reference; None when the star was not offered."""
@@ -219,16 +334,15 @@ class TastingDialog(QDialog):
         self._refresh_reference()
         change = tasting_log.next_change(tasting)
         if change is not None:
-            what, why = change_text(change[0], self._mode)
+            what = change_text(change[0], self._mode)[0]
         elif tasting.verdict == 'yes':
-            what, why = (QApplication.translate(*text) for text in tasting_log.NEXT_SAME)
+            what = QApplication.translate(*tasting_log.NEXT_SAME[0])
         elif tasting.verdict:
-            what, why = (QApplication.translate(*text) for text in tasting_log.NEXT_TICK)
+            what = QApplication.translate(*tasting_log.NEXT_TICK[0])
         else:
             self._next.hide()
             return
         self._next_what.setText(what)
-        self._next_why.setText(why)
         self._next.show()
 
     def _save(self) -> None:

@@ -1,4 +1,6 @@
 ## [4.3] 2026-09-13
+build 53
+build 52
 build 51
 build 50
 build 49
@@ -7,6 +9,11 @@ build 49
 * 🐛 [fix(beancave)] : in BeanCave on its own, the Settings window looks for devices as soon as it opens, so a scale removed earlier can be chosen again
 * 🐛 [fix(beancave)] : BeanCave on its own, with an ambient probe chosen, ends when its window closes instead of staying open in the background
 * ⚡ [feat(beancave)] : BeanCave on its own keeps a log, beancave.log in its data folder, with any error no one caught
+* ⚡ [feat(beancave)] : in BeanCave on its own, saving another device in Settings says BeanCave uses it after a restart, and offers to restart now or later
+* 🐛 [fix(beancave)] : in BeanCave on its own, a roast already opened in Artisan, from the timeline or from Roast Profile Maintenance, opens there again after it was closed
+* ⚡ [feat(beancave)] : a coffee's intention — acidity & florals, sweetness or body — is set on its record, and its tasting asks whether the cup brought it out; the tasting also takes the notes found in the cup on the flavour wheel and counts those the coffee announced; the tasting form is lighter, one question per block and Next time on one line
+* 🐛 [fix(beancave)] : in the new coffee wizard, the category, process, species and varieties lists are as wide as the other fields instead of shrinking to elided entries
+* 🐛 [fix(maintenance)] : Record links the roast to the coffee chosen under Green bean, without having to press Complete from bean first; that button lights up once a coffee is chosen and stays grey before
 * ⚡ [feat(beancave)] : BeanCave on its own reads the ambient probe chosen in its settings
 * ⚡ [feat(beancave)] : BeanCave on its own opens Roast Profile Maintenance from its menu, and a banner in Roasts links the roasts Artisan saved without a coffee; once linked, a roast is taken from that coffee's stock
 * 🐛 [fix(beancave)] : on its own, Roast result saves the roasted weight, colour, defects, notes and batch into the roast file instead of failing, and the roast shows its weight loss and colour at once

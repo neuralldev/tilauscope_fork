@@ -341,7 +341,8 @@ class BeanTabMixin:
         dlg = TastingDialog(self, directory=str(self.beancave_directory), roast_uuid=roast_uuid,
                             bean_uuid=bean.uuid, coffee=bean.name or '',
                             roast_epoch=int(meta.roastepoch or meta.mtime), mode=self.aw.qmc.mode,
-                            is_reference=bean.reference_roast_uuid == roast_uuid)
+                            is_reference=bean.reference_roast_uuid == roast_uuid,
+                            intention=bean.intention, announced=bean.flavour_notes)
         if dlg.exec():
             choice = dlg.reference_choice()
             if choice is not None:
@@ -1035,6 +1036,7 @@ class BeanTabMixin:
                 price_per_kg=existing_bean.price_per_kg,
                 reference_roast_uuid=existing_bean.reference_roast_uuid,
                 destination=existing_bean.destination,
+                intention=existing_bean.intention,
                 measures=list(existing_bean.measures),
             )
             self.cave.green_beans[selected_row_index] = new_bean_data
