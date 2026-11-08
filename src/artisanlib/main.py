@@ -5844,7 +5844,7 @@ class ApplicationWindow(QMainWindow):
                                     self.modbus.comport = new_port
                                 else: # Fuji or HOTTOP
                                     self.ser.comport = new_port
-                    elif not no_config and self.qmc.device in {142, 208}: # IKAWA, SR900
+                    elif not no_config and self.qmc.device in {142, 209}: # IKAWA, SR900
                         # we request Bluetooth permission
                         permission_status:bool|None = self.app.getBluetoothPermission(request=True)
                         if permission_status is False:

@@ -124,12 +124,14 @@ METER_BRANCHES: Final[dict[str, MeterBranch]] = {
     'TASI TA612C': (184, {'baudrate': 9600, 'bytesize': 8, 'parity': 'N', 'stopbits': 1, 'timeout': 0.7}, True),
     'Orbiter BT/ET': (196, {'baudrate': 115200, 'bytesize': 8, 'parity': 'N', 'stopbits': 1, 'timeout': 1.0}, False),
     'MQTT': (201, {}, False),
+    'SR900 BT/ET': (209, {}, False),
 }
 
 SPECIAL_METERS: Final[frozenset[str]] = frozenset({
     'IKAWA',
     'NONE',
     'Omega HH506RA',
+    'SR900 BT/ET',
 })
 
 EXTRA_SSETTINGS: Final[tuple[tuple[int, int, str, int, float], ...]] = (
@@ -159,5 +161,5 @@ EXTRA_DEVSSETTINGS: Final[tuple[int, ...]] = (
     9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1,
     1, 6, 6, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 8, 8, 8, 8, 8, 1, 1, 1, 1, 1, 1, 1,
-    1,
+    1, 9, 9, 9,
 )

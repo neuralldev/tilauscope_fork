@@ -624,9 +624,9 @@ class serialport:
                                    self.MQTT_1112,                   #206  
                                    self.MODBUS_1112,                 #207
                                    self.Santoker_XY,                 #208
-                                   self.SR900,                       #208
-                                   self.SR900_HeaterFan,             #209
-                                   self.SR900_State,                 #210                  
+                                   self.SR900,                       #209
+                                   self.SR900_HeaterFan,             #210
+                                   self.SR900_State,                 #211
         ]
         ## TILAU ##
         self.devicefunctionlist += [

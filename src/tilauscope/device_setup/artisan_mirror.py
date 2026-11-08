@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 #: Meter branches that do more than set data (``artisan_defaults.SPECIAL_METERS``),
 #: each replayed in ``apply_meter``.
-HAND_MIRRORED_METERS: Final[frozenset[str]] = frozenset({'IKAWA', 'NONE', 'Omega HH506RA'})
+HAND_MIRRORED_METERS: Final[frozenset[str]] = frozenset({'IKAWA', 'NONE', 'Omega HH506RA', 'SR900 BT/ET'})
 
 TC4_DEVICE_ID: Final[int] = 19
 _TC4_SERIAL: Final[dict[str, Any]] = {
@@ -252,7 +252,7 @@ def apply_meter(aw: 'ApplicationWindow', name: str, parent: Any = None) -> str |
     elif name == 'NONE':
         aw.eventsbuttonflag = 1   # manual input needs the event button
         aw.buttonEVENT.setVisible(True)
-    elif name == 'IKAWA':
+    elif name in {'IKAWA', 'SR900 BT/ET'}:
         if aw.app.getBluetoothPermission(request=True) is False:
             from PyQt6.QtWidgets import QMessageBox
 

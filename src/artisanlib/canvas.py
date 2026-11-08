@@ -13379,7 +13379,7 @@ class tgraphcanvas(QObject):
                         _log.exception(ex)
                         _, _, exc_tb = sys.exc_info()
                         self.adderror((QApplication.translate('Error Message', 'Exception:') + ' Bluetooth BLE support not available {0}').format(str(ex)),getattr(exc_tb, 'tb_lineno', '?'))
-                elif self.device == 208:
+                elif self.device == 209:
                     try:
                         from artisanlib.sr900 import SR900_BLE
                         self.aw.sr900 = SR900_BLE(
@@ -13611,7 +13611,7 @@ class tgraphcanvas(QObject):
                     self.aw.orbiter = None
 
                 # disconnect SR900
-                if not bool(self.aw.simulator) and self.device == 208 and self.aw.sr900 is not None:
+                if not bool(self.aw.simulator) and self.device == 209 and self.aw.sr900 is not None:
                     self.aw.sr900.stop_sampling(wasRecording, self.timeindex[6] != 0)
                     self.aw.sr900 = None
 

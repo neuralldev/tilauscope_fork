@@ -1,4 +1,5 @@
 ## [4.3] 2026-09-13
+build 56
 build 55
 * ⚡ [feat(auto)] : at the drop, AUTO sets the cooling declared for the roaster instead of fixed values; on the Skywalker V2 that is burner 0 %, air 75 %, drum 80 % and the AirWave at 80 % in fan mode, and COOL END is marked once the beans are under 50 °C if no alarm marked it; on a roaster without a declared cooling AUTO only cuts the burner
 * 🐛 [fix(guided)] : the cooling page's safe stop temperature and its Cool end button follow the roaster's declared cooling end
