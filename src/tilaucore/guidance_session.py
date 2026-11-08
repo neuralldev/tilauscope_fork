@@ -1,9 +1,6 @@
-# LICENSE
-# This file is part of TilauScope, a fork of Artisan Roaster Scope.
-# TilauScope is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Tilau
+# This file is part of TilauScope.
 
 """Pure end-to-end orchestration for one live guided-roast session."""
 
@@ -11,25 +8,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tilauscope.guidance_advice import AdviceCandidate, AdviceSelector, GuidanceOutput
-from tilauscope.guidance_core import (
+from tilaucore.guidance_advice import AdviceCandidate, AdviceSelector, GuidanceOutput
+from tilaucore.guidance_core import (
     GuidanceArbiter,
     GuidanceDecision,
     GuidanceMode,
     GuidanceParams,
 )
-from tilauscope.guidance_observer import (
+from tilaucore.guidance_observer import (
     ActionProvenanceTracker,
     LiveTrajectoryObserver,
     ObservationParams,
     TrajectoryObservation,
 )
-from tilauscope.guidance_trajectory import (
+from tilaucore.guidance_trajectory import (
     OperatorTrajectoryProjector,
     ProjectionParams,
     TrajectoryProjection,
 )
-from tilauscope.guidance_risk import GuidanceRiskEngine, RiskParams, RiskSignal
+from tilaucore.guidance_risk import GuidanceRiskEngine, RiskParams, RiskSignal
 
 
 @dataclass(frozen=True)

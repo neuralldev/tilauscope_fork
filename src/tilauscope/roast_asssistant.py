@@ -42,7 +42,6 @@ from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, 
     get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, weight_loss_target_from_plan)
 from tilauscope.theme_qss import style_combo_popup, tint, tooltip_qss
-from tilaucore.milestones import MILESTONE_HALF_C
 from tilaucore.roast_colour import roast_agtron
 from tilauscope.roasters import RoasterContext, roast_context_for
 from tilauscope.probe_visibility import et_available_for
@@ -53,21 +52,27 @@ from tilauscope.roast_plan_model import (TilauScopeRoastPlan, heat_soak_correcti
                                          ROAST_DESTINATION_SETTING)
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
 # moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
-from tilauscope.guidance_core import GuidanceMode, GuidanceParams
-from tilauscope.guidance_observer import (
+from tilaucore.guidance_core import GuidanceMode, GuidanceParams
+from tilaucore.autopilot import (TP_GRACE_S as _TP_GRACE_S, AutoPilot, burner_may_rise as _burner_may_rise,
+                                 next_ramp_bt as _ap_next_ramp_bt)
+from tilaucore.guidance_crash import CrashDetector
+from tilaucore.guidance_steps import (GestureTrack as _GestureTrack, gesture_steps,
+                                      no_burner_step as _no_burner_step, plan_steps as _plan_steps,
+                                      ror_above as _ror_above)
+from tilaucore.guidance_observer import (
     ActionSource, Lever as GuidanceLever, observable_control_levers,
     response_window_s,
 )
-from tilauscope.guidance_replay import match_alarm_automation
-from tilauscope.guidance_risk import RiskKind
-from tilauscope.guidance_phase import (
+from tilaucore.guidance_replay import match_alarm_automation
+from tilaucore.guidance_risk import RiskKind
+from tilaucore.guidance_phase import (
     GuidancePhase, GuidancePhaseTracker, PendingMilestone, PhaseSource,
     milestone_marked, resolve_phase_from_plan_temperature,
 )
-from tilauscope.guidance_advice import (
+from tilaucore.guidance_advice import (
     AdviceCandidate, AdviceCategory, AdviceSeverity,
 )
-from tilauscope.guidance_session import GuidanceSample, GuidanceSession
+from tilaucore.guidance_session import GuidanceSample, GuidanceSession
 from tilauscope.widgets.controls import SegmentedControl
 
 
@@ -331,26 +336,6 @@ def _dev_crash_threshold(ror_target_drop: float, mode: str,
     return fallback * scale
 
 
-_TP_GRACE_S: Final = 45.0   # le RoR se remet du creux de charge : illisible jusque-là
-
-
-def _crash_readable(t_now_sec: float, t_tp_sec: float) -> bool:
-    """Le séchage ne se juge qu'après le TP : la chute du creux de charge n'est pas un crash."""
-    return t_tp_sec > 0.0 and t_now_sec - t_tp_sec >= _TP_GRACE_S
-
-
-def _dev_air_step(target: float, current: float) -> "float | None":
-    """Le prochain palier d'air vers la cible du plan. L'air ne redescend jamais."""
-    return current + _DEV_STAGE if target - current >= _DEV_STAGE else None
-
-
-def _burner_may_rise(plan: "dict | None", t_now_sec: float, t_fcs_sec: float) -> bool:
-    """Un grain jamais torréfié est le seul qu'on rattrape au brûleur, et dans la
-    première minute après le FC. Un grain appris garde son feu (Tilau, 2026-11-02)."""
-    return ((plan or {}).get("Plan Confidence", "grid only") == "grid only"
-            and t_now_sec - t_fcs_sec <= 60.0)
-
-
 def _dtr_realtime(t_now_sec: float, t_charge_sec: float, t_fcs_sec: float) -> float|None:
     """DTR temps réel en % : (temps depuis FC) / (temps depuis CHARGE) × 100."""
     total = t_now_sec - t_charge_sec
@@ -520,11 +505,6 @@ def _plan_heater_pct(plan: "dict | None", phase: str) -> "float | None":
 # ticks AUTO consécutifs en échec tolérés avant de rendre la main (1 Hz) : un
 # raté isolé est rattrapable, trois d'affilée = le pilote ne pilote plus.
 _AP_TICK_FAIL_MAX: Final = 3
-# échantillons BT consécutifs au-dessus de la cible avant d'armer l'auto-DROP :
-# la BT est bruitée, et un pic isolé ne doit pas larguer un roast. À ~1 Hz et
-# 5-8 °C/min en dev, trois ticks coûtent moins d'un demi-degré.
-_AP_DROP_CONFIRM_TICKS: Final = 3
-
 # Fenêtre de grâce (s) après le CHARGE : le handoff PID préchauffe→roast bouge
 # transitoirement les sliders ; AUTO les suit sans se mettre en pause pendant cette fenêtre.
 _AP_CHARGE_SETTLE_S: Final = 8.0
@@ -532,85 +512,8 @@ _AP_CHARGE_SETTLE_S: Final = 8.0
 # switch; all runtime gates (active session, a plan, read-only roaster)
 # remain mandatory before arming.
 _AP_USER_ENABLED: Final = True
-# Dev en AUTO — « tenir le feu » : la coupe rapide du feu en dev est la cause
-# principale des crashes post-FC ; filet minimal : air par paliers, brûleur tenu sauf grain jamais torréfié.
-_AP_DEV_RATE_PCT_PER_MIN: Final = 5.0   # descente feu max en fenêtre exotherme
-_AP_DEV_RATE_WINDOW_S: Final = 75.0     # fenêtre exotherme FC → FC+75 s
-_AP_NET_STEP_PCT: Final = 5.0           # palier du filet, sur l'air
-_AP_NET_CADENCE_S: Final = 30.0         # l'air répond en 20-40 s : pas de palier sur un effet pas encore vu
-_AP_NET_MAX_STAGES: Final = 3           # paliers au plus, puis on laisse faire
-_AP_NET_ROR_BACK_C: Final = 0.5         # °C/min regagnés : le RoR repart, le filet s'arrête
-
-# plan keys of the per-phase lever values, by Artisan slider index
-_AP_LEVER_KEYS: Final = {
-    0: "Airflow (%) (Dry|Mai|Dev)",
-    1: "Drum Speed (%) (Dry|Mai|Dev)",
-    2: "Extraction (%) (Dry|Mai|Dev)",
-}
 _AP_PHASE_COL: Final = {"DRY": 0, "MAI": 1, "DEV": 2}
-_AP_PHASE_WORD: Final = {"DRY": "drying", "MAI": "maillard", "DEV": "development"}
 
-# Réglages de refroidissement posés par l'AutoPilot au DROP : couper le brûleur,
-# ventiler et extraire fort, tambour rapide (drum_midroast_locked ne s'applique plus).
-_AP_COOLING_LEVERS: Final = {3: 0.0, 0: 75.0, 2: 75.0, 1: 80.0}  # burner, air, ext, drum
-
-
-def _ap_next_ramp_bt(plan: dict | None, keys: "tuple[str, ...]",
-                     bt: float) -> "float | None":
-    """Seuil BT du prochain palier des rampes `keys` au-dessus de bt, None sans palier."""
-    nxt: "float | None" = None
-    try:
-        for key in keys:
-            for step in (plan or {}).get(key) or []:
-                thr = float(step["bt"])
-                if thr > bt and (nxt is None or thr < nxt):
-                    nxt = thr
-    except (TypeError, ValueError, KeyError):
-        return None
-    return nxt
-
-
-def _ap_ramp_crossed(plan: dict | None, bt_prev: float,
-                     bt_now: float) -> "tuple[float, int] | None":
-    """Palier de rampe heater FRANCHI ce tick : entrée de
-    plan['Heater Ramp'] dont le seuil BT vient d'être traversé EN MONTANT
-    (bt_prev < seuil <= bt_now). Un franchissement montant uniquement — au
-    CHARGE la sonde lit la température du tambour puis PLONGE vers le TP en
-    traversant tous les seuils vers le bas : cette descente ne doit jamais
-    déclencher un palier (bug observé : palier pre-FC 51 % appliqué au début
-    du séchage). None si aucun seuil franchi ce tick."""
-    if bt_now <= bt_prev:
-        return None
-    hit: "tuple[float, int] | None" = None
-    try:
-        for step in (plan or {}).get("Heater Ramp") or []:
-            thr = float(step["bt"])
-            if bt_prev < thr <= bt_now:
-                hit = (thr, int(step["heater"]))   # dernier seuil du tick
-    except (TypeError, ValueError, KeyError):
-        return None
-    return hit
-
-
-def _ap_entry_ramp_crossed(plan: dict | None, key: str, bt_prev: float,
-                           bt: float) -> "dict | None":
-    """Étage de la rampe `key` (plan[key], liste d'entrées {bt, ...})
-    FRANCHI ce tick, en MONTANT (bt_prev < seuil <= bt). Renvoie le dernier
-    (plus haut) étage franchi — valeurs absolues auto-réparatrices : un saut de
-    BT qui sauterait un étage atterrit sur la bonne consigne suivante. None si
-    aucun seuil franchi. Sert la « Dev Ramp » (feu/air/ext en dev) et l'« Air
-    Ramp » (montée airflow de Maillard)."""
-    if bt <= bt_prev:
-        return None
-    hit: "dict | None" = None
-    try:
-        for step in (plan or {}).get(key) or []:
-            thr = float(step["bt"])
-            if bt_prev < thr <= bt:
-                hit = step
-    except (TypeError, ValueError, KeyError):
-        return None
-    return hit
 
 
 _BURNER_SLIDER_DEFAULT = 3   # Artisan's heater slider, and the Skywalker one
@@ -839,22 +742,6 @@ def _simulated_mark_passed(profile: "dict | None", index: int, recorded_s: float
         return None
 
 
-def _ap_milestone_due(which: "str | None", suggested: bool, bt: float, dry_end_temp: float,
-                      fc_temp: float, *, tp_seen: bool, scale: float = 1.0,
-                      original: "bool | None" = None) -> bool:
-    """AUTO marks a milestone when the detector calls it. Without a call, a simulation
-    takes the original's own mark; live, BT leaving the detector's window decides.
-    Nothing else moves the phase while AUTO is armed."""
-    if which is None:
-        return False
-    if suggested:
-        return True
-    if original is not None:
-        return original
-    target = dry_end_temp if which == "DE" else fc_temp
-    return tp_seen and target > 0 and bt >= target + MILESTONE_HALF_C * scale
-
-
 def _mark_missing_milestone(aw, which: str) -> None:
     """Mark an explicitly requested missing event through Artisan's signals."""
     if which == "DE":
@@ -959,45 +846,11 @@ def _seconds_since_event(aw, idx: int):
         return None
 
 
-class _RoRCrashDetector:
+class _RoRCrashDetector(CrashDetector):
+    """Le crash RoR de tilaucore (guidance_crash), avec le beep et les mots du desktop.
+
+    reset(mode) doit être appelé à chaque changement de phase (seuil en °C ou °F).
     """
-    Détecte un crash RoR : perte sur une fenêtre glissante de 15 s, tenue quelques
-    secondes. Même critère dans toutes les phases, seul le geste annoncé change.
-    Rejeu sur 60 roasts : 3 en développement, 1 avant le FC, aucun sur un roast sain.
-
-    Émet un beep Qt et retourne un message d'alerte.
-
-    Note mode
-    ---------
-    reset(mode) doit être appelé à chaque changement de phase pour adapter
-    le seuil à l'unité courante (°C ou °F).
-    """
-    FALL_WINDOW_S    = 15.0  # fenêtre de mesure de la chute
-    FALL_C_PER_WIN   = 3.0   # °C/min perdus sur la fenêtre → crash franc
-    MIN_SPAN_S       = 10.0  # historique mini couvert avant de juger
-    MIN_DURATION_SEC = 5.0   # tenue de la condition (< 4-5 s = bruit)
-    DRUM_QUIET_S     = 30.0  # muet après un geste tambour (artefact de MESURE RoR)
-
-    def __init__(self) -> None:
-        self._consecutive:    int   = 0
-        self._last_beep_ror:  float = 0.0
-        self._fall_thr:       float = self.FALL_C_PER_WIN  # °C/min/15 s par défaut
-        self._drum_quiet_until: float = 0.0   # monotonic — survit au reset()
-
-    def notify_drum_event(self) -> None:
-        """Un mouvement du tambour pollue la MESURE du RoR (excursion
-        +50 % médiane, 64/81 roasts du corpus) : toute détection RoR est muette
-        pendant DRUM_QUIET_S. Volontairement NON remis à zéro par reset()."""
-        self._drum_quiet_until = time.monotonic() + self.DRUM_QUIET_S
-
-    def reset(self, mode: str = 'C') -> None:
-        """
-        Réinitialise le détecteur et adapte le seuil à l'unité (un delta : ×1.8 en °F).
-        Doit être appelé à chaque set_phase().
-        """
-        self._consecutive   = 0
-        self._last_beep_ror = 0.0
-        self._fall_thr      = self.FALL_C_PER_WIN * (9.0 / 5.0 if mode == 'F' else 1.0)
 
     def check(
         self,
@@ -1010,36 +863,15 @@ class _RoRCrashDetector:
         """
         Retourne un message d'alerte si crash, None sinon.
 
-        dt-aware : fenêtre et tenue sont en SECONDES, donc indépendantes du
-        réglage d'échantillonnage Artisan (qmc.delay).
-
         dev_mode choisit le geste. Avant le dev : l'air, puis le brûleur s'il ne
         suffit pas. En dev : le brûleur reste, l'air monte par paliers de 5 % ;
         raise_burner ajoute le brûleur (voir _burner_may_rise).
         """
-        if len(ror_hist) < 4:
+        _fall = self.fall(ror_hist, dt)
+        if _fall is None:
             return None
-        if time.monotonic() < self._drum_quiet_until:
-            self._consecutive = 0   # fenêtre tambour : mesure RoR polluée
-            return None
-
-        dt = dt if (dt and dt > 0) else 1.0
-        _n = min(len(ror_hist), max(2, int(round(self.FALL_WINDOW_S / dt)) + 1))
-        _vals = list(ror_hist)[-_n:]
-        _span = (len(_vals) - 1) * dt
-        if _span < self.MIN_SPAN_S:
-            return None
-        # chute normalisée à la fenêtre nominale (°C/min perdus / 15 s)
-        _fall = (_vals[0] - _vals[-1]) * (self.FALL_WINDOW_S / _span)
-        if _fall < self._fall_thr:
-            self._consecutive = 0
-            return None
-        self._consecutive += 1
-        if self._consecutive < max(2, int(-(-self.MIN_DURATION_SEC // dt))):
-            return None
-        if abs(ror - self._last_beep_ror) > 0.5:
+        if self.beep_due(ror):
             QApplication.beep()
-            self._last_beep_ror = ror
         if dev_mode and raise_burner:
             return QApplication.translate(
                 "tilauscope_roast_assistant",
@@ -1923,100 +1755,26 @@ class _DetailsButton(QPushButton):
         self.toggled.connect(lambda on: self.setText(self._hide_text if on else self._open_text))
 
 
-_DEV_STAGE: Final[int] = 5   # % moved at a time by hand in development
 _AIR_SLIDER: Final[int] = 0     # machine lever order: 0=Air, 1=Drum, 2=Damper, 3=Burner
-
-
-def _plan_steps(plan: "dict | None") -> "list[tuple[float, str, int]]":
-    """Every lever step the plan asks for, as (BT, 'burner' | 'air', %), in BT order. By hand
-    the development levers move in whole stages, once the plan has drifted that far."""
-    steps: "list[tuple[float, str, int]]" = []
-    dev_steps: "dict[str, list[tuple[float, int]]]" = {"burner": [], "air": []}
-    for key in ("Heater Ramp", "Air Ramp", "Dev Ramp"):
-        for entry in (plan or {}).get(key) or []:
-            try:
-                threshold = float(entry["bt"])
-                if entry.get("heater") is not None:
-                    if key == "Dev Ramp":
-                        dev_steps["burner"].append((threshold, int(entry["heater"])))
-                    else:
-                        steps.append((threshold, "burner", int(entry["heater"])))
-                if entry.get("airflow") is not None:
-                    if key == "Dev Ramp":
-                        dev_steps["air"].append((threshold, int(entry["airflow"])))
-                    else:
-                        steps.append((threshold, "air", int(entry["airflow"])))
-            except (TypeError, ValueError, KeyError):
-                continue
-    steps.sort(key=lambda step: step[0])
-    for lever, ramp in dev_steps.items():
-        held = next((step[2] for step in reversed(steps) if step[1] == lever), None)
-        for threshold, pct in sorted(ramp):
-            if held is None:
-                held = pct
-            elif abs(pct - held) >= _DEV_STAGE:
-                held += _DEV_STAGE if pct > held else -_DEV_STAGE
-            else:
-                continue
-            steps.append((threshold, lever, held))
-    return sorted(steps, key=lambda step: step[0])
-
-
-def _no_burner_step(due: "tuple[float, str, int] | None", crashing: bool) -> "tuple[float, str, int] | None":
-    """A crash has its own message: the card asks for no burner move against it."""
-    return None if crashing and due is not None and due[1] == "burner" else due
-
-
-class _GestureTrack:
-    """One roast's way up the plan. BT only counts going up, and a step is asked for once:
-    a probe dip or a replan never brings back a step already behind the bean."""
-
-    def __init__(self) -> None:
-        self.peak: "float | None" = None
-        self.pending: "dict[str, tuple[float, str, int]]" = {}
-
-
-def _ror_above(ror: "float | None", target: float) -> bool:
-    return ror is not None and target > 0 and ror > target
 
 
 def _gesture_steps(aw, plan: "dict | None", bt: float, scale: float, ror_high: bool = False
                    ) -> "tuple[tuple[float, str, int] | None, tuple[float, str, int] | None]":
-    """(step due now, next step that changes a lever), burner first. The plan, learning
-    included, speaks even while the operator's own move is being observed: that is when
-    it is needed. A machine with no lever to read back gets the step while the bean is on it.
-    A step up on the burner waits while the RoR is already too high."""
+    """(step due now, next step that changes a lever), burner first (tilaucore.guidance_steps).
+    The plan, learning included, speaks even while the operator's own move is being observed:
+    that is when it is needed. A machine with no lever to read back gets the step while the
+    bean is on it. A step up on the burner waits while the RoR is already too high."""
     track = getattr(aw, "_tilau_gesture_track", None)
     if track is None:
         track = aw._tilau_gesture_track = _GestureTrack()
     context = getattr(aw, "_tilau_roast_context", None)
     steps = [step for step in _plan_steps(plan)
              if step[1] != "air" or context is None or context.has_airflow_control]
-    window = NOW_WINDOW_C * scale
-    for step in steps:
-        if step[0] <= bt + window and (track.peak is None or step[0] > track.peak):
-            track.pending[step[1]] = step
-    track.peak = max(bt + window, track.peak if track.peak is not None else bt + window)
     curve_only = _guidance_curve_only(aw)
-    due = None
-    current: "dict[str, float | None]" = {}
-    for lever, slider in (("air", _AIR_SLIDER), ("burner", _burner_slider_idx(aw))):
-        held = None if curve_only else _read_slider_pct(aw, slider)
-        current[lever] = held
-        step = track.pending.get(lever)
-        if step is None:
-            continue
-        size = _slider_step(aw, slider)
-        if held is None and bt > step[0] + window * 2:
-            del track.pending[lever]
-        elif held is not None and (abs(held - round(step[2] / size) * size) < 1
-                                   or (lever == "air" and step[2] < held)):
-            del track.pending[lever]
-        elif not (ror_high and lever == "burner" and held is not None and step[2] > held):
-            due = step
-            current[lever] = step[2]
-    return due, next((step for step in steps
-                      if step[0] > track.peak and step[2] != current[step[1]]), None)
+    sliders = {"air": _AIR_SLIDER, "burner": _burner_slider_idx(aw)}
+    held = {lever: None if curve_only else _read_slider_pct(aw, slider) for lever, slider in sliders.items()}
+    size = {lever: _slider_step(aw, slider) for lever, slider in sliders.items()}
+    return gesture_steps(track, steps, bt, NOW_WINDOW_C * scale, held, size, ror_high)
 
 
 class _GuidedPage:
@@ -3497,6 +3255,12 @@ class _CoolingPage(QWidget):
     _SAFE_STOP_TEMP = 50.0  # Temperature below which fans can be stopped
     _NEXT_BATCH_IDLE = 160.0 # Typical target to start stabilization for next batch
 
+    def _safe_stop_c(self) -> float:
+        """Where the cooling ends, °C: the roaster's own (roasters.json), else the default."""
+        cooling = getattr(getattr(self.aw, "_tilau_roast_context", None), "cooling", None)
+        end = cooling.end_below_c if cooling is not None else None
+        return float(end) if end is not None else self._SAFE_STOP_TEMP
+
     def __init__(self, aw: ApplicationWindow):
         super().__init__()
         self.aw = aw
@@ -3812,7 +3576,7 @@ class _CoolingPage(QWidget):
         warm_ror    = -5.0  if mode_c else -5.0 * 1.8
         ror_min     = -1.0  if mode_c else -1.0 * 1.8
         bbp_temp    = 160.0 if mode_c else fromCtoFstrict(160.0)
-        target_temp = self._NEXT_BATCH_IDLE if next_batch_planned else self._SAFE_STOP_TEMP
+        target_temp = self._NEXT_BATCH_IDLE if next_batch_planned else self._safe_stop_c()
         target_temp = target_temp if mode_c else fromCtoFstrict(target_temp)
 
         not_cooling = (bt > ceiling_bt and ror > warm_ror)
@@ -3866,8 +3630,8 @@ class _CoolingPage(QWidget):
             self.coach.set(self._tr_coach_shutdown, _S_OK)
 
         # ── C : Bouton Cool end ───────────────────────────────────────────────
-        safe_temp = (self._SAFE_STOP_TEMP if self.aw.qmc.mode == 'C'
-                     else fromCtoFstrict(self._SAFE_STOP_TEMP))
+        safe_temp = (self._safe_stop_c() if self.aw.qmc.mode == 'C'
+                     else fromCtoFstrict(self._safe_stop_c()))
         cool_ready = bt <= safe_temp
         self.btn_cool_end.set_active(cool_ready, style='purple' if cool_ready else 'dim')
 
@@ -5078,6 +4842,78 @@ class AccessOmniflux():
             _logd.warning("omniflux detect: color device not found — color PID layer disabled")
         return binding
 
+class _DesktopAutoHost:
+    """AUTO's host on the desktop (tilaucore.autopilot): Artisan's event sliders, signals and words."""
+
+    def __init__(self, panel: "RoastAssistantPanel") -> None:
+        self.p = panel
+
+    @property
+    def ids(self) -> dict:
+        return {"air": 0, "drum": 1, "extractor": 2, "burner": _burner_slider_idx(self.p.aw)}
+
+    @property
+    def plan(self) -> "dict | None":
+        return self.p._plan  # noqa: SLF001
+
+    @property
+    def context(self):
+        return self.p.roast_context
+
+    def t_now(self) -> float:
+        return float(self.p._collect_qmc_context()["t_now_sec"])  # noqa: SLF001
+
+    def phase(self) -> "str | None":
+        p = self.p
+        return {p._PHASE_DRY: "DRY", p._PHASE_MAI: "MAI", p._PHASE_DEV: "DEV"}.get(p._current_phase)  # noqa: SLF001
+
+    def read(self, lever):
+        return _read_slider_pct(self.p.aw, lever)
+
+    def apply(self, lever, pct: float) -> bool:
+        return _apply_slider_value(self.p.aw, lever, pct)
+
+    def step(self, lever) -> float:
+        return _slider_step(self.p.aw, lever)
+
+    def has_extractor(self) -> bool:
+        return getattr(self.p.aw, "bleAirwaveDevice", None) is not None
+
+    def moved(self, lever) -> None:
+        self.p._ap_lever_flash[lever] = time.monotonic()  # noqa: SLF001
+
+    def report(self, kind: str, **data) -> None:
+        self.p._ap_report(kind, **data)  # noqa: SLF001
+
+    def on_state(self, state: str, lag_s: "float | None") -> None:
+        self.p._ap_state_changed(state, lag_s)  # noqa: SLF001
+
+    def crash(self, ror: float, dev_mode: bool, raise_burner: bool) -> "str | None":
+        p = self.p
+        return p._crash_detector.check(  # noqa: SLF001
+            ror, p._ror_hist, dt=max(0.25, p.aw.qmc.delay / 1000.0),  # noqa: SLF001
+            dev_mode=dev_mode, raise_burner=raise_burner)
+
+    def mark(self, which: str) -> None:
+        qmc = self.p.aw.qmc
+        {"DE": qmc.markDRYSignal, "FC": qmc.markFCsSignal, "DROP": qmc.markDropSignal}[which].emit(False)
+
+    def beep(self) -> None:
+        QApplication.beep()
+
+    def original_mark(self, index: int) -> "bool | None":
+        return self.p._ap_original_mark(index)  # noqa: SLF001
+
+    def extractor_mode(self, mode: str) -> None:
+        _send_airwave_mode(self.p.aw, f"MODE {mode}")
+
+
+def _engine_attr(name: str) -> property:
+    """A panel attribute kept by the AUTO engine."""
+    return property(lambda self: getattr(self._ap, name),
+                    lambda self, value: setattr(self._ap, name, value))
+
+
 class RoastAssistantPanel(QWidget):
     """
     Fenêtre flottante d'assistance contextuelle à la torréfaction.
@@ -5089,6 +4925,23 @@ class RoastAssistantPanel(QWidget):
     """
 
     # Phases internes
+    _ap_state = _engine_attr("state")
+    _ap_expected = _engine_attr("expected")
+    _ap_slider_last = _engine_attr("slider_last")
+    _ap_bt_prev = _engine_attr("bt_prev")
+    _ap_settle_until = _engine_attr("settle_until")
+    _ap_tick_failures = _engine_attr("tick_failures")
+    _ap_automark_done = _engine_attr("automark_done")
+    _ap_cool_end_c = _engine_attr("cool_end_c")
+    _ap_drop_deadline = _engine_attr("drop_deadline")
+    _ap_drop_confirm = _engine_attr("drop_confirm")
+    _ap_drop_cancelled = _engine_attr("drop_cancelled")
+    _ap_dev_heater_pending = _engine_attr("dev_heater_pending")
+    _ap_dev_rate_anchor = _engine_attr("dev_rate_anchor")
+    _ap_net_ror = _engine_attr("net_ror")
+    _ap_net_stages = _engine_attr("net_stages")
+    _ap_net_last = _engine_attr("net_last")
+
     _PHASE_IDLE    = 0
     _PHASE_DRY     = 1
     _PHASE_MAI     = 2
@@ -5168,13 +5021,8 @@ class RoastAssistantPanel(QWidget):
 
         # AutoPilot v1a (feedforward — AutoRoast-Spec §3 étage 1, §5) ──
         # 'off' | 'armed' | 'paused' ; armement = consentement, opt-in par session.
-        self._ap_state: str = "off"
-        self._ap_expected: dict[int, float] = {}      # idx slider → valeur posée par l'AutoPilot
-        self._ap_slider_last: dict[int, float] = {}   # dernière valeur observée (détection reprise en main)
+        self._ap = AutoPilot(_DesktopAutoHost(self))   # AUTO's state and decisions (tilaucore.autopilot)
         self._ap_notice: "tuple[str, str, float] | None" = None  # (texte, niveau, expiration monotonic)
-        self._ap_bt_prev: "float | None" = None   # BT du tick précédent (franchissement montant de rampe)
-        self._ap_settle_until: float = 0.0  # coutures de jalon (CHARGE/DE/FC) : fenêtre de grâce anti-pause
-        self._ap_tick_failures: int = 0     # ticks consécutifs en échec (pause au-delà de _AP_TICK_FAIL_MAX)
         self._tr_ap_blocked_noplan = QApplication.translate(
             "tilauscope_roast_assistant", "AUTO unavailable — no roast plan for this session.")
         self._tr_ap_blocked_inactive = QApplication.translate(
@@ -5194,7 +5042,6 @@ class RoastAssistantPanel(QWidget):
         # vue cockpit (v6) — dernière action + flashes tuiles + textes
         self._ap_last_action: "tuple[str, float] | None" = None   # (texte, t_mono)
         self._ap_lever_flash: dict[int, float] = {}               # idx → t_mono de la pose
-        self._ap_automark_done: set[str] = set()                  # "DE"/"FC" one-shot
         self._tr_cp_pilot   = QApplication.translate("tilauscope_roast_assistant", "● AUTO PILOTING")
         self._tr_cp_paused  = QApplication.translate("tilauscope_roast_assistant", "⏸ AUTO PAUSED")
         self._tpl_cp_next   = QApplication.translate("tilauscope_roast_assistant", "NEXT STEP AT {0}°")
@@ -5216,9 +5063,6 @@ class RoastAssistantPanel(QWidget):
             self._PHASE_DEV: QApplication.translate("Label", "DROP"),
         }
         # jalons en cockpit : bouton contextuel + auto-DROP plan (10 s annulables)
-        self._ap_drop_deadline: "float | None" = None   # t_mono du tir auto-DROP
-        self._ap_drop_confirm: int = 0   # ticks consécutifs BT ≥ cible (armement auto-DROP)
-        self._ap_drop_cancelled: bool = False           # annulé = plus jamais re-armé (session)
         self._tr_cp_btn_de   = QApplication.translate("tilauscope_roast_assistant", "Mark DRY END")
         self._tr_cp_btn_fc   = QApplication.translate("tilauscope_roast_assistant", "Mark FC START")
         self._tr_cp_btn_drop = QApplication.translate("tilauscope_roast_assistant", "Mark DROP")
@@ -5229,11 +5073,6 @@ class RoastAssistantPanel(QWidget):
             "tilauscope_roast_assistant", "⬇ auto-DROP stood down — back below target")
         self._tpl_ap_dev_ramp = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · DEV {0}")
         # « tenir le feu » en dev (rate-limiter exotherme) et filet réactif air + brûleur.
-        self._ap_dev_heater_pending: "float | None" = None  # cible feu en file (monotone)
-        self._ap_dev_rate_anchor: "tuple[float, float] | None" = None  # (t_fc_sec, burner_pct)
-        self._ap_net_ror: "float | None" = None  # RoR au dernier palier ; None = filet au repos
-        self._ap_net_stages: int = 0             # paliers posés depuis le début du filet
-        self._ap_net_last: float = 0.0           # monotonic de la dernière touche du filet
         self._drum_last_pct: "float | None" = None       # watch tambour (mute détection RoR)
         self._tpl_ap_devfire = QApplication.translate(
             "tilauscope_roast_assistant", "⚙ AUTO · Burner → {0}% (dev, rate-limited)")
@@ -5788,6 +5627,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_last_action = None
         self._ap_lever_flash.clear()
         self._ap_automark_done.clear()
+        self._ap_cool_end_c = None
         self._ap_drop_deadline = None
         self._ap_drop_confirm = 0
         self._ap_drop_cancelled = False
@@ -5981,6 +5821,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_last_action = None
         self._ap_lever_flash.clear()
         self._ap_automark_done.clear()
+        self._ap_cool_end_c = None
         self._ap_drop_deadline = None
         self._ap_drop_confirm = 0
         self._ap_drop_cancelled = False
@@ -6095,7 +5936,7 @@ class RoastAssistantPanel(QWidget):
                 self._ap_apply_phase(phase_key)
                 self._ap_start_phase(phase_key)
             elif phase_key in ("DROP", "COOL"):
-                self._ap_apply_cooling()   # burner 0, air/ext forts, drum rapide, puis off
+                self._ap_apply_cooling()   # refroidissement du torréfacteur, puis off
 
         # En entrant en COOL, forcer la lecture directe de qmc pour peupler
         # _last_bt/et/ror immédiatement (le bridge peut avoir arrêté d'émettre après DROP)
@@ -6517,33 +6358,14 @@ class RoastAssistantPanel(QWidget):
     # le même chemin que l'humain (_apply_slider_value).
 
     def _ap_watch_idxs(self) -> tuple[int, ...]:
-        b = _burner_slider_idx(self.aw)
-        return (0, 1, 2, b) if b not in (0, 1, 2) else (0, 1, 2)
+        return self._ap.watch_ids()
 
     def _ap_max_burner(self) -> float:
         """Plafond brûleur déclaré par le torréfacteur (roasters.json), 100 sans plafond."""
-        return float(getattr(self.roast_context, "heater_max_pct", 100.0) or 100.0)
+        return self._ap.max_burner()
 
     def _ap_start_phase(self, phase_key: str) -> None:
-        """Entrée en DEV (jalon ou reprise) : ancre du rate-limiter exotherme
-        (t0 = entrée en dev, b0 = feu courant), file feu vidée, filet réactif
-        remis à zéro (nouvelle référence)."""
-        # The bean may reach the mark past the plan's temperature: the steps it
-        # already crossed in the previous phase still apply on the next tick.
-        _ramp = self._plan.get({"MAI": "Air Ramp", "DEV": "Dev Ramp"}.get(phase_key, ""), []) if self._plan else []
-        if _ramp and self._ap_bt_prev is not None:
-            self._ap_bt_prev = min(self._ap_bt_prev, min(float(_s["bt"]) for _s in _ramp) - 0.1)
-        if phase_key != "DEV":
-            return
-        try:
-            t0 = float(self._collect_qmc_context()["t_now_sec"])
-            _b0 = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
-            self._ap_dev_rate_anchor = (t0, float(_b0)) if _b0 is not None else None
-            self._ap_dev_heater_pending = None
-            self._ap_net_ror = None
-            self._ap_net_stages = 0
-        except Exception:  # pylint: disable=broad-except
-            _logd.warning("AutoPilot: start_phase failed", exc_info=True)
+        self._ap.start_phase(phase_key)
 
     def _ap_cockpit_active(self) -> bool:
         """Vue cockpit affichée : AUTO ARMÉ pendant une phase de roast.
@@ -6566,10 +6388,12 @@ class RoastAssistantPanel(QWidget):
                 _w.update()   # repaint one-shot (fantômes, cf. fix FC)
 
     def _ap_set_state(self, state: str, lag_s: float | None = None) -> None:
-        self._ap_state = state
+        self._ap.set_state(state, lag_s)
+
+    def _ap_state_changed(self, state: str, lag_s: "float | None") -> None:
+        """AUTO changed state (the engine's host hook): the screen and the guidance follow."""
         self.aw.qmc._tilau_auto_piloted = state == "armed"
         if state == "armed":
-            self._ap_tick_failures = 0   # tout armement repart d'une ardoise nette
             self.aw._tilau_guidance_decision = self._guidance_session.set_auto(True)
         elif state == "paused":
             self.aw._tilau_guidance_decision = self._guidance_session.operator_action(
@@ -6581,22 +6405,55 @@ class RoastAssistantPanel(QWidget):
             self._bean_header.set_auto_state(state)
         except (AttributeError, RuntimeError):
             pass
-        if state != "armed":
-            # Compte à rebours d'auto-DROP : c'est une échéance ABSOLUE. Une
-            # pause pendant le décompte (geste opérateur, filet épuisé, tick en
-            # échec) la laissait posée et déjà périmée — le réarmement suivant
-            # larguait le roast au tick d'après, sans décompte, sans bip et sans
-            # « Annuler ». On la retire : la cible doit être re-tenue et les
-            # 10 s annulables re-gagnées.
-            self._ap_drop_deadline = None
-            self._ap_drop_confirm = 0
-        if state == "off":
-            self._ap_expected.clear()
-            self._ap_dev_heater_pending = None   # file feu + rate-limiter dev
-            self._ap_dev_rate_anchor = None
-            self._ap_net_ror = None
-            self._ap_net_stages = 0
         self._sync_stack_page()
+
+    def _ap_report(self, kind: str, **data) -> None:
+        """What AUTO did, in the desktop's words: the coach line notice and the cockpit's last action."""
+        now = time.monotonic()
+
+        def label(idx) -> str:
+            try:
+                return str(self.aw.qmc.etypes[idx]).upper()
+            except (AttributeError, IndexError):
+                return f"SLD{idx}"
+
+        def moves(items) -> str:
+            return " · ".join(f"{label(idx)} {pct:.0f}%" for idx, pct in items)
+
+        text = None
+        if kind == "armed":
+            self._ap_notice = (self._tr_ap_armed_note, _S_OK, now + 5)
+        elif kind == "paused":
+            if data.get("reason") == "crash":
+                self._ap_notice = (data["crash"], _S_WARN, now + 10)
+            else:
+                self._ap_notice = (self._tr_ap_paused_note, _S_WARN, now + 10)
+        elif kind == "phase":
+            text = self._tpl_ap_phase.format(self._cp_phase_words[self._PHASE_MAP[data["phase"]]],
+                                             moves(data["moves"]))
+        elif kind == "ramp":
+            text = self._tpl_ap_ramp.format(f"{data['burner']:.0f}", f"{data['at']:.0f}")
+        elif kind == "dev_step":
+            text = self._tpl_ap_dev_ramp.format(moves(data["moves"]))
+        elif kind == "devfire":
+            text = self._tpl_ap_devfire.format(f"{data['burner']:.0f}")
+        elif kind == "marked":
+            text = self._tpl_ap_marked.format(self._tr_ap_mark_de if data["which"] == "DE" else self._tr_ap_mark_fc)
+        elif kind == "net":
+            _txt = self._tpl_ap_net.format(f"{data['step']:.0f}")
+            self._ap_last_action = (_txt, now)
+            self._ap_notice = (data.get("crash") or _txt, _S_WARN, now + 8)
+        elif kind == "drop_in":
+            self._ap_last_action = (self._tpl_ap_dropin.format(data["seconds"]), now)
+        elif kind == "drop_marked":
+            self._ap_last_action = (self._tr_ap_dropmark, now)
+        elif kind == "drop_stood_down":
+            self._ap_last_action = (self._tr_ap_dropstand, now)
+        elif kind == "cooling":
+            self._ap_notice = (self._tpl_ap_cool.format(moves(data["moves"]) or "--"), _S_OK, now + 12)
+        if text is not None:
+            self._ap_notice = (text, _S_OK, now + 8)
+            self._ap_last_action = (text, now)
 
     def _operator_takeover(
         self, now_s: float, levers: list[GuidanceLever],
@@ -6615,12 +6472,7 @@ class RoastAssistantPanel(QWidget):
     def _ap_resync(self) -> None:
         """Resynchronise l'observation des sliders sur leurs valeurs courantes —
         aucune actuation surprise à l'armement ni à la reprise (§5)."""
-        self._ap_expected.clear()
-        self._ap_bt_prev = None   # jamais de franchissement fantôme après resync
-        for idx in self._ap_watch_idxs():
-            v = _read_slider_pct(self.aw, idx)
-            if v is not None:
-                self._ap_slider_last[idx] = v
+        self._ap.resync()
 
     @pyqtSlot()
     def _coach_manual_selected(self) -> None:
@@ -6641,108 +6493,29 @@ class RoastAssistantPanel(QWidget):
         """Select AUTO: off→armed or paused→armed, subject to safety gates."""
         if not _AP_USER_ENABLED:   # kill-switch : AUTO retiré (2026-07-11)
             return
-        now = time.monotonic()
         if self._ap_state == "armed":
             return  # already selected; MANUAL is the explicit way out
+        _pk = {self._PHASE_DRY: "DRY", self._PHASE_MAI: "MAI",
+               self._PHASE_DEV: "DEV"}.get(self._current_phase)
         if self._ap_state == "paused":
-            self._ap_resync()
-            self._ap_set_state("armed")
-            # Reprise : un réglage manuel fait pendant la pause devient la nouvelle
-            # référence du feu de dev. Pas de feedforward : les sliders restent tels que laissés.
-            if self._current_phase == self._PHASE_DEV:
-                self._ap_start_phase("DEV")
-            self._ap_notice = (self._tr_ap_armed_note, _S_OK, now + 5)
+            self._ap.arm(_pk)
             return
-        # off → armement : gates (assistant actif, plan présent, confiance non-low)
+        # off → armement : gates (assistant actif, plan présent)
         if not self.is_active:
             return
         _reason = self._ap_plan_block_reason()
         if _reason is not None:
             self._bean_header.set_auto_state("blocked")
-            self._ap_notice = (_reason, _S_WARN, now + 8)
+            self._ap_notice = (_reason, _S_WARN, time.monotonic() + 8)
             return
-        self._ap_resync()
-        self._ap_set_state("armed")
-        self._ap_notice = (self._tr_ap_armed_note, _S_OK, now + 5)
-        _logd.info("AutoPilot: armed")
-        # feedforward immédiat sur la phase courante (armement en cours de roast)
-        _pk = {self._PHASE_DRY: "DRY", self._PHASE_MAI: "MAI",
-               self._PHASE_DEV: "DEV"}.get(self._current_phase)
-        if _pk is not None:
-            self._ap_apply_phase(_pk)
-            self._ap_start_phase(_pk)   # armement en cours de dev
+        self._ap.arm(_pk)   # feedforward immédiat sur la phase courante (armement en cours de roast)
 
     def _ap_plan_levers(self, phase_key: str) -> list[tuple[int, float]]:
-        """(idx slider, % plan) pour la phase — heater borné au plafond du torréfacteur ;
-        le slider extraction (2) n'est piloté que si un AirWave est présent ;
-        le drum (1) est posé au CHARGE puis VERROUILLÉ sur les machines à
-        transition de vitesse brutale (ctx.drum_midroast_locked — Skywalker :
-        un saut de 5 % bouleverse l'inertie de la masse, pas de progression)."""
-        out: list[tuple[int, float]] = []
-        col = _AP_PHASE_COL.get(phase_key)
-        if col is None or not self._plan:
-            return out
-        airwave = getattr(self.aw, "bleAirwaveDevice", None) is not None
-        drum_locked = getattr(self.roast_context, "drum_midroast_locked", True)
-        # En DEV, si une Dev Ramp existe, air/heater sont portés GRADUELLEMENT
-        # par la rampe (escalier fin depuis la valeur Maillard) — NE PAS les
-        # feedforward ici, sinon saut brutal au FC (bug vu par Tilau 2026-07-10).
-        dev_ramp_governs = (phase_key == "DEV" and bool(self._plan.get("Dev Ramp")))
-        for idx, key in _AP_LEVER_KEYS.items():
-            if idx == 2 and not airwave:
-                continue
-            if idx == 1 and drum_locked and phase_key != "DRY":
-                continue   # drum figé après le CHARGE sur cette machine
-            if idx == 0 and dev_ramp_governs:
-                continue   # air porté par la Dev Ramp ; l'extraction se pose ici, au FC
-            try:
-                parts = str(self._plan.get(key, "")).split(" | ")
-                out.append((idx, float(parts[col].strip().rstrip("%"))))
-            except (ValueError, IndexError, TypeError):
-                continue
-        # Heater : porté par la rampe DÈS LE TP (Heater Ramp en Maillard, Dev Ramp
-        # en dev) → le feedforward ne le pose QU'au CHARGE (DRY = valeur initiale,
-        # tenue jusqu'au TP puis descendue progressivement par la rampe). Jamais
-        # de saut heater au DE ni au FC.
-        heater_governed = (dev_ramp_governs
-                           or (phase_key == "MAI" and bool(self._plan.get("Heater Ramp"))))
-        if not heater_governed:
-            h = _plan_heater_pct(self._plan, _AP_PHASE_WORD[phase_key])
-            if h is not None:
-                out.append((_burner_slider_idx(self.aw), min(h, self._ap_max_burner())))
-        return out
+        return self._ap.plan_levers(phase_key)
 
     def _ap_apply_phase(self, phase_key: str) -> None:
-        """Feedforward au jalon : pose les valeurs de phase du plan (événementiel,
-        jamais dans le hot path). Chaque pose passe par le chemin humain, donc
-        l'événement Artisan est journalisé et la fenêtre d'inertie coach s'ouvre."""
-        if self._ap_state != "armed":
-            return
-        applied: list[str] = []
-        _posed_idx: list[int] = []  # indices réellement posés dans CET appel (pas tout _ap_expected)
-        for idx, pct in self._ap_plan_levers(phase_key):
-            cur = _read_slider_pct(self.aw, idx)
-            if cur is not None and abs(cur - pct) < 1.0:
-                continue
-            if _apply_slider_value(self.aw, idx, pct):
-                rb = _read_slider_pct(self.aw, idx)
-                self._ap_expected[idx] = rb if rb is not None else pct
-                _posed_idx.append(idx)
-                try:
-                    _lbl = str(self.aw.qmc.etypes[idx]).upper()
-                except (AttributeError, IndexError):
-                    _lbl = f"SLD{idx}"
-                applied.append(f"{_lbl} {self._ap_expected[idx]:.0f}%")
-        if applied:
-            _now = time.monotonic()
-            _txt = self._tpl_ap_phase.format(self._cp_phase_words[self._PHASE_MAP[phase_key]],
-                                            " · ".join(applied))
-            self._ap_notice = (_txt, _S_OK, _now + 8)
-            # cockpit : carte action + flash des tuiles posées dans CET appel uniquement
-            self._ap_last_action = (_txt, _now)
-            for _i in _posed_idx:
-                self._ap_lever_flash[_i] = _now
-            _logd.info(f"AutoPilot: phase {phase_key} feedforward → {applied}")
+        """Feedforward au jalon (tilaucore.autopilot)."""
+        self._ap.apply_phase(phase_key)
 
     @pyqtSlot()
     def _ap_tile_tapped(self) -> None:
@@ -6774,12 +6547,8 @@ class RoastAssistantPanel(QWidget):
         """Bouton de jalon du cockpit: mark the first unconfirmed milestone;
         pendant le compte à rebours d'auto-DROP il devient « Annuler » (annule
         le DROP auto, pas le mode AUTO)."""
-        if self._current_phase == self._PHASE_DEV and self._ap_drop_deadline is not None:
-            self._ap_drop_deadline = None
-            self._ap_drop_confirm = 0
-            self._ap_drop_cancelled = True
+        if self._current_phase == self._PHASE_DEV and self._ap.cancel_drop():
             self._ap_last_action = (self._tr_cp_btn_cancel, time.monotonic())
-            _logd.info("AutoPilot: auto-DROP cancelled by operator")
             return
         pending = self._missing_milestone()
         if pending is not None:
@@ -6883,364 +6652,39 @@ class RoastAssistantPanel(QWidget):
         _btn.set_active(True, style=_style)
 
     def _ap_apply_dev_step(self, step: dict) -> bool:
-        """Applique un étage de la rampe de développement (feu ↓, airflow ↑,
-        extraction douce ↑). Chemin humain habituel (événement journalisé, écho
-        anti-pause). Extraction seulement si un AirWave est présent. Renvoie True
-        si au moins un levier a bougé (feedforward prioritaire sur le trim)."""
-        _aw_on = getattr(self.aw, "bleAirwaveDevice", None) is not None
-        _b_idx = _burner_slider_idx(self.aw)
-        _pokes: list[tuple[int, float]] = []
-        if "heater" in step:
-            _pokes.append((_b_idx, min(float(step["heater"]), self._ap_max_burner())))
-        if "airflow" in step:
-            _pokes.append((0, float(step["airflow"])))
-        if _aw_on and "extraction" in step:
-            _pokes.append((2, float(step["extraction"])))
-        _acted = False
-        _now = time.monotonic()
-        _parts: list[str] = []
-        for _idx, _val in _pokes:
-            _cur = _read_slider_pct(self.aw, _idx)
-            if _cur is not None and abs(_cur - _val) >= 1.0 \
-                    and _apply_slider_value(self.aw, _idx, _val):
-                _rb = _read_slider_pct(self.aw, _idx)
-                self._ap_expected[_idx] = _rb if _rb is not None else _val
-                self._ap_lever_flash[_idx] = _now
-                try:
-                    _lbl = str(self.aw.qmc.etypes[_idx]).upper()
-                except (AttributeError, IndexError):
-                    _lbl = f"SLD{_idx}"
-                _parts.append(f"{_lbl} {self._ap_expected[_idx]:.0f}%")
-                _acted = True
-        if _acted:
-            _txt = self._tpl_ap_dev_ramp.format(" · ".join(_parts))
-            self._ap_last_action = (_txt, _now)
-            self._ap_notice = (_txt, _S_OK, _now + 8)
-            _logd.info(f"AutoPilot: dev ramp step → {_parts}")
-        return _acted
+        return self._ap.apply_dev_step(step)
 
     def _ap_dev_heater_dispense(self, ctx: dict) -> bool:
-        """« Tenir le feu » (spec §3quater, banc 2026-07-11) : délivre
-        la cible feu en file vers le slider burner, MONOTONE (jamais de remontée
-        par ce chemin) et rate-limitée dans la fenêtre exotherme FC→FC+75 s
-        (≤ _AP_DEV_RATE_PCT_PER_MIN — la coupe rapide crash 41 % vs douce 16 %).
-        Un palier BT franchi trop vite est DIFFÉRÉ, jamais sauté. Appelé à chaque
-        tick DEV ; O(1). Renvoie True si le feu a bougé (feedforward prioritaire)."""
-        _tgt_p = self._ap_dev_heater_pending
-        if _tgt_p is None:
-            return False
-        _b_idx = _burner_slider_idx(self.aw)
-        _cur = _read_slider_pct(self.aw, _b_idx)
-        if _cur is None:
-            return False
-        if _cur <= _tgt_p + 0.5:
-            self._ap_dev_heater_pending = None   # déjà au niveau (opérateur/plan)
-            return False
-        _floor = 0.0
-        if self._ap_dev_rate_anchor is not None:
-            _t0, _b0 = self._ap_dev_rate_anchor
-            _t_now = float(ctx.get("t_now_sec", 0.0) or 0.0)
-            if _t_now <= _t0 + _AP_DEV_RATE_WINDOW_S:
-                # budget de descente linéaire depuis l'entrée en dev
-                _floor = max(0.0, _b0 - _AP_DEV_RATE_PCT_PER_MIN * (_t_now - _t0) / 60.0)
-        _tgt = min(max(float(_tgt_p), _floor), self._ap_max_burner())
-        if _tgt >= _cur:
-            return False   # monotone : le budget n'autorise encore aucun pas
-        _full = _tgt <= float(_tgt_p) + 1e-6
-        # < 2 % = sans effet sur tambour chargé (doctrine) — on attend le budget,
-        # sauf pour le dernier pas qui atteint exactement la cible (≥ 1 %).
-        if (_cur - _tgt) < (1.0 if _full else 2.0):
-            return False
-        _step = _slider_step(self.aw, _b_idx)
-        if round(_tgt / _step) * _step >= _cur:
-            # the slider's notch would hold the burner, or step it up: wait
-            if _full:
-                self._ap_dev_heater_pending = None   # nearest notch already held
-            return False
-        if not _apply_slider_value(self.aw, _b_idx, _tgt):
-            return False
-        _rb = _read_slider_pct(self.aw, _b_idx)
-        self._ap_expected[_b_idx] = _rb if _rb is not None else _tgt
-        _now = time.monotonic()
-        self._ap_lever_flash[_b_idx] = _now
-        _txt = self._tpl_ap_devfire.format(f"{_tgt:.0f}")
-        self._ap_last_action = (_txt, _now)
-        self._ap_notice = (_txt, _S_OK, _now + 8)
-        if _full:
-            self._ap_dev_heater_pending = None
-        _logd.info(f"AutoPilot: dev burner rate-limited → {_tgt:.0f}% "
-                   f"(pending {_tgt_p:.0f}%, floor {_floor:.0f}%)")
-        return True
+        return self._ap.dev_heater_dispense(float(ctx.get("t_now_sec", 0.0) or 0.0))
 
     def _ap_max_dev_burner(self) -> float:
-        """Plafond brûleur en développement : au-delà, la couleur externe part trop vite."""
-        return min(self._ap_max_burner(),
-                   float(getattr(self.roast_context, "dev_heater_max_pct", 100.0) or 100.0))
+        return self._ap.max_dev_burner()
 
     def _ap_net_step(self, idx: int, delta: float, ceiling: float) -> float:
-        """Bouge un levier du filet (écho anti-pause). Renvoie le chemin parcouru."""
-        _cur = _read_slider_pct(self.aw, idx)
-        if _cur is None:
-            return 0.0
-        _tgt = max(0.0, min(ceiling, _cur + delta))
-        if abs(_tgt - _cur) < 1.0 or not _apply_slider_value(self.aw, idx, _tgt):
-            return 0.0
-        _rb = _read_slider_pct(self.aw, idx)
-        self._ap_expected[idx] = _rb if _rb is not None else _tgt
-        self._ap_lever_flash[idx] = time.monotonic()
-        return (_rb if _rb is not None else _tgt) - _cur
+        return self._ap.net_step(idx, delta, ceiling)
 
     def _ap_net_tick(self, crash_msg: "str | None", ror: float, raise_burner: bool = False) -> None:
-        """Filet du dev (Tilau, 2026-11-02) : l'air monte par paliers de 5 % tant que le
-        RoR ne repart pas et ne redescend jamais. Le brûleur reste où il est, sauf
-        raise_burner (voir _burner_may_rise), où il suit l'air."""
-        _now = time.monotonic()
-        _back = _AP_NET_ROR_BACK_C * (1.8 if self.aw.qmc.mode == 'F' else 1.0)
-        if crash_msg is None and (self._ap_net_ror is None
-                                  or ror >= self._ap_net_ror + _back):
-            self._ap_net_ror = None
-            return
-        if self._ap_net_stages >= _AP_NET_MAX_STAGES or _now - self._ap_net_last < _AP_NET_CADENCE_S:
-            return
-        self._ap_net_last = _now
-        self._ap_net_ror = ror
-        self._ap_net_stages += 1
-        self._ap_dev_heater_pending = None   # le brûleur ne redescend plus de ce roast
-        if raise_burner:
-            self._ap_net_step(_burner_slider_idx(self.aw), _AP_NET_STEP_PCT, self._ap_max_dev_burner())
-        if self._ap_net_step(0, _AP_NET_STEP_PCT, 100.0):
-            _txt = self._tpl_ap_net.format(f"{_AP_NET_STEP_PCT:.0f}")
-            self._ap_last_action = (_txt, _now)
-            self._ap_notice = (crash_msg or _txt, _S_WARN, _now + 8)
-            _logd.info(f"AutoPilot net: crash — air +{_AP_NET_STEP_PCT:.0f}%")
+        self._ap.net_tick(crash_msg, ror, self.aw.qmc.mode, raise_burner)
 
     def _ap_apply_cooling(self) -> None:
-        """DROP marqué : pose les réglages de refroidissement (brûleur coupé,
-        air/extraction forts, tambour rapide — les grains sont sortis, le verrou
-        drum ne s'applique plus), puis désarme : la mission de l'AutoPilot se
-        termine au DROP. Événementiel (jamais dans le hot path)."""
-        if self._ap_state != "armed":
-            return
-        airwave = getattr(self.aw, "bleAirwaveDevice", None) is not None
-        applied: list[str] = []
-        b_idx = _burner_slider_idx(self.aw)
-        for idx, pct in _AP_COOLING_LEVERS.items():
-            if idx == 2 and not airwave:
-                continue
-            real_idx = b_idx if idx == 3 else idx
-            cur = _read_slider_pct(self.aw, real_idx)
-            if cur is not None and abs(cur - pct) < 1.0:
-                continue
-            if _apply_slider_value(self.aw, real_idx, pct):
-                try:
-                    _lbl = str(self.aw.qmc.etypes[real_idx]).upper()
-                except (AttributeError, IndexError):
-                    _lbl = f"SLD{real_idx}"
-                applied.append(f"{_lbl} {pct:.0f}%")
-        self._ap_set_state("off")
-        self._ap_notice = (self._tpl_ap_cool.format(" · ".join(applied) or "--"),
-                           _S_OK, time.monotonic() + 12)
-        _logd.info(f"AutoPilot: DROP cooling feedforward → {applied} — disarmed")
+        """DROP marqué : le refroidissement du torréfacteur, puis AUTO désarmé (tilaucore.autopilot)."""
+        self._ap.apply_cooling()
 
     def _ap_tick(self, ctx: dict, bt: float, ror: "float | None",
-                 dry_end_temp: float, fc_temp: float, drop_temp: float) -> None:
-        """Appelé à chaque refresh (1 Hz). O(1) : reprise en main → PAUSE,
-        crash-guard, jalons, auto-DROP, puis palier de rampe dû. AUTO exécute le
-        plan : aucune action ne poursuit un écart de RoR.
-
-        Hors phases de roast (préchauffe notamment), on OBSERVE seulement :
-        le PID de préchauffe pilote légitimement le burner (et le fan) — le
-        lire comme un geste humain mettait AUTO en pause à tort. La détection
-        de reprise en main ne s'arme qu'à partir du CHARGE (couture §3 :
-        PID préchauffe off, AutoPilot on)."""
-        if self._ap_state != "armed":
-            return
-        in_roast = self._current_phase in (self._PHASE_DRY, self._PHASE_MAI,
-                                           self._PHASE_DEV)
-        # ── reprise en main : un changement non attendu = geste humain → PAUSE ──
-        for idx in self._ap_watch_idxs():
-            v = _read_slider_pct(self.aw, idx)
-            if v is None:
-                continue
-            last = self._ap_slider_last.get(idx)
-            self._ap_slider_last[idx] = v
-            if not in_roast or last is None or v == last:
-                continue   # préchauffe/idle : suivi silencieux, jamais de pause
-            exp = self._ap_expected.get(idx)
-            if exp is not None and abs(v - exp) <= 0.5:
-                self._ap_expected.pop(idx, None)   # écho de notre propre pose
-            elif idx == 2 and abs(v - last) < 2.0:
-                # dithering ±1 % du PID AirWave sur l'extraction : bruit
-                # d'automatisme, pas un geste opérateur (même seuil que Sim-1)
-                continue
-            elif time.monotonic() < self._ap_settle_until:
-                # couture de jalon (CHARGE/DE/FC) : handoff ou action de bouton
-                # d'automatisme transitoire, pas un geste opérateur. On SUIT
-                # (last déjà mis à jour en tête de boucle) sans pauser.
-                continue
-            else:
-                self._ap_set_state("paused")
-                self._ap_notice = (self._tr_ap_paused_note, _S_WARN,
-                                   time.monotonic() + 10)
-                _logd.info(f"AutoPilot: manual input on slider {idx} "
-                           f"({last}→{v}) — paused")
-                return
-        if not in_roast:
-            return
-        # ── crash-guard : les pages qui alimentaient le détecteur sont masquées ──
-        # en cockpit — il DOIT être nourri ici. Prioritaire : pré-empte toute
-        # actuation. En DEV, le FILET tient le brûleur et monte l'air par 5 %.
-        # Hors dev, crash ⇒ PAUSE et l'opérateur
-        # suit le message : l'air, puis le brûleur.
-        _net_hold = False   # filet à la main : gèle descente+trim, PAS les jalons
-        if ror is not None:
-            _in_dev = (self._guidance_phases.confirmed_phase
-                       is GuidancePhase.DEVELOPMENT)
-            _rise = _in_dev and _burner_may_rise(self._plan, float(ctx.get("t_now_sec", 0.0) or 0.0),
-                                                 float(ctx.get("t_fcs_sec", 0.0) or 0.0))
-            _crash = None
-            if self._current_phase != self._PHASE_DRY or _crash_readable(
-                    float(ctx.get("t_now_sec", 0.0) or 0.0), float(ctx.get("t_tp_sec", 0.0) or 0.0)):
-                _crash = self._crash_detector.check(
-                    ror, self._ror_hist,
-                    dt=max(0.25, self.aw.qmc.delay / 1000.0), dev_mode=_in_dev, raise_burner=_rise)
-            if _in_dev:
-                self._ap_net_tick(_crash, ror, _rise)
-                # pendant un crash : plus aucune baisse de feu ni trim, mais les
-                # jalons et l'auto-DROP CONTINUENT (BT à la cible ⇒ dropper,
-                # surtout en crash — sinon sur-cuisson pendant que le filet agit)
-                _net_hold = self._ap_net_ror is not None
-            elif _crash:
-                self._ap_set_state("paused")
-                self._ap_notice = (_crash, _S_WARN, time.monotonic() + 10)
-                _logd.info("AutoPilot: RoR crash detected — paused")
-                return
-        # ── jalons : AUTO armé ⇒ une suggestion fraîche du détecteur est       ──
-        # marquée automatiquement (spec §4 — le cockpit n'a pas de bouton de
-        # confirmation ; les boutons Artisan restent le repli manuel).
+                 dry_end_temp: float, fc_temp: float, drop_temp: float) -> None:  # noqa: ARG002
+        """Appelé à chaque refresh (1 Hz) : le tick d'AUTO (tilaucore.autopilot), O(1)."""
         _pending = self._guidance_phases.pending_milestone
         _which = _pending.value if _pending is not None else None
-        if _which is not None and _which not in self._ap_automark_done:
-            if _ap_milestone_due(_which, _milestone_suggestion(self.aw, _which) is not None,
-                                 bt, dry_end_temp, fc_temp, tp_seen=ctx["t_tp_sec"] > 0.0,
-                                 scale=delta_scale(self.aw.qmc.mode),
-                                 original=self._ap_original_mark(1 if _which == "DE" else 2)):
-                self._ap_automark_done.add(_which)
-                if _which == "DE":
-                    self.aw.qmc.markDRYSignal.emit(False)
-                else:
-                    self.aw.qmc.markFCsSignal.emit(False)
-                _now = time.monotonic()
-                _txt = self._tpl_ap_marked.format(self._tr_ap_mark_de if _which == "DE" else self._tr_ap_mark_fc)
-                self._ap_last_action = (_txt, _now)
-                self._ap_notice = (_txt, _S_OK, _now + 8)
-                _logd.info(f"AutoPilot: milestone {_which} auto-marked")
-                return
-        # ── auto-DROP plan (v1c, validé : 10 s annulables) : en DEV, quand la  ──
-        # BT atteint la cible de drop du plan vivant, compte à rebours 10 s
-        # affiché dans la carte action + bouton « Annuler » ; au terme, DROP
-        # marqué. One-shot : annulé = plus jamais re-armé cette session.
-        if (self._current_phase == self._PHASE_DEV
-                and self._guidance_phases.confirmed_phase is GuidancePhase.DEVELOPMENT
-                and not self._ap_drop_cancelled):
-            _now = time.monotonic()
-            _orig_drop = self._ap_original_mark(6)
-            if _orig_drop:
-                self._ap_drop_cancelled = True   # one-shot
-                self._ap_last_action = (self._tr_ap_dropmark, _now)
-                self.aw.qmc.markDropSignal.emit(False)
-                _logd.info("AutoPilot: DROP auto-marked at the original's")
-                return
-            try:
-                _drop_t = float((self._plan or {}).get("Drop Temp") or 0.0)
-            except (TypeError, ValueError):
-                _drop_t = 0.0
-            _at_target = _orig_drop is None and _drop_t > 0 and bt >= _drop_t
-            if self._ap_drop_deadline is None:
-                # Un échantillon isolé ne largue pas un roast : la cible doit
-                # être TENUE _AP_DROP_CONFIRM_TICKS ticks d'affilée.
-                self._ap_drop_confirm = (self._ap_drop_confirm + 1) if _at_target else 0
-                if self._ap_drop_confirm >= _AP_DROP_CONFIRM_TICKS:
-                    self._ap_drop_deadline = _now + 10.0
-                    QApplication.beep()
-                    _logd.info(f"AutoPilot: plan drop target {_drop_t:.1f}° held "
-                               f"{self._ap_drop_confirm} ticks — auto-DROP countdown")
-            if self._ap_drop_deadline is not None:
-                _left = self._ap_drop_deadline - _now
-                if _left > 0:
-                    self._ap_last_action = (self._tpl_ap_dropin.format(int(_left) + 1), _now)
-                elif _at_target:
-                    self._ap_drop_deadline = None
-                    self._ap_drop_cancelled = True   # one-shot
-                    self._ap_last_action = (self._tr_ap_dropmark, _now)
-                    self.aw.qmc.markDropSignal.emit(False)
-                    _logd.info("AutoPilot: DROP auto-marked")
-                else:
-                    # BT redescendue pendant le compte à rebours : on ne largue
-                    # pas sur une cible qui n'est plus atteinte, et ce n'est pas
-                    # l'opérateur qui a annulé — le ré-armement reste possible.
-                    self._ap_drop_deadline = None
-                    self._ap_drop_confirm = 0
-                    self._ap_last_action = (self._tr_ap_dropstand, _now)
-                    _logd.info(f"AutoPilot: auto-DROP stood down — BT {bt:.1f}° "
-                               f"back below target {_drop_t:.1f}°")
-        # ── rampe heater BT-keyed : palier appliqué au FRANCHISSEMENT MONTANT ──
-        # du seuil uniquement (bt_prev < seuil <= bt). La descente pré-TP du
-        # CHARGE ne déclenche donc jamais rien ; le heater de séchage vient du
-        # feedforward de phase, la rampe ne fait que le baisser plus tard.
-        ramp_acted = False
-        # _ap_bt_prev est maintenu sur DRY/MAI/DEV (continuité du franchissement) ;
-        # remis à None hors phase de roast.
-        prev = self._ap_bt_prev
-        self._ap_bt_prev = bt
-        if self._current_phase in (self._PHASE_DRY, self._PHASE_MAI):
-            hit = _ap_ramp_crossed(self._plan, prev, bt) if prev is not None else None
-            if hit is not None:
-                thr, heater = hit
-                heater = min(float(heater), self._ap_max_burner())
-                b_idx = _burner_slider_idx(self.aw)
-                cur = _read_slider_pct(self.aw, b_idx)
-                if cur is not None and abs(cur - heater) >= 1.0 \
-                        and _apply_slider_value(self.aw, b_idx, heater):
-                    rb = _read_slider_pct(self.aw, b_idx)
-                    self._ap_expected[b_idx] = rb if rb is not None else heater
-                    _now = time.monotonic()
-                    _txt = self._tpl_ap_ramp.format(f"{heater:.0f}", f"{thr:.0f}")
-                    self._ap_notice = (_txt, _S_OK, _now + 8)
-                    self._ap_last_action = (_txt, _now)      # cockpit
-                    self._ap_lever_flash[b_idx] = _now       # cockpit
-                    ramp_acted = True
-                    _logd.info(f"AutoPilot: ramp step crossed at BT {thr:.0f} "
-                               f"→ burner {heater:.0f}%")
-            # ── rampe AIRFLOW de Maillard (montée douce pour chasser les fumées) ──
-            if self._current_phase == self._PHASE_MAI and prev is not None:
-                _ahit = _ap_entry_ramp_crossed(self._plan, "Air Ramp", prev, bt)
-                if _ahit is not None and self._ap_apply_dev_step(_ahit):
-                    ramp_acted = True
-        # ── rampe de DÉVELOPPEMENT (trajectoire apprise) : feu baisse + airflow monte
-        # au franchissement des seuils BT ; burner jamais posé
-        # direct, mis en file monotone, délivré rate-limité (≤5%/min en fenêtre exotherme).
-        elif (self._current_phase == self._PHASE_DEV
-              and self._ap_drop_deadline is None and not _net_hold):
-            if prev is not None:
-                _dhit = _ap_entry_ramp_crossed(self._plan, "Dev Ramp", prev, bt)
-                if _dhit is not None:
-                    _dhit = {k: v for k, v in _dhit.items() if k not in ("bt", "_f")}
-                    _h = _dhit.pop("heater", None)
-                    _a = _dhit.pop("airflow", None)
-                    _cur_air = _read_slider_pct(self.aw, 0)
-                    _next_air = (_dev_air_step(_a, _cur_air)
-                                 if _a is not None and _cur_air is not None else None)
-                    if _next_air is not None:
-                        _dhit["airflow"] = _next_air
-                    if _h is not None and self._ap_net_stages == 0:
-                        _p = self._ap_dev_heater_pending
-                        self._ap_dev_heater_pending = (float(_h) if _p is None
-                                                       else min(_p, float(_h)))
-                    if _dhit:
-                        ramp_acted = self._ap_apply_dev_step(_dhit)
-            if not ramp_acted:
-                ramp_acted = self._ap_dev_heater_dispense(ctx)
+        self._ap.tick(
+            bt, ror,
+            t_now=float(ctx.get("t_now_sec", 0.0) or 0.0),
+            t_tp=float(ctx.get("t_tp_sec", 0.0) or 0.0),
+            t_fcs=float(ctx.get("t_fcs_sec", 0.0) or 0.0),
+            confirmed_dev=self._guidance_phases.confirmed_phase is GuidancePhase.DEVELOPMENT,
+            pending=_which,
+            suggested=_which is not None and _milestone_suggestion(self.aw, _which) is not None,
+            dry_end_temp=dry_end_temp, fc_temp=fc_temp, mode=self.aw.qmc.mode,
+            scale=delta_scale(self.aw.qmc.mode))
 
     def _ap_original_mark(self, index: int) -> "bool | None":
         """Simulation: has the replayed roast reached this milestone? None when live."""
@@ -7352,6 +6796,14 @@ class RoastAssistantPanel(QWidget):
         mode    = ctx["mode"]
         phases  = ctx["phases"]
         ti      = ctx["ti"]
+
+        # AUTO's cooling ends under the roaster's threshold: COOL END, unless an alarm marked it.
+        if self._ap_cool_end_c is not None and self._current_phase == self._PHASE_DROP:
+            if milestone_marked(ti, 7):
+                self._ap_cool_end_c = None
+            elif bt <= (self._ap_cool_end_c if mode == 'C' else fromCtoFstrict(self._ap_cool_end_c)):
+                self._ap_cool_end_c = None
+                self.aw.qmc.markCoolSignal.emit(False)
 
         # Normalize lever provenance before any advice is evaluated. AUTO
         # declares its expected echoes; a plan ramp close to its BT threshold

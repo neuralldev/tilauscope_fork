@@ -1,4 +1,11 @@
 ## [4.3] 2026-09-13
+build 55
+* ⚡ [feat(auto)] : at the drop, AUTO sets the cooling declared for the roaster instead of fixed values; on the Skywalker V2 that is burner 0 %, air 75 %, drum 80 % and the AirWave at 80 % in fan mode, and COOL END is marked once the beans are under 50 °C if no alarm marked it; on a roaster without a declared cooling AUTO only cuts the burner
+* 🐛 [fix(guided)] : the cooling page's safe stop temperature and its Cool end button follow the roaster's declared cooling end
+* ⚡ [feat(android)] : the Android prototype gains the guided roast and AUTO of the desktop: AUTO is a fourth way to START, drives the levers along the plan, marks Dry end, First crack and Drop and hands back at the drop with the roaster's cooling; touching a lever pauses it, its chip resumes it, and Wait cancels its automatic drop for the roast
+* ⚡ [feat(android)] : following the plan on the Android prototype, a bubble over the curve says the next burner or air step, when first crack is near and when to drop, and in every mode it warns when the roast is losing speed; the Drop button fills as the roast nears the planned drop
+* ⚡ [feat(android)] : the Android prototype ends a roast with the cooling declared for the roaster instead of the Skywalker's fixed one
+* 🐛 [fix(android)] : on the Android prototype, a lever touched while following the plan or under AUTO no longer stops the automatic marks; only Undo does
 build 54
 build 53
 build 52

@@ -1,9 +1,6 @@
-# LICENSE
-# This file is part of TilauScope, a fork of Artisan Roaster Scope.
-# TilauScope is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Tilau
+# This file is part of TilauScope.
 
 """Typed advice candidates and the single guidance-output selector."""
 
@@ -12,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import IntEnum
 
-from tilauscope.guidance_core import GuidanceDecision, GuidanceMode
+from tilaucore.guidance_core import GuidanceDecision, GuidanceMode
 
 
 class AdviceCategory(IntEnum):

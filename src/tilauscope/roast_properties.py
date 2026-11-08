@@ -31,7 +31,7 @@ from tilaucore.roast_plan import station_pressure_hpa
 from tilauscope.roast_insights import build_insights
 from tilaucore.roast_plan_view import confidence, reference_line, tasting_change_text
 from tilauscope import auto_marks
-from tilauscope.guidance_phase import milestone_marked
+from tilaucore.guidance_phase import milestone_marked
 from tilauscope.roast_debrief import roast_colour_agtron
 from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint, mono_family
 from tilauscope.alogmanager import AlogIndex

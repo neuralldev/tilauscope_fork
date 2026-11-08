@@ -1,5 +1,6 @@
-# LICENSE
-# This file is part of TilauScope, a fork of Artisan Roaster Scope.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Tilau
+# This file is part of TilauScope.
 
 """Pure phase fallback for roasts whose milestones are not marked."""
 

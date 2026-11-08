@@ -41,6 +41,14 @@
             "step_rpm_setting": 5
         },
         "cooling_system": "external_cooler",
+        "cooling": {
+            "burner_pct": 0,
+            "air_pct": 75,
+            "drum_pct": 80,
+            "extractor_pct": 80,
+            "extractor_mode": "FAN",
+            "end_below_c": 50
+        },
         "supported_interfaces": [
             "modbus",
             "serial"

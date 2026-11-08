@@ -305,6 +305,18 @@ class DrumControl:
     # e.g. Cormorant drum knob: 0–12 V, step 0.5 V
     physical_range: PhysicalRange | None = None
 
+
+@dataclass(slots=True)
+class CoolingSettings:
+    """Levers set when the beans drop, and the BT under which the cooling ends (COOL END).
+    A lever left None is not touched. The extractor is set only when one is present."""
+    burner_pct: float = 0.0
+    air_pct: float | None = None
+    drum_pct: float | None = None
+    extractor_pct: float | None = None
+    extractor_mode: str | None = None   # the extractor's mode while cooling, e.g. AirWave "FAN"
+    end_below_c: float | None = None
+
 # ============================================================
 # ENVIRONMENT / INSTALLATION
 # ============================================================
@@ -439,6 +451,8 @@ class Roaster:
     # Cooling
     # --------------------------------------------------------
     cooling_system: CoolingSystemType = CoolingSystemType.INTERNAL_TRAY
+    ## None = not declared: only the burner is cut at drop.
+    cooling: CoolingSettings | None = None
 
     # --------------------------------------------------------
     # Sensors
@@ -621,6 +635,9 @@ class RoasterContext:
     # None = no bench-measured value for this roaster (see Roaster.burner_reaction_time_s).
     burner_reaction_time_s: "float | None" = None
 
+    # Cooling at drop (Roaster.cooling); None = only the burner is cut.
+    cooling: "CoolingSettings | None" = None
+
     @classmethod
     def from_roaster(cls, roaster: "Roaster") -> "RoasterContext":
         """Build a RoasterContext from a Roaster dataclass instance."""
@@ -718,6 +735,7 @@ class RoasterContext:
             drum_midroast_locked     = not (dc is not None and dc.variable_speed
                                             and getattr(dc, 'smooth_speed_transition', False)),
             burner_reaction_time_s   = roaster.burner_reaction_time_s,
+            cooling                  = roaster.cooling,
         )
 
     # ── helpers ──────────────────────────────────────────────

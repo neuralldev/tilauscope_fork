@@ -1,9 +1,6 @@
-# LICENSE
-# This file is part of TilauScope, a fork of Artisan Roaster Scope.
-# TilauScope is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Tilau
+# This file is part of TilauScope.
 
 """Pure attribution of recorded slider events for guidance replay.
 
@@ -19,8 +16,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from tilauscope.guidance_observer import ActionSource
-from tilauscope.guidance_phase import milestone_marked
+from tilaucore.guidance_observer import ActionSource
+from tilaucore.guidance_phase import milestone_marked
 
 _ALARM_SLIDER = re.compile(r'A(\d+) \(S(\d+)\)')
 
