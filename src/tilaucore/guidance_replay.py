@@ -18,6 +18,7 @@ from typing import Any
 
 from tilaucore.guidance_observer import ActionSource
 from tilaucore.guidance_phase import milestone_marked
+from tilaucore.units import slider_from_event
 
 _ALARM_SLIDER = re.compile(r'A(\d+) \(S(\d+)\)')
 
@@ -59,8 +60,8 @@ def match_alarm_automation(
         value = float(stored_value)
     except (TypeError, ValueError):
         return None
-    # Artisan stores a slider command N as (N + 10) / 10 in special events.
-    if abs(value - (command + 10.0) / 10.0) <= 0.11:
+    # a slider at 0 is stored as 0 or as 1.0, both read back as 0: compared as slider positions, one step apart at most
+    if abs(slider_from_event(value) - command) <= 1:
         return AlarmAutomationMatch(alarm_idx + 1, alarm_lever, float(command))
     return None
 

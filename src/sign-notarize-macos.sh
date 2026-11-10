@@ -24,7 +24,18 @@ CHILD_ENTITLEMENTS="$SCRIPT_DIR/Child.entitlements"
 
 : "${CODESIGN_IDENTITY:?CODESIGN_IDENTITY is not set}"
 
-sign() { codesign --force --timestamp --options runtime --sign "$CODESIGN_IDENTITY" "$@"; }
+# Apple's timestamp server drops requests now and then ("The timestamp service
+# is not available."); one miss would fail the whole build, so retry.
+codesign_retry() {
+  local attempt
+  for attempt in 1 2 3; do
+    if codesign "$@"; then return 0; fi
+    [ "$attempt" -lt 3 ] && { echo "    codesign failed (attempt $attempt/3), retrying in 15 s"; sleep 15; }
+  done
+  return 1
+}
+
+sign() { codesign_retry --force --timestamp --options runtime --sign "$CODESIGN_IDENTITY" "$@"; }
 
 echo "=== Signing $APP_PATH with: $CODESIGN_IDENTITY"
 
@@ -72,7 +83,7 @@ ln -s /Applications "$DIST_DIR/Applications"
 hdiutil create "$DMG_PATH" -volname "${VOLNAME:-TilauScope}" -fs APFS -srcfolder "$DIST_DIR" -ov
 
 echo "=== Signing DMG"
-codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
+codesign_retry --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
 
 if [ "$NOTARIZE" != "1" ]; then
   echo "=== NOTARIZE=0 — stopping after signing"

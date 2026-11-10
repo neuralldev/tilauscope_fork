@@ -1,17 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (c) 2026 Tilau
 # This file is part of TilauScope.
-#
-# Portions derived from Artisan Roaster Scope (artisanlib/main.py),
-# Copyright (C) 2010-2026 the Artisan team represented by Marko Luther
-# and all contributors, distributed under the terms of their original licence.
 
-"""Milestones found during a roast (android/AUTOMATION-SPEC.md D1).
+"""Milestones found during a roast (android/AUTOMATION-SPEC.md D1, android/LICENSING-SPEC.md L4-L5).
 
-CHARGE and DROP from a break in BT, as Artisan finds them (main.BTbreak, checkTop and the
-conditions of canvas.sample); First Crack and Dry End as TilauScope's detectors find them
-(tilau_intelligence). Pure: the caller gives the readings, the target and the clock; reading
-the devices and marking the milestone stay with the app.
+CHARGE from BT's plunge when the beans go in; the turning point at BT's low before Dry End;
+DROP from BT's fall once the beans have left; First Crack and Dry End
+as TilauScope's detectors find them (tilau_intelligence). Pure: the caller gives the readings,
+the target and the clock; reading the devices and marking the milestone stay with the app.
 """
 
 from __future__ import annotations
@@ -20,83 +16,138 @@ from collections import deque
 from collections.abc import Sequence
 from typing import Final, NamedTuple
 
-# ── CHARGE and DROP: a break in BT (Artisan) ─────────────────────────────────
-# Artisan's btbreak_params; index [mode][sample mode], mode 0 Standard, 1 Sensitive,
-# sample mode 0 for a delay >= 1000 ms, 1 from 500 ms, 2 below.
-BTBREAK: Final[dict] = {
-    "delay": [[40000, 1000, 500], [40000, 1000, 500]],
-    "d_charge": [[-0.67, -0.34, -0.20], [0.00, 0.00, 0.00]],
-    "d_drop": [[-0.34, -0.20, 0.00], [0.00, 0.00, 0.00]],
-    "offset_charge": [[0.5, 0.2, 0.0], [0.5, 0.1, 0.0]],
-    "offset_drop": [[0.2, 0.1, 0.0], [0.2, 0.05, 0.0]],
-    "dpre_dpost_diff": [[0.78, 0.78, 20.0], [20.0, 20.0, 20.0]],
-    "tight": 3, "loose": 5, "f": 2.5, "maxdpre": 6.4, "f_dtwice": 1.5,
-}
-CHARGE_MIN_BT: Final[dict[str, float]] = {"C": 77.0, "F": 170.0}
-DROP_MIN_BT: Final[dict[str, float]] = {"C": 160.0, "F": 320.0}
-DROP_MIN_S: Final[float] = 7 * 60.0
+# ── CHARGE: BT plunges when the beans go in ──────────────────────────────────
+CHARGE_MIN_BT: Final[dict[str, float]] = {"C": 77.0, "F": 170.0}  # a hotter drum than this before the plunge
+CHARGE_FALL_C: Final[float] = 4.0       # BT lost at least this much…
+CHARGE_WINDOW_S: Final[float] = 8.0     # …within this time
+CHARGE_STEEP_C_S: Final[float] = 0.4    # the beans' fall; a gentler slope before it is the PID easing off
 
 
-def check_top(d: float, offset: float, dpre_dpost_diff: float, p0: float, p1: float, p2: float,
-              p3: float, p4: float, p5: float, unit: str = "C", twice: bool = False) -> bool:
-    """Artisan's checkTop: the two legs before p2–p3 against the two after."""
-    d1, d2 = p0 - p1, p1 - p2
-    d3, d4 = p4 - p3, p5 - p4
-    dpre, dpost = (d1 + d2) / 2.0, (d3 + d4) / 2.0
-    f, maxdpre, f_dtwice = BTBREAK["f"], BTBREAK["maxdpre"], BTBREAK["f_dtwice"]
-    if unit == "F":
-        f *= 1.8
-        d *= 1.8
-        maxdpre *= 1.8
-        dpre_dpost_diff *= 1.8
-    if twice:
-        d = d * f_dtwice
-    return bool(d3 < d and d4 < d and ((abs(dpost) > min(maxdpre, offset + (f * abs(dpre))))
-                                       or (dpost < 0 and dpre < 0 and (-dpre - dpost) > dpre_dpost_diff)))
+def charge_index(bt: Sequence[float], unit: str = "C", delay_ms: int = 1000) -> int | None:
+    """The sample CHARGE goes on, found at this sample (CHARGE not marked yet), else None.
 
-
-def bt_break(bt: Sequence[float], i: int, event: str, delay_ms: int = 1000, charge_mode: int = 0,
-             drop_mode: int = 0, unit: str = "C") -> int:
-    """Artisan's BTbreak: how many samples back from `i` the break is (3 or 5), 0 when none.
-
-    As Artisan, the sample mode is chosen with the DROP mode for both events.
+    Found when BT has lost CHARGE_FALL_C within CHARGE_WINDOW_S from above CHARGE_MIN_BT and the
+    last two readings both stay low (one glitch is not a plunge). CHARGE is the last reading
+    before the steep fall: walking back from now, while BT fell CHARGE_STEEP_C_S or faster.
+    `delay_ms` is the sampling interval.
     """
-    delays = BTBREAK["delay"][drop_mode]
-    sample_mode = 2 if delay_ms < delays[2] else 1 if delay_ms < delays[1] else 0
-    if event == "DROP":
-        mode = drop_mode
-        d, offset = BTBREAK["d_drop"][mode][sample_mode], BTBREAK["offset_drop"][mode][sample_mode]
-    else:
-        mode = charge_mode
-        d, offset = BTBREAK["d_charge"][mode][sample_mode], BTBREAK["offset_charge"][mode][sample_mode]
-    diff = BTBREAK["dpre_dpost_diff"][mode][sample_mode]
-    if len(bt) > 5 and 4 < i < len(bt):
-        if check_top(d, offset, diff, bt[i - 5], bt[i - 4], bt[i - 3], bt[i - 2], bt[i - 1], bt[i], unit):
-            return BTBREAK["tight"]
-        if len(bt) > 10 and i > 10 and check_top(d, offset, diff, bt[i - 10], bt[i - 8], bt[i - 6], bt[i - 4],
-                                                 bt[i - 2], bt[i], unit, twice=True):
-            return BTBREAK["loose"]
-    return 0
-
-
-def charge_index(bt: Sequence[float], unit: str = "C", delay_ms: int = 1000, charge_mode: int = 0,
-                 drop_mode: int = 0) -> int | None:
-    """The sample CHARGE is placed on, found at this sample (CHARGE not marked yet), else None."""
-    n = len(bt)
-    if n < 5 or not bt[-1] > CHARGE_MIN_BT[unit]:
+    i = len(bt) - 1
+    if i < 2 or not (bt[i] > 0 and bt[i - 1] > 0):
         return None
-    b = bt_break(bt, n - 1, "CHARGE", delay_ms, charge_mode, drop_mode, unit)
-    return n - b if b > 0 else None
-
-
-def drop_index(times: Sequence[float], bt: Sequence[float], charge: int, unit: str = "C",
-               delay_ms: int = 1000, drop_mode: int = 0) -> int | None:
-    """The sample DROP is placed on, found at this sample (after CHARGE, DROP not marked), else None."""
-    n = len(bt)
-    if n < 5 or not bt[-1] > DROP_MIN_BT[unit] or not times[-1] - times[charge] > DROP_MIN_S:
+    scale = 1.8 if unit == "F" else 1.0
+    dt = max(delay_ms, 1) / 1000.0
+    window = [k for k in range(max(0, i - int(CHARGE_WINDOW_S / dt)), i) if bt[k] > 0]
+    if not window:
         return None
-    b = bt_break(bt, n - 1, "DROP", delay_ms, 0, drop_mode, unit)
-    return n - b if b > 0 else None
+    top = max(window, key=lambda k: bt[k])
+    fall = CHARGE_FALL_C * scale
+    if not (bt[top] > CHARGE_MIN_BT[unit] and top < i - 1 and bt[top] - bt[i] >= fall and bt[top] - bt[i - 1] >= fall / 2):
+        return None
+    span = max(1, round(1.0 / dt))  # over a second at least: a fast sampling shows the probe's steps
+    k = i
+    while k >= span and bt[k - span] > 0 and bt[k - span] - bt[k] >= CHARGE_STEEP_C_S * scale * dt * span:
+        k -= 1
+    return k
+
+
+# ── Turning point: BT's low after CHARGE, before Dry End ─────────────────────
+TP_FROM_S: Final[float] = 15.0    # the probe's own fall right after CHARGE is not the TP
+TP_UNTIL_S: Final[float] = 240.0  # nor anything past this, nor past Dry End (a crash is no TP)
+TP_FLAT_C: Final[float] = 0.2     # a flat bottom: the TP is its middle
+TP_RISE_C: Final[float] = 1.0     # known once BT stands this far above the low
+
+
+def turning_point(times: Sequence[float], bt: Sequence[float], charge: int, end: int | None = None) -> int | None:
+    """The TP, °C: the lowest BT (median of 5 readings) between CHARGE + TP_FROM_S and the first of
+    `end` (the next milestone marked: Dry End, FC, DROP) and CHARGE + TP_UNTIL_S, in the middle of its
+    flat bottom. None while BT has not yet risen TP_RISE_C above it."""
+    if charge < 0 or charge >= len(bt) or len(times) < len(bt):
+        return None
+    stop = len(bt) if end is None or end <= charge else min(end, len(bt))
+    smooth: dict[int, float] = {}
+    for i in range(charge, stop):
+        if TP_FROM_S <= times[i] - times[charge] <= TP_UNTIL_S:
+            near = sorted(v for v in bt[max(0, i - 2):min(stop, i + 3)] if v > 0)
+            if near:
+                smooth[i] = near[len(near) // 2]
+    if not smooth:
+        return None
+    low = min(smooth.values())
+    first = min(i for i, v in smooth.items() if v == low)
+    last = first
+    while last + 1 in smooth and smooth[last + 1] - low <= TP_FLAT_C:
+        last += 1
+    if not any(v >= low + TP_RISE_C for i, v in smooth.items() if i > last):
+        return None
+    start = first
+    while start - 1 in smooth and smooth[start - 1] - low <= TP_FLAT_C:
+        start -= 1
+    return (start + last) // 2
+
+
+# ── DROP: BT falls once the beans have left ──────────────────────────────────
+# A crash slows BT's rise, it does not make BT fall: from FC to DROP, BT never lost more than
+# 0.1 °C on the corpus (110 roasts, crashes at FC included, 2026-11-09). BT keeps rising a few
+# seconds after the beans leave (the probe in the hot drum), peaks, then falls.
+DROP_MIN_BT: Final[dict[str, float]] = {"C": 160.0, "F": 320.0}  # the desktop's gate before it looks
+DROP_MIN_S: Final[float] = 7 * 60.0
+# Defaults for a roaster that declares none (roasters.json drop_fall_c, drop_probe_lag_s),
+# measured on Cyberroaster and Skywalker.
+DROP_FALL_C: Final[float] = 3.0       # BT this far under its peak…
+DROP_PEAK_S: Final[float] = 120.0     # …the peak of the last two minutes
+DROP_PROBE_LAG_S: Final[float] = 6.0  # BT peaks this long after the beans left (corpus median)
+_drop_roaster: tuple[float, float] = (DROP_FALL_C, DROP_PROBE_LAG_S)
+
+
+def set_drop_roaster(fall_c: float | None, probe_lag_s: float | None) -> None:
+    """The selected roaster's DROP values, for the desktop's BTbreak (called by its roaster resolver)."""
+    global _drop_roaster  # noqa: PLW0603  # one roaster selected per process
+    _drop_roaster = (DROP_FALL_C if fall_c is None else float(fall_c),
+                     DROP_PROBE_LAG_S if probe_lag_s is None else float(probe_lag_s))
+
+
+def drop_index(bt: Sequence[float], unit: str = "C", delay_ms: int = 1000,
+               fall_c: float | None = None, probe_lag_s: float | None = None) -> int | None:
+    """The sample DROP goes on, found at this sample (after First Crack, DROP not marked), else None.
+
+    Found when BT is `fall_c` under its peak of the last DROP_PEAK_S and the last two readings
+    both stay low (one glitch is not a fall). DROP is placed `probe_lag_s` before the peak.
+    Both default to the selected roaster's (set_drop_roaster). Known about 16 s after the beans
+    left; marked then, in its place.
+    """
+    fall_c = _drop_roaster[0] if fall_c is None else fall_c
+    probe_lag_s = _drop_roaster[1] if probe_lag_s is None else probe_lag_s
+    i = len(bt) - 1
+    if i < 2 or not (bt[i] > 0 and bt[i - 1] > 0):
+        return None
+    dt = max(delay_ms, 1) / 1000.0
+    window = [k for k in range(max(0, i - int(DROP_PEAK_S / dt)), i) if bt[k] > 0]
+    if not window:
+        return None
+    top = max(window, key=lambda k: (bt[k], k))  # the last reading at the peak
+    fall = fall_c * (1.8 if unit == "F" else 1.0)
+    if not (top < i - 1 and bt[top] - bt[i] >= fall and bt[top] - bt[i - 1] >= fall / 2):
+        return None
+    return max(0, top - round(probe_lag_s / dt))
+
+
+def check_top(d: float, offset: float, dpre_dpost_diff: float, p0: float, p1: float, p2: float,  # noqa: ARG001
+              p3: float, p4: float, p5: float, unit: str = "C", twice: bool = False) -> bool:  # noqa: ARG001
+    """The desktop's checkTop, which nothing reads any more: CHARGE and DROP come from bt_break."""
+    return False
+
+
+def bt_break(bt: Sequence[float], i: int, event: str, delay_ms: int = 1000, charge_mode: int = 0,  # noqa: ARG001
+             drop_mode: int = 0, unit: str = "C") -> int:  # noqa: ARG001
+    """The desktop's BTbreak: how many samples back from `i` the event goes, counting `i` as 1; 0 when none.
+
+    CHARGE is charge_index, DROP drop_index; the desktop's CHARGE and DROP modes are not read.
+    """
+    if not 0 <= i < len(bt):
+        return 0
+    found = drop_index if event == "DROP" else charge_index
+    k = found(bt[:i + 1], unit, delay_ms)
+    return 0 if k is None else i - k + 1
 
 
 # ── Milestone windows (tilauscope_types) ─────────────────────────────────────

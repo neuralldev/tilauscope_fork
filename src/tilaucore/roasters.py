@@ -422,6 +422,11 @@ class Roaster:
     ## Ground minus whole-bean Agtron on this model: a roast measured whole only
     ## is placed at its estimated ground colour. None → no estimate (0).
     whole_to_ground_agtron_offset: float | None = None
+    ## Auto DROP on this model (tilaucore.milestones.drop_index): BT this far under
+    ## its peak, which comes this long after the beans left (the probe in the hot
+    ## drum). None → the shared defaults.
+    drop_fall_c: float | None = None
+    drop_probe_lag_s: float | None = None
 
     ## Continuous hot time the element takes in one go, and the temperature
     ## above which it counts. Protects the thermal cut-out during a bench
@@ -607,6 +612,8 @@ class RoasterContext:
     tp_dip_share_base: float | None = None
     tp_dip_share_per_load: float | None = None
     whole_to_ground_agtron_offset: float = 0.0
+    drop_fall_c: float | None = None
+    drop_probe_lag_s: float | None = None
     heater_support_threshold_pct: "float | None" = None
     heater_caution_pct: "float | None" = None
 
@@ -697,6 +704,8 @@ class RoasterContext:
             whole_to_ground_agtron_offset = (roaster.whole_to_ground_agtron_offset
                                              if roaster.whole_to_ground_agtron_offset is not None
                                              else 0.0),
+            drop_fall_c              = roaster.drop_fall_c,
+            drop_probe_lag_s         = roaster.drop_probe_lag_s,
             hot_above_c              = (roaster.hot_above_c
                                         if roaster.hot_above_c is not None else 150.0),
             max_continuous_hot_minutes = (roaster.max_continuous_hot_minutes

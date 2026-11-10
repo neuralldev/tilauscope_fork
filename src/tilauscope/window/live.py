@@ -482,6 +482,11 @@ class LiveMixin:
             # to be drawn before there is a roast to record.
             if self.curve is not None:
                 self.curve.tick()
+            # Its own guard: a probe fault must not cost this sample its readouts.
+            try:
+                self.aw._tilau_drop_door.tick(self.aw)
+            except Exception as e:  # pylint: disable=broad-except
+                self._log_update_failure(data, e)
             if self.lcds.tg_lcd.lbl_value.text() != val_str:
                 self.lcds.tg_lcd.lbl_value.setText(val_str)
             fv = raw if isinstance(raw, (int, float)) else None

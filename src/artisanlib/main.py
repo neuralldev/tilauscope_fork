@@ -25117,8 +25117,9 @@ class ApplicationWindow(QMainWindow):
                 index = i
         return index
 
-    ## TILAU ## checkTop and BTbreak run on tilaucore.milestones, the engine the Android prototype
-    ## shares (android/AUTOMATION-SPEC.md decision 14); same results on 106 roasts, every sample
+    ## TILAU ## BTbreak runs on tilaucore.milestones, the engine the Android prototype shares: CHARGE at
+    ## BT's plunge, DROP at BT's fall after its peak, the roaster's values (android/LICENSING-SPEC.md L5);
+    ## the CHARGE and DROP modes are not read. checkTop is kept for upstream merges, nothing calls it
     def checkTop(self, d:float, offset:float, dpre_dpost_diff:float, p0:float, p1:float, p2:float, p3:float, p4:float, p5:float, twice:bool = False) -> bool:
         return check_top(d, offset, dpre_dpost_diff, p0, p1, p2, p3, p4, p5, self.qmc.mode, twice)
 

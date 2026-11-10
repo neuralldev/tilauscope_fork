@@ -141,6 +141,58 @@ lag the curve by up to one second.
 
 ---
 
+## Drop door contact
+
+**What it adds.** A switch on the roaster's drop door, wired to the TilauAmbient probe, so
+[DROP](glossary.md#drop) is marked the moment the door opens instead of being found from the curve
+about 15 seconds later. It marks DROP even when automatic DROP is turned off in
+[Configuration → DETECTION](configuration.md#charge-and-drop): it measures the drop rather than
+guessing it. See [drop door contact](glossary.md#drop-door-contact).
+
+**Fitting it.** The door is never opened during a roast, so its first opening after CHARGE is the
+drop. Parts:
+
+| Part | What it is for |
+|---|---|
+| Magnetic door sensor, *normally open* type, with a matching magnet (for example a Littelfuse 59135-1 sensor with its 57135-000 actuator) | The magnet goes on the door, the sensor on a fixed bracket beside it. The sensor closes when the magnet is near, so the circuit is closed while the door is shut. |
+| 10 kΩ resistor, 1 kΩ resistor, 100 nF capacitor | A firm pull-up and a noise filter, needed on a cable of half a metre beside the motor. |
+| Twisted pair, silicone-sheathed near the door, and a 2-pin connector | Runs the 40–50 cm from the door to the probe and unplugs for service. |
+
+Wiring on the probe: the 10 kΩ from **GPIO 10** to **3V3**, the 1 kΩ in series between GPIO 10 and
+the connector, the 100 nF from GPIO 10 to **GND**, and the connector's second pin to GND. The probe
+then needs its firmware updated to read the door.
+
+!!! warning "Measure the heat first"
+    Off-the-shelf magnetic door sensors are rated to about 150 °C. Before buying, tape a contact
+    thermocouple where the sensor would sit and read its peak over a full roast. If it is too hot,
+    move the sensor further from the glass, or use a high-temperature roller-lever switch pressed by
+    the door instead, wired on its *normally open* terminals.
+
+**What changes on screen.** Nothing new during the roast: the door marks DROP exactly as the DROP
+button would, placed on the moment it opened. Its state shows in
+[Configuration → SENSORS](configuration.md#-sensors--every-device-by-role) under the probe, and
+under the automatic DROP box in [Configuration → DETECTION](configuration.md#charge-and-drop):
+
+| State | Meaning |
+|---|---|
+| **Closed** | Door shut: DROP will be marked when it opens. |
+| **Open** | Door open; after a roast, the line gives the roast time of the DROP it marked. |
+| **Not wired** | No closed contact seen since the probe connected: DROP comes from the curve. |
+| **Offline** | The probe is not connected, which is the case outside monitoring (ON). |
+| **Update** | The probe's firmware cannot read a door contact. |
+
+<!-- CAPTURE 9.9 [scene:config_sensors_door] — Configuration → SENSORS, the TilauAmbient group during monitoring with the probe
+connected and the door shut: the Drop door line showing Closed. -->
+
+![The TilauAmbient group in SENSORS, its Drop door line reading Closed.](assets/hardware-9.9.png)
+
+**Known limits.** The contact counts once it has been seen closed since the probe connected, so one
+that is missing or unplugged never marks a false DROP; DROP then comes from the curve as before. A
+cable cut during a roast cannot be told from the door opening, and marks DROP at that moment; undo
+it with the DROP button. If the probe restarts during a roast, the contact sits that roast out.
+
+---
+
 ## Bluetooth scale
 
 **What it adds.** Live weight capture wherever a weight is entered — batch weight, stock,

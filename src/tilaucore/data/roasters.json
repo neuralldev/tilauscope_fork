@@ -95,6 +95,8 @@
         "tp_dip_share_base": 0.379,
         "tp_dip_share_per_load": 0.094,
         "whole_to_ground_agtron_offset": 10.0,
+        "drop_fall_c": 3.0,
+        "drop_probe_lag_s": 6.0,
         "thermal_model_kernel": "triangular",
         "thermal_model_sigma": 1.0
     },

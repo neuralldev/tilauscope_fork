@@ -300,13 +300,8 @@ def _background_rise_series(qmc: Any, *, machine: bool = False) -> list[Any]:
         _background_rise_cache['owner'] = qmc
         _background_rise_cache['key'] = key
         try:
-            et_samples = bt_samples = None
-            interval = getattr(qmc, 'background_profile_sampling_interval', None)
-            if interval is not None and float(interval) > 0.0:
-                et_samples = max(1, int(round(float(qmc.deltaETspan) / float(interval))))
-                bt_samples = max(1, int(round(float(qmc.deltaBTspan) / float(interval))))
             start = min(charge + 10, len(timex) - 1)
-            d1, d2 = ror.recompute_deltas(qmc, timex, start, drop, stemp1, stemp2, et_samples, bt_samples)
+            d1, d2 = ror.recompute_deltas(qmc, timex, start, drop, stemp1, stemp2)
             _background_rise_cache['delta1'] = list(d1 or [])
             _background_rise_cache['delta2'] = list(d2 or [])
         except Exception:

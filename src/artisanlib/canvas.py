@@ -129,7 +129,7 @@ except Exception: # pylint: disable=broad-except
 from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTSensorConfig, TilauMqttPorts
 from tilaucore.alarms import AlarmRun, PROFILE_KEYS, read_profile_alarms, Readings as AlarmReadings ## TILAU ##
 from tilaucore.playback import Foreground, Playback ## TILAU ## Roast Replay shared with the Android prototype
-from tilaucore.milestones import CHARGE_MIN_BT, DROP_MIN_BT, DROP_MIN_S ## TILAU ## auto CHARGE/DROP gates shared with the Android prototype
+from tilaucore.milestones import CHARGE_MIN_BT, CHARGE_WINDOW_S, DROP_MIN_BT, DROP_MIN_S ## TILAU ## auto CHARGE/DROP gates shared with the Android prototype
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -607,7 +607,7 @@ class tgraphcanvas(QObject):
         self.temp_decay_weights:list[int]|None = None
 
         # used by BTbreak
-        ## TILAU ## unused: BTbreak and checkTop read tilaucore.milestones.BTBREAK; kept for upstream merges
+        ## TILAU ## unused: BTbreak runs on tilaucore.milestones (its own CHARGE and DROP rules); kept for upstream merges
         self.btbreak_params:BTBreakParams = {
             'delay': [[40000,1000,500],               #autoChargeMode="Standard"
                       [40000,1000,500]],              #autoChargeMode="Sensitive"
@@ -6421,8 +6421,11 @@ class tgraphcanvas(QObject):
             # to catch also background events scheduled for around 00:00 we relax the condition to mark
             # events before now where time has already passed by 2 (or 3 with autoCHARGE) samples
             short_after_CHARGE:bool = False
-            if self.timeindex[0] != -1 and now - start <  additional_samples*sample_interval:
-                now -= additional_samples*sample_interval
+            after_CHARGE = additional_samples*sample_interval
+            if self.autoChargeFlag:
+                after_CHARGE += CHARGE_WINDOW_S ## TILAU ## our auto CHARGE is known up to this long after its place: the recorded moves of those seconds are still to play
+            if self.timeindex[0] != -1 and now - start < after_CHARGE: ## TILAU ##
+                now -= after_CHARGE ## TILAU ##
                 short_after_CHARGE = True
             for i, bge in enumerate(self.backgroundEvents):
                 if (self.timeB[bge] - now) <= 0 and not (short_after_CHARGE and self.timeB[bge] < 0):
@@ -6442,10 +6445,10 @@ class tgraphcanvas(QObject):
         self.replayedBackgroundEvents = set()
 
     # called only after CHARGE
-    ## TILAU ## which background events fire, the slider jumps and the ramps come from
-    ## tilaucore.playback, the engine the Android prototype shares (android/AUTOMATION-SPEC.md
-    ## decision 14); same moves and ramps on the corpus. The sliders, the Fuji PID commands, the
-    ## playback aid and its beep stay here.
+    ## TILAU ## which background events fire and the slider jumps come from tilaucore.playback,
+    ## the engine the Android prototype shares (android/LICENSING-SPEC.md L8): each move a jump as
+    ## the hand made it, no ramp, nothing after the live DROP. The sliders, the Fuji PID commands,
+    ## the playback aid and its beep stay here.
     def playbackevent(self) -> None:
         try:
             #needed when using device NONE
@@ -6459,7 +6462,8 @@ class tgraphcanvas(QObject):
                 playback.replayed = self.replayedBackgroundEvents # never replay one event twice
                 slider_events, ramps = playback.step(self.timeclock.elapsedMilli(), Foreground(
                     self.timex, self.temp1, self.temp2, self.ctemp1, self.ctemp2, self.TPalarmtimeindex,
-                    self.specialevents, self.specialeventstype, self.specialeventsvalue))
+                    self.specialevents, self.specialeventstype, self.specialeventsvalue,
+                    dropped=self.timeindex[6] > 0)) ## TILAU ## nothing replayed after the live DROP
 
                 # in the background's order: the playback aid announcing an event (its value, the time
                 # left, blinking), then the Fuji PID command of an event that fired

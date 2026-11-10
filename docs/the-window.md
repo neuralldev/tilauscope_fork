@@ -347,14 +347,16 @@ corrections — see [Correcting a milestone](#correcting-a-milestone).
 | **Machine response** | Traces the [machine response](glossary.md#machine-response) — the earliest sign that a burner change has landed. Not offered for a machine without an air probe. |
 | **One lane per channel** | Gives each machine lever its own strip beneath the curve. |
 | **Burner traced, others as gestures** | Traces only the burner, and reduces the others to marks at the moments they moved. |
-| **Rate of rise** | How much the rise is smoothed — three levels, from responsive to steady. |
+| **Rate of rise** | How much the rise is smoothed — three levels, from responsive to steady: the rise is read over the last 15, 20 or 30 seconds. |
 
 The rate scale on the right appears with the roast: before the charge the drum is climbing, not
 roasting, and a scale with nothing on it invites reading the drum against the wrong numbers.
 
 The last one is not a display setting. The rate of rise is never stored in a roast file; it is
 recalculated every time a roast is opened. Changing the level therefore changes what the rate
-**is**, on this roast and on every one opened afterwards.
+**is**, on this roast and on every one opened afterwards. The recalculated rate is the slope of
+bean temperature over those seconds; a longer window is steadier and trails the bean by about
+half of it. The rate drawn while a roast is recording is Artisan's, set to the same level.
 
 **The lever strips are drawn live**, throughout the preheat and the roast, and each one carries
 its current level in figures at its right edge; a traced strip also labels each change with its

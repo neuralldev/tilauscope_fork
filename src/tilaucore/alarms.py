@@ -1,19 +1,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (c) 2026 Tilau
 # This file is part of TilauScope.
-#
-# Portions derived from Artisan Roaster Scope (artisanlib/util.py, artisanlib/canvas.py),
-# Copyright (C) 2010-2026 the Artisan team represented by Marko Luther
-# and all contributors, distributed under the terms of their original licence.
 
-"""Artisan alarm lists (.alrm), read, written back and fired (android/ALARM-SPEC.md C1).
+"""Alarm lists (.alrm), read, written back and fired (android/ALARM-SPEC.md C1, LICENSING-SPEC.md L7).
 
-An `.alrm` is Artisan's alarm table as parallel lists; each row becomes an `Alarm`
-with named fields, and `write_alrm` gives the file Artisan's export writes, so a list
-goes back to the desktop unchanged. `AlarmRun.step` is the desktop's firing rule
-(canvas.py, the alarm loop of `sample()`), applied to one sample: pure, the caller
-gives the readings, the marks and the clock. What an action does stays with the app;
-here only its argument is read, as Artisan reads it.
+An `.alrm` holds the alarm table as parallel lists (the file format the desktop shares);
+each row becomes an `Alarm` with named fields, and `write_alrm` writes the file back,
+so a list goes back to the desktop unchanged. `AlarmRun.step` is the firing rule of
+both apps, applied to one sample: pure, the caller gives the readings, the marks and
+the clock. What an action does stays with the app; here only its argument is read.
 """
 
 from __future__ import annotations
@@ -22,6 +17,8 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Final
+
+from tilaucore.milestones import turning_point
 
 # alarmtime codes (canvas.py: menuidx2alarmtime)
 START: Final[int] = -1
@@ -101,7 +98,8 @@ def write_alrm(rows: Sequence[Alarm]) -> str:
 
 
 def slider_value(text: str) -> int:
-    """A slider action's value, as Artisan reads it (before clamping to the slider's range)."""
+    """A slider action's value: the number before an optional `# comment`, rounded; 0 when none
+    (the slider's own range clamps it)."""
     try:
         return int(round(float(text.split("#")[0].strip())))
     except ValueError:
@@ -125,22 +123,31 @@ def event_buttons(text: str) -> list[tuple[int, int | None]]:
 
 @dataclass(frozen=True)
 class Readings:
-    """What the firing rule reads at one sample (Artisan's sample_* lists and marks)."""
-    clock_s: float                      # Artisan's timeclock: since ON, then since START
-    recording: bool                     # flagstart
-    times: Sequence[float]              # sample time of each sample
+    """What the rows read at one sample."""
+    clock_s: float                      # the roast clock: since ON, then since START
+    recording: bool                     # START pressed
+    times: Sequence[float]              # each sample's time, on the roast clock
     et: Sequence[float]
     bt: Sequence[float]
     delta_et: Sequence[float | None]
     delta_bt: Sequence[float | None]
-    marks: Sequence[int]                # Artisan's timeindex: [charge (-1 unset), dry_end … cool_end (0 unset)]
-    tp: int | None = None               # sample index of the detected TP
+    marks: Sequence[int]                # the milestones' samples: [charge (-1 unset), dry_end … cool_end (0 unset)]
+    tp: int | None = None               # the turning point's sample
     extra: Sequence[tuple[Sequence[float], Sequence[float]]] = ()  # each extra device: its two channels
-    recorded: int | None = None         # len(Artisan's timex) when `times` is the ON buffer (before START)
+    recorded: int | None = None         # samples recorded since START, when `times` is the ON buffer (before START)
 
 
 class AlarmRun:
-    """The rows of one roast: which have fired, at which sample (-1 not yet)."""
+    """The rows of one roast: which have fired, at which sample (-1 not yet) (android/LICENSING-SPEC.md L7).
+
+    A row fires once, at the first sample where all its conditions hold, checked again at each sample:
+    switched on; its guard row fired (if any), its negative guard row not fired (if any); its anchor
+    reached; its delay elapsed since the anchor's place (a milestone marked late counts from where it is
+    placed, so a delay already past fires at once); and, when it reads a source, the reading on the
+    right side of its limit (already past it when the anchor comes: it fires at once). A source with no
+    reading (a lost probe, -1) holds the row until it reads again. An If Alarm row counts its delay from
+    its guard's firing and reads its source as the change since then.
+    """
 
     def __init__(self, rows: Sequence[Alarm]) -> None:
         self.rows = list(rows)
@@ -148,136 +155,106 @@ class AlarmRun:
 
     def step(self, r: Readings) -> list[int]:
         """The rows that fire at this sample, in table order (a row may unlock the next one)."""
-        fired = []
+        fired: list[int] = []
         if not r.times:
             return fired
-        state = self.state
+        now = max(0, (len(r.times) if r.recorded is None else r.recorded) - 1)
         for i, a in enumerate(self.rows):
-            if not a.on or state[i] != -1:
-                continue
-            if not (a.guard < 0 or (0 <= a.guard < len(state) and state[a.guard] != -1)):
-                continue
-            if not (a.negguard < 0 or (0 <= a.negguard < len(state) and state[a.negguard] == -1)):
-                continue
-            if not self._anchored(a, r):
-                continue
-            ready = False
-            if a.offset > 0:
-                ready = self._elapsed(a, r) >= a.offset
-            reading, base = self._reading(a, r)
-            if reading is not None and reading != -1:
-                limit = a.temperature
-                ready |= ((a.cond == 0 and reading < limit) or (a.cond == 1 and reading > limit)
-                          or (a.cond == 2 and reading == limit) or (a.cond == 3 and reading != limit))
-                if base is not None and reading == limit: # relative to the guard: equality fires too
-                    ready = True
-            if ready:
-                state[i] = max(0, (len(r.times) if r.recorded is None else r.recorded) - 1)
+            if a.on and self.state[i] == -1 and self._guards_allow(a) and self._ready(a, r):
+                self.state[i] = now
                 fired.append(i)
         return fired
 
-    @staticmethod
-    def _anchored(a: Alarm, r: Readings) -> bool:
+    def _fired(self, row: int) -> bool:
+        return 0 <= row < len(self.state) and self.state[row] != -1
+
+    def _guards_allow(self, a: Alarm) -> bool:
+        return ((a.guard < 0 or self._fired(a.guard))
+                and (a.negguard < 0 or (a.negguard < len(self.state) and not self._fired(a.negguard))))
+
+    def _ready(self, a: Alarm, r: Readings) -> bool:
+        since = self._anchor_time(a, r)
+        if since is None or r.clock_s - since < a.offset:
+            return False
+        if a.source == NO_SOURCE:
+            return True
+        reading = self._reading(a, r)
+        if reading is None:
+            return False
+        limit = a.temperature
+        return ((a.cond == 0 and reading < limit) or (a.cond == 1 and reading > limit)
+                or (a.cond == 2 and reading == limit) or (a.cond == 3 and reading != limit))
+
+    def _anchor_time(self, a: Alarm, r: Readings) -> float | None:
+        """When the row's anchor was reached, on the roast clock; None when not yet."""
         t, m = a.anchor, r.marks
-        return (t == ON or (t < 0 and r.recording)
-                or (r.recording and t == CHARGE and m[0] > -1)
-                or (r.recording and 0 < t < TP and m[t] > 0)
-                or (t == IF_ALARM and a.guard != -1)
-                or (r.recording and t == TP and m[0] > -1 and bool(r.tp)))
+        if t == ON:
+            return 0.0
+        if t == IF_ALARM:
+            if not self._fired(a.guard):
+                return None
+            if not r.recording: # before START the samples are a short rolling buffer: counted since ON
+                return 0.0
+            return r.times[self.state[a.guard]] if self.state[a.guard] < len(r.times) else None
+        if not r.recording:
+            return None
+        if t < 0: # START
+            return 0.0
+        if t == CHARGE:
+            return r.times[m[0]] if m[0] > -1 else None
+        if t == TP:
+            return r.times[r.tp] if m[0] > -1 and r.tp else None
+        return r.times[m[t]] if 0 < t < len(m) and m[t] > 0 else None
 
-    def _elapsed(self, a: Alarm, r: Readings) -> float:
-        t, m, elapsed = a.anchor, r.marks, r.clock_s
-        if t < 0:
-            pass
-        elif r.recording and t == CHARGE and m[0] > -1:
-            elapsed -= r.times[m[0]]
-        elif r.recording and t == TP and r.tp:
-            elapsed -= r.times[r.tp]
-        elif r.recording and t < TP and m[t] > 0:
-            elapsed -= r.times[m[t]]
-        elif r.recording and t == IF_ALARM:
-            elapsed -= r.times[self.state[a.guard]]
-        return elapsed
+    def _reading(self, a: Alarm, r: Readings) -> float | None:
+        """The source's reading now (for an If Alarm: its change since the guard fired); None: no reading."""
+        series = self._series(a.source, r)
+        reads = _is_rate if a.source < 0 else _reads # a rate of -1 °C/min is a reading
+        if not series or not reads(series[-1]):
+            return None
+        if a.anchor != IF_ALARM:
+            return series[-1]
+        base = self.state[a.guard]
+        if base >= len(series) or not reads(series[base]):
+            return None
+        return series[-1] - series[base]
 
-    def _reading(self, a: Alarm, r: Readings) -> tuple[float | None, int | None]:
-        """The source's reading now, minus its reading at the guard's firing for an If Alarm."""
-        base = None
-        if a.anchor == IF_ALARM:
-            fired_at = self.state[a.guard]
-            if fired_at != -1:
-                base = fired_at if fired_at < len(r.times) else -1
-        s = a.source
-        if s in (-2, -1):
-            series = r.delta_et if s == -2 else r.delta_bt
-            value = series[-1]
-            if value is None:
-                return None, base
-            if base is not None and series[base] is not None:
-                value -= series[base]
-            return value, base
-        if s in (0, 1):
-            series = r.et if s == 0 else r.bt
-            return (series[-1] - series[base] if base is not None else series[-1]), base
-        if s > 1 and (s - 2) // 2 < len(r.extra):
-            first, second = r.extra[(s - 2) // 2]
-            # As Artisan: an even source with an empty first channel reads the second one
-            series = first if s % 2 == 0 and first else second
-            if not series:
-                return None, base
-            value = series[-1]
-            if base is not None and base < len(series):
-                value -= series[base]
-            return value, base
-        return None, base
+    @staticmethod
+    def _series(source: int, r: Readings) -> Sequence[float | None]:
+        if source == -2:
+            return r.delta_et
+        if source == -1:
+            return r.delta_bt
+        if source in (0, 1):
+            return r.et if source == 0 else r.bt
+        device = (source - 2) // 2
+        if source > 1 and device < len(r.extra):
+            return r.extra[device][source % 2]
+        return ()
 
 
+def _reads(value: float | None) -> bool:
+    return value is not None and value != -1
 
-TP_MAX_S: Final[float] = 120.0  # Artisan's TP_max_roasttime: past it, TP is placed at the current sample
+
+def _is_rate(value: float | None) -> bool:
+    return value is not None
 
 
 class TurningPoint:
-    """The TP the alarms anchor on, found live as Artisan finds it (canvas.sample, °C).
+    """The TP the alarms anchor on, found live (tilaucore.milestones.turning_point, °C).
 
-    Two minutes after CHARGE without one, TP is the current sample. Before that, once
-    BT has turned up (20 s after CHARGE, the last five readings rising), TP is the
-    lowest BT between CHARGE and now (Artisan's findTPint), kept if between 50 and 150 °C.
+    Searched before the next milestone marked after CHARGE; once BT has turned it is kept.
     """
 
     def __init__(self) -> None:
         self.index: int | None = None
-        self._turned = False
 
     def update(self, times: Sequence[float], bt: Sequence[float], marks: Sequence[int]) -> int | None:
-        charge = marks[0]
-        if self.index is not None or charge < 0 or not times:
-            return self.index
-        if times[-1] - times[charge] > TP_MAX_S:
-            self.index = len(times) - 1
-        elif not marks[1] and charge + 8 < len(bt) and self._has_turned(times, bt, charge):
-            tp = self._lowest(bt, marks)
-            if 50 < bt[tp] < 150:
-                self.index = tp
+        if self.index is None and marks[0] >= 0 and times:
+            end = min((m for m in marks[1:] if m > marks[0]), default=None)
+            self.index = turning_point(times, bt, marks[0], end)
         return self.index
-
-    def _has_turned(self, times: Sequence[float], bt: Sequence[float], charge: int) -> bool:
-        if (not self._turned and int(times[-1] - times[charge]) > 20 and len(bt) > 3
-                and bt[-5] <= bt[-4] and bt[-5] <= bt[-3] and bt[-5] <= bt[-2] and bt[-5] <= bt[-1] and bt[-5] < bt[-1]):
-            self._turned = True
-        return self._turned
-
-    @staticmethod
-    def _lowest(bt: Sequence[float], marks: Sequence[int]) -> int:
-        start, end = 0, len(bt)
-        for limit in (marks[6], marks[2]): # not beyond DROP, nor beyond FC
-            if limit and start < limit < end:
-                end = limit
-        if start < marks[0] < end:
-            start = marks[0]
-        lowest, index = 1000.0, 0
-        for i in range(end - 1, start - 1, -1):
-            if 0 < bt[i] < lowest:
-                lowest, index = bt[i], i
-        return index
 
 
 # ── Editing a list (the desktop editor's rules, android/ALARM-SPEC.md C3) ────

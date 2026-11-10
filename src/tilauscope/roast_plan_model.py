@@ -33,7 +33,7 @@ from tilauscope import text_shaping
 from PyQt6.QtCore import  QSettings
 from PyQt6.QtWidgets import QApplication
 
-from tilaucore.artisan_compat import RoRSettings
+from tilaucore.ror import RoRSettings
 from tilauscope.ror import ror_settings
 from tilaucore import roast_plan as _core
 from tilaucore.roast_plan import *  # noqa: F403  pylint: disable=wildcard-import,unused-wildcard-import
@@ -69,9 +69,6 @@ class TilauScopeRoastPlan(RoastPlanEngine):
         return (self.parent.qmc.mode
                 if self.parent is not None and getattr(self.parent, "qmc", None) is not None
                 else "C")
-
-    def _recording(self) -> bool:
-        return bool(self.parent.qmc.flagon)
 
     def _ror_settings(self) -> RoRSettings:
         return ror_settings(self.parent.qmc)

@@ -449,12 +449,6 @@ class AlarmSet(QObject):
                             'tilauscope_alarms',
                             'Alarm #{0}: never fires (a "not fired" target needs a starting event)')
                         .format(num))
-            # The time criterion is gated by offset > 0; with offset 0 and no
-            # sensor condition there is nothing left to fire the alarm.
-            if a.offset == 0 and a.source == -3 and a.action != Action.NONE:
-                warnings.append(
-                    QApplication.translate('tilauscope_alarms', 'Alarm #{0}: never fires (offset 0 with no condition)')
-                    .format(num))
         return warnings
 
 
@@ -933,9 +927,8 @@ class _AlarmRow(QFrame):
         self._render_action(a)
 
     def _render_delay(self, a: Alarm, cluster: str) -> None:
-        # Offset 0 is not "fire at the anchor": the engine gates the time
-        # criterion on offset > 0, so no delay is set at all. Render it as the
-        # same "add" affordance as a missing condition rather than as +0:00.
+        # Offset 0 fires at the anchor (tilaucore.alarms): no delay is set. Render
+        # it as the same "add" affordance as a missing condition rather than as +0:00.
         if a.offset > 0:
             self._lay.addWidget(self._chip(self._offset_text(a.offset), 'time', cluster))
         else:
@@ -944,16 +937,15 @@ class _AlarmRow(QFrame):
                 'ghost', cluster, ghost=True))
 
     def _render_condition(self, a: Alarm) -> None:
-        # Delay and condition are ORed by the engine, whichever comes first —
-        # hence "or as soon as". With no delay the condition is the only
-        # trigger and there is no alternative to announce.
+        # Delay and condition must both hold (tilaucore.alarms): the delay
+        # elapsed, then the reading on the right side — hence "and once".
         if a.source == -3:
             self._lay.addWidget(self._chip(
                 '+ ' + QApplication.translate('tilauscope_alarms', 'condition'),
                 'ghost', 'cond', ghost=True))
             return
         self._lay.addWidget(_kw(
-            QApplication.translate('tilauscope_alarms', 'or as soon as') if a.offset > 0
+            QApplication.translate('tilauscope_alarms', 'and once') if a.offset > 0
             else QApplication.translate('tilauscope_alarms', 'as soon as')))
         chip = self._chip(self._cond_text(a), 'cond', 'cond')
         if a.is_conditional:
@@ -2288,12 +2280,9 @@ class TilauAlarmDlg(QDialog):
             'ON = monitoring on, START = recording start, CHARGE / DRY END / FC / SC / '
             'DROP / COOL = that marked event, TP = after CHARGE once the turning point is '
             'detected. If that event never occurs, the alarm never fires.\n'
-            '- Offset = seconds AFTER the anchor before the time criterion is met. The '
-            'time criterion only exists when offset > 0; offset 0 means there is NO time '
-            'criterion (it does NOT mean "fire at the anchor"), so "essentially at the '
-            'anchor" is written as the smallest non-zero offset, commonly +0:01. For an '
-            'IF-alarm the offset counts from the instant its guard fired, not from a roast '
-            'event.\n'
+            '- Offset = seconds AFTER the anchor before the alarm may fire, counted from '
+            'where the anchor is placed; offset 0 means "at the anchor". For an IF-alarm '
+            'the offset counts from the instant its guard fired, not from a roast event.\n'
             '- Guards: an IF-alarm fires only after its guard alarm has fired; an IF-NOT '
             'only while the referenced alarm has not fired; an IF-alarm with no guard '
             'never fires. A "not fired" reference is a restriction added on top of a '
@@ -2304,11 +2293,12 @@ class TilauAlarmDlg(QDialog):
             'these against a plausible CHANGE over the interval, never against a roast '
             'temperature; an absolute-looking threshold there (e.g. 190) is a mistake to '
             'flag, as such a rise never happens.\n'
-            '- An alarm fires on (offset > 0 AND elapsed-since-anchor >= offset) OR (a '
-            'sensor condition that holds) - logical OR. Hence: offset > 0 + no condition = '
-            'timed; offset 0 + condition = pure condition; offset > 0 + condition = '
-            'whichever comes first; and offset 0 + NO condition = NEVER fires (a dead '
-            'alarm).\n'
+            '- An alarm fires once its offset has elapsed since the anchor AND, when it '
+            'has a sensor condition, that condition holds - logical AND. Hence: no '
+            'condition = timed (offset 0 = at the anchor itself); offset 0 + condition = '
+            'pure condition; offset > 0 + condition = the condition is only looked at once '
+            'the delay has elapsed, and fires at once if it already holds then. A probe '
+            'that stops reading holds the alarm until it reads again.\n'
             '- A sensor condition is a LATCH, not an instant test: the alarm arms at its '
             'anchor, then the condition is re-checked every tick and fires the first tick '
             'it holds. The condition is EXPECTED to become true some time AFTER the anchor, '
@@ -2329,8 +2319,6 @@ class TilauAlarmDlg(QDialog):
             'later is the intended behaviour;\n'
             '- broken guard logic: an IF-alarm referencing a missing, disabled, self or '
             'cyclic alarm;\n'
-            '- dead alarms: offset 0 with no sensor condition (and an action set) can '
-            'never fire;\n'
             '- ordering problems, including offset-0 conditional chains whose list order '
             'forces an unintended extra-tick delay;\n'
             '- wrong anchor/phase: an action attached to an event where it makes no sense;\n'

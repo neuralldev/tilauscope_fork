@@ -23,7 +23,7 @@ import dataclasses
 import re
 from dataclasses import dataclass, field
 
-from tilaucore.artisan_compat import RoRSettings
+from tilaucore.ror import RoRSettings, window_for
 
 # Artisan's DefaultButtons, by position (canvas.py: buttonactions; extra and xextra buttons).
 MILESTONES = ("charge", "dry_end", "first_crack", "first_crack_end", "second_crack", "second_crack_end", "drop", "cool_end")
@@ -123,10 +123,6 @@ def parse_ini(text: str) -> dict[str, dict[str, str]]:
     return sections
 
 
-def _bool(value: str | None, default: bool) -> bool:
-    return default if value is None else value.strip().lower() == "true"
-
-
 def _int(value: str | None, default: int) -> int:
     try:
         return int(float(value)) if value is not None else default
@@ -152,16 +148,13 @@ def _commands(names: tuple[str, ...], kinds: str | None, actions: str | None,
 def read_setup(text: str) -> MachineSetup:
     """The named entries of an .aset's text."""
     ini = parse_ini(text)
-    general, roc, buttons = ini.get("General", {}), ini.get("RoC", {}), ini.get("DefaultButtons", {})
+    roc, buttons = ini.get("RoC", {}), ini.get("DefaultButtons", {})
     defaults = RoRSettings()
     span = _int(roc.get("DeltaSpan"), 0)
     ror = dataclasses.replace(
         defaults,
-        curvefilter=_int(general.get("curvefilter"), defaults.curvefilter),
-        interpolate_drops=_bool(general.get("interpolateDropsflag"), defaults.interpolate_drops),
-        delta_span_s=float(span) if span > 0 else defaults.delta_span_s,
-        delta_filter=_int(roc.get("deltafilter"), defaults.delta_filter),
-        filter_dropouts=_bool(general.get("filterDropOuts"), defaults.filter_dropouts))
+        window_s=window_for(span, _int(roc.get("deltafilter"), 0)),  # the smoothing level the setup was saved with
+        delta_span_s=float(span) if span > 0 else defaults.delta_span_s)
     on_milestone: dict[str, list[str]] = {}
     on_button: dict[str, list[str]] = {}
     unsupported: dict[str, str] = {}

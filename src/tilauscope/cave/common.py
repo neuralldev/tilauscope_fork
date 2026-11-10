@@ -45,7 +45,6 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from artisanlib.util import convertTemp, float2float
-from tilaucore.artisan_compat import fill_gaps, smooth_list
 from tilauscope import ror
 from tilaucore.beans import from_json
 from tilauscope.tilauscope_types import (BeanCaveContainer, THEME, _IS_WINDOWS,
@@ -436,13 +435,11 @@ def recompute_profile_deltas(qmc, data: dict, deltaname: str, ds: int):
     unit = str(data.get('mode', '') or '')
     temp = [convertTemp(t, unit, qmc.mode) for t in data.get(deltaname, [])]
 
-    cf = qmc.curvefilter  # smoothed twice as heavy for PID/RoR as for the drawn curve
-    t1 = smooth_list(data.get('timex', []), (fill_gaps(temp) if qmc.interpolateDropsflag else temp), window_len=cf)
-    if len(t1) > 10 and len(tx) > 10:
+    if len(temp) > 10 and len(tx) > 10:
         # RoR computation starts 10 readings after CHARGE to skip the initial peak
         ror_start = min(rd + 10, len(tx) - 1)
         try:
-            return ror.recompute_deltas(qmc, tx, ror_start, drop, None, t1, bt_samples=ds)[1]
+            return ror.recompute_deltas(qmc, tx, ror_start, drop, None, temp)[1]  # `ds` no longer read: the window is in seconds
         except Exception:  # noqa: BLE001
             _logd.exception('stored profile RoR not computed')
     return None

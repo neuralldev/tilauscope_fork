@@ -12,7 +12,6 @@ operator's language, the tablet shows the English text.
 
 import ast
 import copy
-import dataclasses
 import logging
 import math
 import re
@@ -23,9 +22,9 @@ from typing import Any, Final
 
 from tilaucore import tasting_log
 from tilaucore.alog_index import AlogMetadata, burner_events, phase_heater, scan_directory
-from tilaucore.artisan_compat import (RoRSettings, convertTemp, convertWeight, delta_samples,
-                                      events_internal_to_external_value, fill_gaps, fromCtoFstrict, fromFtoCstrict,
-                                      profile_sampling_interval, recompute_bt_deltas, smooth_list)
+from tilaucore.artisan_compat import (convertTemp, convertWeight, events_internal_to_external_value, fromCtoFstrict,
+                                      fromFtoCstrict)
+from tilaucore.ror import RoRSettings, rate_of_rise
 from tilaucore.bean_energy import FloorProfile, match_variety_family
 from tilaucore.coffee_share import adopted
 from tilaucore.bean_qualifiers import QT_TRANSLATE_NOOP
@@ -1086,11 +1085,8 @@ class RoastPlanEngine:
         """The unit the plan works in, 'C' or 'F'."""
         return self.mode
 
-    def _recording(self) -> bool:
-        return self.recording
-
     def _ror_settings(self) -> RoRSettings:
-        """The settings of the standard method the plan reads past roasts' RoR with."""
+        """The settings the plan reads past roasts' RoR with."""
         return self.ror_settings
 
     def _beancave_directory(self) -> str:
@@ -1272,15 +1268,10 @@ class RoastPlanEngine:
         unit = data.get("mode", "C")
         temp = [convertTemp(t,unit,self._current_mode()) for t in data.get(deltaname, [])]
 
-        settings = self._ror_settings()
-        if settings.delta_span_s > 0:  # as Artisan when it loads this roast
-            settings = dataclasses.replace(settings, delta_samples=delta_samples(
-                settings.delta_span_s, profile_sampling_interval(data)))
-        t1 = smooth_list(tx, (fill_gaps(temp) if settings.interpolate_drops else temp), window_len=settings.curvefilter)
-        if len(t1)>10 and len(tx) > 10:
+        if len(temp) > 10 and len(tx) > 10:
             # we start RoR computation 10 readings after CHARGE to avoid this initial peak
             RoR_start = min(rd+10,len(tx)-1)
-            return recompute_bt_deltas(tx, RoR_start, drop, t1, settings, recording=self._recording())
+            return rate_of_rise(tx, temp, self._ror_settings(), RoR_start, drop if drop > 0 else None)
         return None
 
     def _get_delta_bt(self, file_name: str):

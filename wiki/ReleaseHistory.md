@@ -1,4 +1,18 @@
 ## [4.3] 2026-09-13
+build 57
+* ⚡ [feat(detection)] : automatic CHARGE is placed where bean temperature starts its plunge, one reading before, instead of a few seconds into it; a gentle slope before the beans go in is no longer taken for it
+* ⚡ [feat(detection)] : automatic DROP is marked once bean temperature has fallen from its peak (3 °C on the Skywalker V2), about 15 s after the beans come out, and placed back where they left; a crash after first crack is never taken for it
+* ⚡ [feat(detection)] : a contact on the drop door, wired to the TilauProbe (probe firmware update needed), marks DROP the moment the door opens, even with automatic DROP off; its state shows in TilauScope Config under Sensors and Detection, and without it DROP is still found from the curve
+* ⚡ [feat(android)] : on the Android prototype, the drop door contact on the TilauAmbient probe marks DROP the moment the door opens, and a Door pill in the roast screen's header shows the door closed or open
+* ⚡ [feat(detection)] : the turning point is the lowest bean temperature between CHARGE and dry end; none is placed later in the roast
+* ⚡ [feat(alarms)] : an alarm set on a milestone with no delay fires at that milestone; a delay counts from where the milestone is placed, so one marked late fires what is already due; with a delay and a temperature, both must hold; a probe that stops reading holds the alarm until it reads again
+* 🐛 [fix(alarms)] : before START, an alarm chained after another one fires again
+* 🐛 [fix(alarms)] : the alarm editor reads a delay with a temperature as "and once", and no longer warns that an alarm with neither never fires: it fires at its event
+* ⚡ [feat(replay)] : Roast Replay sets the levers as the recorded roast had them at CHARGE, then plays each move as a jump, as the hand made it, without ramp; by time until the turning point, then when bean temperature reaches the move's recorded one; nothing is played after DROP
+* 🐛 [fix(replay)] : with automatic CHARGE, the moves recorded in the first seconds after CHARGE are played instead of skipped
+* ⚡ [feat(graph)] : the rate of rise TilauScope recalculates (roast plan, reference curve, BeanCave, roast review) is the slope of bean temperature over the last 15, 20 or 30 s, the three smoothing levels of the curve's menu; the live rate stays Artisan's
+* ⚡ [feat(android)] : the Android prototype shares these rules: CHARGE, DROP, turning point, alarms, Roast Replay and rate of rise
+* 🐛 [fix(android)] : on the Android prototype, automatic dry end is looked for even when no turning point was found, the levers are set again after a link loss early in the roast, and an Acaia scale that falls silent is asked for its weight again after 2 s
 build 56
 build 55
 * ⚡ [feat(auto)] : at the drop, AUTO sets the cooling declared for the roaster instead of fixed values; on the Skywalker V2 that is burner 0 %, air 75 %, drum 80 % and the AirWave at 80 % in fan mode, and COOL END is marked once the beans are under 50 °C if no alarm marked it; on a roaster without a declared cooling AUTO only cuts the burner

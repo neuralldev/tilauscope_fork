@@ -293,11 +293,13 @@ show the resulting strategy as a narrative before the roast starts. The alarms t
 Artisan's; what changes is that the rule can be read back and checked.
 
 A sentence names, in order, the event the alarm starts from, the delay after that event, the
-sensor condition, and the action. Delay and condition are alternatives rather than a pair — the
-alarm acts on whichever arrives first, and the sentence says so: *when CHARGE +2:00 or as soon as
-BT > 190*. Any part left unset appears as a dashed placeholder — *+ delay*, *+ condition*,
-*+ guard* — so a rule with neither a delay nor a condition, which can never act at all, is
-visible as such and named in the banner at the top of the window.
+sensor condition, and the action. Delay and condition are a pair — the alarm acts once the delay
+has elapsed and the condition holds, and the sentence says so: *when CHARGE +2:00 and once
+BT > 190*. A condition already met when the delay ends acts at once; a probe that stops reading
+holds the alarm until it reads again. The delay counts from where the event is placed, so a
+milestone marked late acts on what is already due. Any part left unset appears as a dashed
+placeholder — *+ delay*, *+ condition*, *+ guard*; a rule with neither a delay nor a condition
+acts at the event itself.
 
 A rule can also wait on another one. Given a [guard](glossary.md#guard), *if #3 fired* starts the
 alarm the moment alarm #3 acts, and on that form the sensor threshold is a **change measured from
@@ -320,8 +322,8 @@ or keep it outside TilauScope.
 
 ![the Expert view](assets/the-guided-roast-7.17.png)
 
-<!-- CAPTURE 7.17 [scene:alarms] — the alarm editor, grouped by phase, on a full programme. Every row now
-carries a + guard placeholder after its condition, so the previous capture is out of date. -->
+<!-- CAPTURE 7.17 [scene:alarms] — the alarm editor, grouped by phase, on a full programme: milestone rows
+with no delay, and one row pairing a delay with a temperature ("FC START +0:30 and once BT > 200"). -->
 
 
 ---

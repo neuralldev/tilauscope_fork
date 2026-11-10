@@ -62,8 +62,10 @@ from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
 from tilauscope import auto_marks
-from tilaucore.milestones import CHARGE_MIN_BT, DROP_MIN_BT
+from tilaucore.milestones import CHARGE_MIN_BT, DROP_FALL_C, DROP_MIN_BT
+from tilauscope.roasters import roast_context_for
 from tilauscope.config_controls_tab import ControlsTab
+from tilauscope.widgets.drop_door_status import DropDoorStatus
 from tilauscope.energy_model import HEATER_FROM_ARTISAN, HEATER_FROM_CONFIG, ROASTER, SOURCE_CURVE, SOURCE_RATED
 from tilauscope.energy_tap import (SETTING_EXTRACTOR_ON_ROASTER_METER, heater_estimate, resolve_sensors,
                                    set_heater_power)
@@ -826,6 +828,8 @@ class TilauscopeConfigDlg(QDialog):
         ag.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         ag.addWidget(self.tilauscopeProbeComboBoxcList, 0, 1)
         ag.addWidget(ambient_cell, 0, 2)
+        if not self._alone:   # the drop door is the roaster's: BeanCave alone has none
+            ag.addWidget(DropDoorStatus(self.aw), 1, 0, 1, 3)
         layout.addWidget(ambient_group)
 
         # ── Color & Airflow — AirWave BLE ─────────────────────────────────
@@ -1031,18 +1035,21 @@ class TilauscopeConfigDlg(QDialog):
         layout = scroll.widget().layout()
         auto = auto_marks.defaults(self.aw)
 
-        # ── Charge and Drop (Artisan's Auto Mark) ─────────────────────────
+        # ── Charge and Drop (auto marks) ──────────────────────────────────
         layout.addWidget(_section_label(
             QApplication.translate("tilauscope_devices", "Charge and Drop")
         ))
         unit = 'F' if self.aw.qmc.mode == 'F' else 'C'
+        drop_fall = getattr(roast_context_for(self.aw), 'drop_fall_c', None) or DROP_FALL_C # the selected roaster's
         cd_lbl = QLabel(
             QApplication.translate(
                 "tilauscope_devices",
-                "Artisan marks Charge when bean temperature drops as the beans go in (above {0}), "
-                "and Drop when it drops as they come out (from 7 min and above {1}). These are the "
-                "defaults for every roast; Roast Setup can change them for one roast."
-            ).format(f"{CHARGE_MIN_BT[unit]:.0f} °{unit}", f"{DROP_MIN_BT[unit]:.0f} °{unit}")
+                "Charge is marked when bean temperature plunges as the beans go in (from above {0}). "
+                "Drop is marked once bean temperature has fallen {2} from its peak, about 15 s after "
+                "the beans come out, and placed back where they left (from 7 min and above {1}). These "
+                "are the defaults for every roast; Roast Setup can change them for one roast."
+            ).format(f"{CHARGE_MIN_BT[unit]:.0f} °{unit}", f"{DROP_MIN_BT[unit]:.0f} °{unit}",
+                     f"{drop_fall * (1.8 if unit == 'F' else 1.0):.0f} °{unit}")
         )
         cd_lbl.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 11px; font-style: italic;"
@@ -1059,6 +1066,7 @@ class TilauscopeConfigDlg(QDialog):
         self.dropMarking.setChecked(auto['drop'])
         cd_g.addWidget(self.chargeMarking)
         cd_g.addWidget(self.dropMarking)
+        cd_g.addWidget(DropDoorStatus(self.aw, detection=True))
         layout.addWidget(cd_group)
 
         # ── First Crack ───────────────────────────────────────────────────

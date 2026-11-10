@@ -19,8 +19,9 @@ every phase duration and every milestone time is counted from it.
 #### TP — turning point
 
 The lowest bean temperature of the roast, reached shortly after charge, when the beans stop
-absorbing heat faster than the machine supplies it and start climbing again. A rising
-[RoR](#ror--rate-of-rise) after TP is normal recovery, not a fault.
+absorbing heat faster than the machine supplies it and start climbing again. It is looked for
+between [CHARGE](#charge) and [dry end](#de--dry-end) only: a dip later in the roast is never a
+turning point. A rising [RoR](#ror--rate-of-rise) after TP is normal recovery, not a fault.
 
 #### Drying — DRY
 
@@ -59,6 +60,12 @@ the cup's balance and body. Measured relative to the whole roast as [DTR](#dtr--
 #### DROP
 
 The moment the beans leave the drum for the cooling tray. The end of the roast.
+
+#### Drop door contact
+
+A switch on the roaster's drop door, read by the TilauAmbient probe. The door opening is the drop,
+so the contact marks [DROP](#drop) at that instant instead of from the curve. See
+[Hardware](hardware.md#drop-door-contact).
 
 #### Back-to-back
 
@@ -365,10 +372,12 @@ carried over from a nearby setpoint or from the machine's general thermal behavi
 
 Following a previously loaded background curve live, from [CHARGE](#charge) onward, moving the
 same controls at the same points instead of following the guided plan. On a machine with
-controls, it tracks bean temperature once available and falls back to elapsed time before that;
-on a machine without controls it only announces the moves to make. The replay looks ahead by
-the machine's measured burner lag (10 s on a machine without a measured one), so the effect lands when the curve says it should rather than
-after that lag — see [Preparing a roast](preparing-a-roast.md#automating-the-start).
+controls, the levers are first set as the recorded roast had them at its CHARGE. Each move is
+then played as a jump to the recorded value, as the hand made it, with no ramp between two
+moves: at the same time after CHARGE until the [turning point](#tp--turning-point), then when
+bean temperature reaches the one the move was made at. Nothing is played after
+[DROP](#drop). On a machine without controls it only announces the moves to make — see
+[Preparing a roast](preparing-a-roast.md#automating-the-start).
 
 ---
 

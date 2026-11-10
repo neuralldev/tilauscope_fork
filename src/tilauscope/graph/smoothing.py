@@ -49,6 +49,7 @@ from typing import Any, Final
 
 from PyQt6.QtWidgets import QApplication
 
+from tilaucore.ror import window_for
 from tilauscope.graph.common import report_once, reset_rise_cache
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -56,12 +57,18 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Level:
-    """One smoothing choice. `span` is the seconds a single rate value is
-    measured over; `ror_filter` the width of the average run over the result."""
+    """One smoothing choice. `span` is the seconds a single rate value of
+    Artisan's live rate is measured over; `ror_filter` the width of the average
+    run over the result. `window` is the same choice for the rate TilauScope
+    recomputes (tilaucore.ror): the seconds its slope is fitted over."""
 
     key: str
     span: int
     ror_filter: int
+
+    @property
+    def window(self) -> int:
+        return int(window_for(self.span, self.ror_filter))
 
     @property
     def lag(self) -> float:
@@ -84,7 +91,7 @@ DEFAULT: Final[str] = 'standard'
 
 
 def label(level: Level) -> str:
-    """Menu text: the name, then the span, because the span is the choice.
+    """Menu text: the name, then the window, because the window is the choice.
 
     One literal per level — the extractor only sees literal arguments, so a
     table walked in a loop would ship three untranslatable names.
@@ -95,7 +102,7 @@ def label(level: Level) -> str:
         name = QApplication.translate('Menu', 'Standard')
     else:
         name = QApplication.translate('tilauscope_graph', 'Smooth')
-    return f'{name}  ·  {level.span} s'
+    return f'{name}  ·  {level.window} s'
 
 
 def current(qmc: Any) -> str:

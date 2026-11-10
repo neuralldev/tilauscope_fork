@@ -83,6 +83,7 @@ from tilauscope.theme_qss import apply_tilau_theme, tint, tooltip_qss
 from tilauscope.tilauscope_types import THEME, _IS_MACOS, call_later
 from tilauscope.whats_new import maybe_show_whats_new
 from tilauscope.backup_dialog import show_backup_notices
+from tilauscope.drop_door_watch import DropDoorWatch
 from tilauscope.widgets.controls import ClickableValue, HoldToFireButton
 from tilauscope.widgets.labels import ClickableLabel, TickerLabel
 from tilauscope.widgets.phase import PhaseWidget
@@ -162,6 +163,8 @@ class BuildMixin:
         self._last_extra_update = 0.0   # throttle horodaté du panneau extra (≤ 1 Hz)
         # sampling-slot failures counted by raise site (see _log_update_failure)
         self._update_failures: dict[tuple, int] = {}
+        # DROP from the drop door's contact; on aw so TilauScope Config can show its state
+        self.artisan_conf.aw._tilau_drop_door = DropDoorWatch()
 
         self.root_menu:QMenu|None = None
         self.init = True

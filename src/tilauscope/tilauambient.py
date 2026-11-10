@@ -42,6 +42,7 @@ from PyQt6.QtCore import pyqtSignal, QDateTime, QObject # @UnusedImport @Reimpor
 from PyQt6.QtCore import QMutex, QMutexLocker
 
 from artisanlib.ble_port import ClientBLE
+from tilaucore.drop_door import DoorFrame, parse_frame
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -58,6 +59,7 @@ class TILAUAMBIENT_UUID(StrEnum):
     TILAU_AMBIENT_SERVICE_UUID  = "f3b6e2a0-8c4e-4e1f-9c2d-1a7f5b9a1c01" # service UUID to discover devices 3aac4624d50252911649cd910be541bc
     TILAU_AMBIENT_DIALOG_UUID  = "f3b6a2a0-8c4e-4e1f-9c2d-1a7f5b9a1c05" # clear text channel characteristic, read 
     TILAU_AUDIO_DIALOG_UUID    = "f3b6e2a0-8c4e-4e1f-9c2d-1a7f5b9a1c04" # clear text channel characteristic, read write
+    TILAU_DROP_DOOR_UUID       = "f3b6e2a0-8c4e-4e1f-9c2d-1a7f5b9a1c06" # drop door contact, read (tilaucore.drop_door)
 
 class TilauAmbientData:
     __slots__ = ('temperature', 'humidity', 'pressure', 'altitude', 'valid')
@@ -222,6 +224,10 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         self._cache_lock = threading.Lock()
         self._ambient: tuple[float, TilauAmbientData] | None = None
         self._audio: tuple[float, TilauAudioData] | None = None
+        self._door: tuple[float, DoorFrame] | None = None
+        # The drop door's characteristic: None until looked up on this connection,
+        # False on a firmware without it (looked up again on the next connection).
+        self.door_supported: bool | None = None
         self._poll_stop = threading.Event()
         self._poller = threading.Thread(target=self._poll_loop, name="tilauambient-poll", daemon=True)
         
@@ -233,6 +239,8 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         # audio support
         self.add_read(TILAUAMBIENT_UUID.TILAU_AMBIENT_SERVICE_UUID, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
         self.add_write(TILAUAMBIENT_UUID.TILAU_AMBIENT_SERVICE_UUID, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
+        # drop door support
+        self.add_read(TILAUAMBIENT_UUID.TILAU_AMBIENT_SERVICE_UUID, TILAUAMBIENT_UUID.TILAU_DROP_DOOR_UUID)
         self.start(case_sensitive=False, address=uuid)
 
         self.is_connected = False
@@ -261,6 +269,7 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
 
     def on_connect(self) -> None: # pylint: disable=no-self-use
         self.is_connected = True
+        self.door_supported = None   # the probe may have been flashed meanwhile
         self.connected_signal.emit() # On émet le signal au lieu d'appeler un handler
  
     def on_disconnect(self) -> None: # pylint: disable=no-self-use
@@ -279,6 +288,7 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
                     audio = self._read_audio()
                     with self._cache_lock:
                         self._audio = (time.monotonic(), audio)
+                self._poll_door()
             except Exception:  # noqa: BLE001 - a dead poller would freeze the probe for the session
                 _logd.exception("TilauAmbient poll failed")
 
@@ -288,6 +298,37 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         if entry is None or time.monotonic() - entry[0] > _MAX_AGE_S:
             return None
         return entry[1]
+
+    def _poll_door(self) -> None:
+        if self.door_supported is None:
+            client = getattr(self, '_ble_client', None)
+            try:   # bleak raises before service discovery has completed
+                found = client.services.get_characteristic(TILAUAMBIENT_UUID.TILAU_DROP_DOOR_UUID)
+            except Exception:  # noqa: BLE001
+                return
+            self.door_supported = found is not None
+            _logd.info(f"drop door contact {'supported' if self.door_supported else 'not in this probe firmware'}")
+        if not self.door_supported:
+            return
+        try:
+            payload = self.read(TILAUAMBIENT_UUID.TILAU_DROP_DOOR_UUID, _READ_TIMEOUT_S)
+        except Exception as e:  # noqa: BLE001
+            _logd.warning(f"drop door read failed: {e}")
+            return
+        read_at = time.monotonic()
+        frame = parse_frame(payload) if payload is not None else None
+        if frame is None:
+            return
+        with self._cache_lock:
+            self._door = (read_at, frame)
+
+    def door_reading(self) -> tuple[float, DoorFrame] | None:
+        """The last door frame and when it was read (time.monotonic()); None when stale or none."""
+        with self._cache_lock:
+            entry = self._door
+        if entry is None or time.monotonic() - entry[0] > _MAX_AGE_S:
+            return None
+        return entry
 
     def askAmbient(self) -> TilauAmbientData:
         """Last reading taken by the poller; never waits on the BLE link."""
