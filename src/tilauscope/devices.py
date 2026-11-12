@@ -1045,7 +1045,7 @@ class TilauscopeConfigDlg(QDialog):
             QApplication.translate(
                 "tilauscope_devices",
                 "Charge is marked when bean temperature plunges as the beans go in (from above {0}). "
-                "Drop is marked once bean temperature has fallen {2} from its peak, about 15 s after "
+                "Drop is marked once bean temperature has fallen {2} from its peak, within about 15 s after "
                 "the beans come out, and placed back where they left (from 7 min and above {1}). These "
                 "are the defaults for every roast; Roast Setup can change them for one roast."
             ).format(f"{CHARGE_MIN_BT[unit]:.0f} °{unit}", f"{DROP_MIN_BT[unit]:.0f} °{unit}",

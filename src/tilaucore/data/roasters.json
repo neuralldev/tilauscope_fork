@@ -360,6 +360,8 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "drop_fall_c": 3.0,
+        "drop_probe_lag_s": 0.0,
         "maillard_ror_decay": 3.0,
         "technology": [
             "radiation",

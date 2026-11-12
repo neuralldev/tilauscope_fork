@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<resources>
+    <color name="splash_background">#1E1E2E</color>
+    <!-- Shown by Android before the first frame; the page then plays the start screen. -->
+    <style name="Theme.TilauScope" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+    </style>
+</resources>

@@ -1,0 +1,1709 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>TilauScope</title>
+<link rel="stylesheet" href="common.css">
+<style>
+#app{height:100%;display:flex;flex-direction:column}
+#gear,#cavebtn{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center}
+#cavebtn{color:var(--sub)}
+#gear:disabled,#cavebtn:disabled,#coffee:disabled{opacity:.35}
+#coffee{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:15px;border:1px solid var(--line);font-size:13px;font-weight:500;max-width:420px;white-space:nowrap}
+#coffee.short{border-color:var(--peach);background:rgba(250,179,135,.10)}
+#coffee .dot{width:8px;height:8px;border-radius:4px;flex:none}
+#coffeename{overflow:hidden;text-overflow:ellipsis}
+main{flex:1;min-height:0;display:flex;gap:16px;padding:0 16px 16px}
+
+/* Curve */
+#chart{flex:1;min-width:0;background:var(--surface);border-radius:18px;position:relative;overflow:hidden}
+#svg{position:absolute;inset:0}
+.lbl{position:absolute;font-size:11px;color:var(--muted)}
+.plbl{position:absolute;white-space:nowrap;font-size:10px;color:var(--muted);letter-spacing:.4px}
+.pchip{position:absolute;white-space:nowrap;font-size:12px;color:var(--text);background:var(--overlay);border-radius:10px;padding:2px 10px}
+.mlbl{position:absolute;white-space:nowrap;font-size:11px;font-weight:600;color:var(--sub);letter-spacing:.4px}
+#dot{position:absolute;width:12px;height:12px;border-radius:6px;background:var(--blue);border:3px solid var(--surface);display:none}
+.scrim{position:absolute;inset:0;background:rgba(17,17,27,.72);display:none;align-items:center;justify-content:center}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:28px 32px}
+#lostcard{width:400px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+#btsettings{margin-top:6px;height:52px;padding:0 22px;border-radius:16px;border:1px solid var(--blue);background:rgba(137,180,250,.12);
+ color:var(--blue);font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:10px}
+#endcard{width:520px;display:flex;flex-direction:column;gap:20px}
+button.sum{text-align:left;border:1px solid var(--overlay);flex-direction:row;align-items:center;gap:14px}
+.sumgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sum{background:var(--surface);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.sum .k{font-size:13px;color:var(--sub)}.sum .v{font-size:26px;font-weight:600}.sum .d{font-size:13px;color:var(--muted)}
+#recovered{position:absolute;left:16px;right:16px;top:16px;padding:12px 16px;background:rgba(30,30,46,.94);
+ border:1px solid var(--peach);border-radius:16px;display:none;align-items:center;gap:14px}
+#resumefollow{width:56px;height:56px;flex:none;border-radius:28px;background:var(--blue);display:flex;align-items:center;justify-content:center}
+#banner{position:absolute;left:16px;right:16px;top:16px;padding:12px 16px;background:rgba(30,30,46,.94);
+ border:1px solid var(--line);border-radius:16px;display:none;align-items:center;gap:14px}
+#toast{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);padding:8px 16px;border-radius:12px;
+ background:var(--overlay);font-size:14px;display:none}
+
+/* Right panel: state, readings, levers, phase */
+aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position:relative}
+.status{display:flex;align-items:center;gap:10px;height:32px}
+#phase{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:14px;font-size:14px;font-weight:600}
+#phase .dot{width:8px;height:8px;border-radius:4px}
+#clock{font-size:32px;font-weight:600;line-height:1}
+.panel{background:var(--surface);border-radius:16px}
+#readings{padding:12px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.reading{display:flex;flex-direction:column;gap:2px}
+.reading + .reading{padding-left:14px;border-left:1px solid var(--overlay)}
+.reading:first-child{padding-right:14px}
+.rk{font-size:12px;color:var(--sub);letter-spacing:.3px}
+.rv{display:flex;align-items:baseline;gap:4px}
+.rv b{font-size:44px;font-weight:600;line-height:1;letter-spacing:-1px}
+.rv span{font-size:15px;color:var(--muted)}
+.rn{font-size:12px;color:var(--muted);min-height:16px}
+.lever{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.lever.off{opacity:.45}
+.lhead{display:flex;align-items:center;gap:7px;height:16px;font-size:13px;font-weight:600}
+.pidtag{font-size:11px;font-weight:700;color:var(--bg);background:var(--blue);border-radius:8px;padding:1px 8px}
+#prechip{white-space:nowrap;font-size:12px;color:var(--sub);background:var(--overlay);border-radius:12px;padding:4px 10px}
+#prechip.resume{height:32px;padding:0 14px;border-radius:16px;border:1.5px solid var(--blue);background:none;color:var(--blue);font-weight:700;font-size:14px;
+ display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.ldot{width:8px;height:8px;border-radius:4px}
+.lecho{font-size:11.5px;color:var(--muted);font-weight:400}
+.lrow{display:flex;gap:8px}
+.lrow .step{width:104px;border-radius:14px;background:var(--overlay);font-size:20px;font-weight:600}
+.lrow .val{flex:1;border-radius:14px;background:var(--bg);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:2px}
+.lrow .val b{font-weight:700}
+.lrow .val span{font-size:15px;color:var(--muted);margin-top:10px}
+.lrow .val i{position:absolute;left:0;bottom:0;height:4px;opacity:.8}
+#rare{display:flex;gap:8px}
+.chip{flex:1;height:48px;border-radius:14px;background:var(--surface);border:1px solid var(--overlay);display:flex;align-items:center;gap:8px;padding:0 12px}
+.chip .k{font-size:13px;color:var(--sub)}
+.chip b{font-size:18px;font-weight:700}
+.chip small{font-size:12px;color:var(--muted)}
+#phasecard{padding:12px;display:flex;flex-direction:column;gap:12px}
+.track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:relative}
+.track .rail{position:absolute;left:12.5%;right:12.5%;top:9px;height:2px;background:var(--overlay)}
+.stp{display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
+.stp .node{width:20px;height:20px;border-radius:10px;border:2px solid var(--line);background:var(--bg)}
+.stp .name{font-size:12.5px;font-weight:600;color:var(--muted)}
+.stp .time{font-size:12px;color:var(--muted);min-height:15px}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(205,214,244,.45)}70%{box-shadow:0 0 0 8px rgba(205,214,244,0)}100%{box-shadow:0 0 0 0 rgba(205,214,244,0)}}
+.stp .node.next{animation:pulse 1.8s ease-out infinite}
+.actions{display:flex;gap:10px;height:96px}
+/* What START follows: by hand, the plan or a roast, chosen for each roast */
+#modes{position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:2;display:flex;gap:4px;padding:5px;border-radius:22px;
+ background:rgba(30,30,46,.92);border:1px solid var(--line)}
+#modes button{height:44px;padding:0 18px;border-radius:17px;border:1px solid transparent;display:flex;align-items:center;gap:9px;
+ font-size:15px;font-weight:600;color:var(--sub);white-space:nowrap}
+#modes button.on{border-color:currentColor}
+#modes button:disabled{opacity:.35}
+#undo{width:60px;flex:none;border-radius:20px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.big{flex:1;min-width:0;border-radius:24px;border:2px solid;display:flex;align-items:center;gap:16px;padding:0 18px;text-align:left}
+.big .glyph{width:56px;height:56px;flex:none;border-radius:28px;display:flex;align-items:center;justify-content:center}
+.big .t{font-size:26px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.big .s{font-size:14px;color:var(--sub)}
+#newroast{width:96px;flex:none;border-radius:24px;border:1px solid var(--line);
+ font-size:16px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+#save{padding:0 14px}#save .glyph{width:48px;height:48px}
+#save.ask{background:rgba(166,227,161,.2)!important;animation:glow 1.8s ease-out infinite}
+@keyframes glow{0%{box-shadow:0 0 0 0 rgba(166,227,161,.45)}70%{box-shadow:0 0 0 10px rgba(166,227,161,0)}100%{box-shadow:0 0 0 0 rgba(166,227,161,0)}}
+#newroast{position:relative;touch-action:none}#newroast.hold{border-color:var(--peach);color:var(--peach)}
+#newring{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);pointer-events:none}
+#skiphint{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(250,179,135,.10);
+ border:1px solid rgba(250,179,135,.35);font-size:13.5px;color:var(--peach)}
+#skiphint .s2{color:var(--sub)}
+#skipcard{max-width:340px;border-color:var(--peach);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+#skipbar{width:100%;height:4px;border-radius:2px;background:var(--overlay);overflow:hidden}
+#skipbar i{display:block;height:100%;width:0;background:var(--peach);transition:width 2.5s linear}
+#printlabel{margin-left:auto;width:52px;height:52px;flex:none;border-radius:26px;border:2px solid;display:flex;align-items:center;justify-content:center}
+#printlabel.working{animation:pulse 1.8s ease-out infinite}
+
+/* Overlays over the right panel */
+.overlay{position:absolute;inset:-6px;z-index:5;background:rgba(17,17,27,.8);border-radius:22px;display:flex;align-items:center}
+.sheetcard{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:22px;padding:16px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.sheethead{display:flex;align-items:center;gap:8px;padding:0 4px}
+#wheelbox{position:relative;height:240px}
+#wheelband{position:absolute;left:0;right:0;top:96px;height:48px;border-radius:14px;border:1px solid}
+#wheel{position:absolute;inset:0;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;
+ -webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
+#wheel::-webkit-scrollbar{display:none}
+#wheel button{display:block;width:100%;height:48px;scroll-snap-align:center;font-size:18px;color:var(--muted)}
+#wheel button.near{font-size:22px;color:var(--sub)}
+#wheel button.sel{font-size:30px;font-weight:700;color:var(--text)}
+
+#alarmchip{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:15px;border:1px solid rgba(249,226,175,.35);
+ background:rgba(249,226,175,.10);color:var(--yellow);font-size:13px;font-weight:500;white-space:nowrap}
+#alarmchip b{color:var(--text)}
+#crackchip{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:15px;border:1px solid rgba(148,226,213,.6);
+ background:rgba(148,226,213,.10);color:var(--teal);font-size:13px;font-weight:600;white-space:nowrap}
+#crackchip i{width:12px;height:12px;border-radius:7px;border:2px solid var(--teal);border-right-color:transparent;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#alarmtoast{position:absolute;right:16px;bottom:16px;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;
+ background:rgba(30,30,46,.95);border:1px solid rgba(249,226,175,.45);color:var(--yellow);font-size:14px;z-index:4}
+#alarmtoast,#alarmmsg{transform:translateZ(0);transition:opacity .25s,visibility .25s} /* own layer: no stale repaint when it goes */
+#alarmtoast.gone,#alarmmsg.gone{opacity:0;visibility:hidden}
+#alarmtoast b{color:var(--text)}#alarmtoast .no{color:var(--muted);font-size:12px}
+#alarmmsg{position:absolute;left:16px;right:16px;top:16px;display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:16px;
+ background:rgba(30,30,46,.95);border:1px solid var(--yellow);z-index:4}
+#alarmmsg .mi{width:40px;height:40px;flex:none;border-radius:20px;background:rgba(249,226,175,.15);color:var(--yellow);display:flex;align-items:center;justify-content:center}
+#alarmmsg b{display:block;font-size:20px}#alarmmsg small{color:var(--sub);font-size:12.5px}
+#alarmcard{max-height:100%}
+#alarmlist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}
+#alarmlist .ph{font-size:12px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);padding:10px 6px 4px}
+#alarmlist .ph.past{opacity:.45}#alarmlist .ph.cur{color:var(--yellow)}
+#alarmlist .ar{display:grid;grid-template-columns:22px 1fr 1fr;gap:10px;align-items:start;padding:9px 8px;border-radius:12px;font-size:15px}
+#alarmlist .ar .ic{text-align:center}#alarmlist .ar .w{color:var(--sub)}
+#alarmlist .ar .w em{display:block;font-style:normal;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+#alarmlist .ar small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+#alarmlist .ar.done,#alarmlist .ar.gone{opacity:.38}#alarmlist .ar.done .ic{color:var(--green)}#alarmlist .ar.wait .ic{color:var(--muted)}
+#alarmlist .ar.skip .a,#alarmlist .ar.off .a{text-decoration:line-through}#alarmlist .ar.skip,#alarmlist .ar.off{opacity:.6}
+#alarmlist .ar.next{background:rgba(249,226,175,.12);border:1px solid rgba(249,226,175,.4)}
+#alarmlist .ar.next .ic{color:var(--yellow)}#alarmlist .ar.next .a{font-weight:600}
+#nowline{display:flex;align-items:center;gap:8px;margin:6px 4px;color:var(--yellow);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+#nowline::before,#nowline::after{content:"";flex:1;height:2px;background:var(--yellow);opacity:.7;border-radius:1px}
+#room{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:15px;border:1px solid var(--line);font-size:13px;font-weight:500}
+#room .dot{width:8px;height:8px;border-radius:4px}
+/* the drop door, inside the probe's pill after a divider: closed, open, or grey without a contact */
+#door{display:inline-flex;align-items:center;gap:6px;padding-left:8px;border-left:1px solid var(--line);color:var(--muted);white-space:nowrap}
+#door.closed{color:var(--green);font-weight:600}
+#door.open{color:var(--yellow);font-weight:600}
+/* Simulation (SIM-SPEC S2): where the replay is, its speed, and Exit in place of Stop */
+#link.sim{border-color:rgba(203,166,247,.6);background:rgba(203,166,247,.10);color:var(--accent);font-weight:600}
+#replay{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--sub)}
+#replaytrack{width:96px;height:6px;border-radius:3px;background:var(--overlay);position:relative}
+#replaybar{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
+#speeds{display:inline-flex;height:30px;border:1px solid var(--line);border-radius:15px;overflow:hidden}
+#speeds button{padding:0 11px;font-size:13px;color:var(--muted);display:inline-flex;align-items:center}
+#replay.paused>span:not(#speeds){opacity:.55}
+#speeds button+button{border-left:1px solid var(--line)}
+#speeds button.on{background:rgba(203,166,247,.18);color:var(--accent);font-weight:700}
+#exitsim{height:34px;padding:0 14px 0 10px;border-radius:17px;border:1px solid var(--accent);background:rgba(203,166,247,.10);color:var(--accent);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+/* Guided and AUTO (GUIDED-SPEC): the bubble over the curve, the AUTO chip, tags and the drop countdown */
+#guide{position:absolute;left:16px;right:16px;top:16px;display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:16px;
+ background:rgba(30,30,46,.95);border:1px solid var(--accent);z-index:5}
+#guide .gi{width:40px;height:40px;flex:none;border-radius:20px;display:flex;align-items:center;justify-content:center;background:rgba(203,166,247,.15);color:var(--accent)}
+#guide b{display:block;font-size:20px}#guide small{color:var(--sub);font-size:13px}
+#guide.listen{border-color:var(--yellow)}#guide.listen .gi{background:rgba(249,226,175,.15);color:var(--yellow)}
+#guide.crash{border-color:var(--red)}#guide.crash .gi{background:rgba(243,139,168,.15);color:var(--red)}
+#autochip{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:15px;font-size:13px;font-weight:800;letter-spacing:.4px;
+ background:var(--accent);color:var(--bg)}
+#autochip.paused{background:none;border:1.5px solid var(--accent);color:var(--accent);height:32px;font-size:14px}
+.autotag{font-size:11px;font-weight:800;color:var(--bg);background:var(--accent);border-radius:8px;padding:1px 8px}
+.lever.flash .val,.chip.flash{box-shadow:inset 0 0 0 2px var(--accent)}
+#wait{width:96px;flex:none;border-radius:24px;border:2px solid var(--peach);background:rgba(250,179,135,.12);color:var(--peach);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:16px;font-weight:700}
+#act{position:relative;overflow:hidden}#act>span{position:relative}
+#actfill{position:absolute;left:0;top:0;bottom:0;width:0;pointer-events:none}
+.sum.wide{grid-column:1 / -1}
+.sum.warn{border:1px solid rgba(250,179,135,.45)}.sum.warn .k{color:var(--peach)}
+
+/* Weighing */
+.weigh{height:110px;border-radius:16px;background:var(--surface);display:flex;align-items:baseline;justify-content:center;gap:6px;padding-top:18px;position:relative}
+.weigh b{font-size:56px;font-weight:700}.weigh .u{font-size:18px;color:var(--muted)}
+.weigh .st{position:absolute;left:14px;bottom:10px;font-size:12px}
+.wrow{display:flex;gap:8px;align-items:center}
+.wbtn{height:56px;border-radius:14px;font-size:16px;font-weight:600;border:1px solid var(--line);color:var(--sub);padding:0 20px}
+.wbtn.use{flex:1;border:0;background:var(--green);color:var(--bg);font-weight:700}
+.wbtn:disabled{opacity:.4}
+.wlink{height:40px;padding:0 10px;color:var(--sub);font-size:14px;font-weight:600}
+
+/* Colour */
+.ccells{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ccell{border-radius:12px;background:var(--bg);padding:8px 12px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--overlay)}
+.ccell .ck{font-size:12px;color:var(--muted)}.ccell .cv{font-size:26px;font-weight:600;color:#CBA6F7}.ccell .ch{font-size:12px;color:var(--sub)}
+.lvl{display:inline-flex;align-items:center;gap:6px;font-size:13px}.lvl i{width:10px;height:10px;border-radius:5px;border:1px solid rgba(255,255,255,.15)}
+.cband{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:2px solid #CBA6F7;background:rgba(203,166,247,.10)}
+.cband .nv{font-size:28px;font-weight:700;color:#CBA6F7}.cband .q{font-size:13px;color:var(--sub);max-width:150px;line-height:1.3}
+.cband button{height:48px;border-radius:12px;background:#CBA6F7;color:var(--bg);font-size:15px;font-weight:700;padding:0 14px}
+
+/* AirWave extractor panel */
+.chip .sdot{width:7px;height:7px;border-radius:4px;flex:none}
+.seg{display:flex;height:48px;border-radius:14px;background:var(--surface);padding:4px;gap:4px}
+.seg button{flex:1;border-radius:10px;font-size:15px;color:var(--sub)}
+.seg button.on{background:var(--extractor);color:var(--bg);font-weight:700}
+.seg button:disabled{color:var(--muted)}.seg button.on:disabled{background:var(--overlay);color:var(--muted)}
+.awread{display:flex;gap:8px}
+.awread div{flex:1;border-radius:14px;background:var(--surface);padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.awread small{font-size:12px;color:var(--muted)}.awread b{font-size:22px;font-weight:600}
+.awnote{padding:12px 14px;border-radius:14px;background:rgba(249,226,175,.08);border:1px solid rgba(249,226,175,.35);font-size:14px;color:var(--sub);line-height:1.45}
+
+</style>
+</head>
+<body>
+<script src="common.js"></script>
+<script src="label-metrics.js"></script>
+<script src="label.js"></script>
+<script src="energy-sheet.js"></script>
+<div id="app">
+ <header>
+  <span class="brand">TilauScope</span>
+  <button id="link" aria-label="Sensor link"><span class="dot" id="linkdot"></span><svg id="linkbt" class="hidden" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17" fill="none" stroke="#F38BA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l18 18" stroke="#F38BA8" stroke-width="2.2" stroke-linecap="round"/></svg><svg id="linklate" class="hidden" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#FAB387" stroke-width="2.2"/><path d="M12 7v5l3 2" fill="none" stroke="#FAB387" stroke-width="2.2" stroke-linecap="round"/></svg><span id="linktext">Starting…</span></button>
+  <span id="room" class="hidden" aria-label="Room conditions"><span class="dot" id="roomdot"></span><span style="color:var(--sub);font-weight:400">Room</span><span class="num" id="roomtext">—</span><span id="door" class="hidden" aria-label="Drop door"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect id="doorframe" x="1.5" y="1.5" width="13" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path id="doorleaf" fill="currentColor"/></svg><span id="doortext">Door</span></span></span>
+  <button id="alarmchip" class="hidden" aria-label="Alarms"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 19a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span id="alarmtext"></span></button>
+  <span id="crackchip" class="hidden" aria-label="Crack counter"><i></i><span id="cracktext"></span></span>
+  <button id="coffee" class="hidden" aria-label="Coffee of the roast"><span class="dot" id="coffeedot"></span><span id="coffeename"></span><span class="num" id="coffeestock"></span></button>
+  <span style="flex:1"></span>
+  <button id="cavebtn" class="hidden" aria-label="BeanCave"><svg width="22" height="22" viewBox="0 0 512 512" aria-hidden="true"><g transform="rotate(-28 256 256)"><path fill="currentColor" d="M 256,51 C 338.8,51 406,142.8 406,256 C 406,369.2 338.8,461 256,461 C 173.2,461 106,369.2 106,256 C 106,142.8 173.2,51 256,51 Z"/></g></svg></button>
+  <button id="gear" class="hidden" aria-label="Settings"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00-1.2-2.9H3a2 2 0 110-4h.1a1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 002.9-1.2V3a2 2 0 114 0v.1a1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 001.2 2.9H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" fill="none" stroke="#A6ADC8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <span id="replay" class="hidden"><span class="num" id="replayat"></span><span id="replaytrack"><i id="replaybar"></i></span><span class="num" id="replaylen"></span><span id="speeds"><button data-s="0" aria-label="Pause"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="1.5" width="3" height="9" rx="1" fill="currentColor"/><rect x="7" y="1.5" width="3" height="9" rx="1" fill="currentColor"/></svg></button><button data-s="1">1×</button><button data-s="2">2×</button><button data-s="8">8×</button></span></span>
+  <button id="exitsim" class="hidden"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Exit</button>
+  <button id="stop" class="hidden"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9" rx="2" fill="#F38BA8"/></svg>Stop</button>
+ </header>
+ <main>
+  <section id="chart" aria-label="Roast curve">
+   <div class="hidden" id="modes" role="group" aria-label="What the roast follows">
+    <button data-mode="hand"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4.5a1.5 1.5 0 0 1 3 0V11M14 10.5V6a1.5 1.5 0 0 1 3 0v7a6 6 0 0 1-6 6h-.5a6 6 0 0 1-4.6-2.2L3.5 14a1.5 1.5 0 0 1 2.3-1.9L8 14"/></svg>By hand</button>
+    <button data-mode="plan"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20c4 0 5-9 9-11s5 1 9-5"/><circle cx="3" cy="20" r="1.5"/><circle cx="21" cy="4" r="1.5"/></svg>The plan</button>
+    <button data-mode="auto"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.6"/><path d="M12 14.6V21M9.6 11.2L3.4 9.4M14.4 11.2l6.2-1.8"/></svg>AUTO</button>
+    <button data-mode="roast"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4h-4"/><path d="M10 9l5 3-5 3z"/></svg>A roast</button>
+   </div>
+   <div id="bands"></div>
+   <svg id="svg" aria-hidden="true">
+    <path id="grid" fill="none" stroke="#313244" stroke-width="1"/>
+    <path id="pretarget" fill="none" stroke-width="1.5" stroke-dasharray="7 6" opacity=".85"/>
+    <path id="markp" fill="none" stroke="#6C7086" stroke-width="1.2" stroke-dasharray="4 5"/>
+    <path id="tpp" fill="none" stroke="#A6ADC8" stroke-width="1.2" stroke-dasharray="1.5 4"/>
+    <path id="planmarks" fill="none" stroke="#6C7086" stroke-opacity=".7" stroke-width="1" stroke-dasharray="2 6"/>
+    <path id="planror" fill="none" stroke="#457ED9" stroke-opacity=".6" stroke-width="1.8" stroke-dasharray="7 6"/>
+    <path id="planbt" fill="none" stroke="#89B4FA" stroke-opacity=".55" stroke-width="2.2" stroke-dasharray="7 6"/>
+    <path id="rorp" fill="none" stroke="#457ED9" stroke-width="1.8" stroke-linejoin="round"/>
+    <path id="etp" fill="none" stroke="#FAB387" stroke-width="1.8" stroke-linejoin="round" opacity=".85"/>
+    <g id="lanesg"></g>
+    <path id="btp" fill="none" stroke="#89B4FA" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle id="tpdot" r="0" fill="#A6ADC8" stroke="#1E1E2E" stroke-width="2"/>
+    <path id="endp" fill="none" stroke="#F38BA8" stroke-width="2" stroke-dasharray="2 6"/>
+   </svg>
+   <div id="labels"></div>
+   <span id="dot"></span>
+   <div class="scrim" id="lost">
+    <div class="card" id="lostcard">
+     <svg id="bticon" class="hidden" width="48" height="48" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="rgba(243,139,168,.12)"/><path d="M21 21l14 14-7 7V14l7 7-14 14" fill="none" stroke="#F38BA8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 14l28 28" stroke="#F38BA8" stroke-width="3" stroke-linecap="round"/></svg>
+     <svg id="losticon" width="48" height="48" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="rgba(243,139,168,.12)"/><path d="M18 34c5.5-5.5 14.5-5.5 20 0M13 28c8.3-8.3 21.7-8.3 30 0" fill="none" stroke="#F38BA8" stroke-width="3" stroke-linecap="round"/><circle cx="28" cy="39" r="3" fill="#F38BA8"/><path d="M14 14l28 28" stroke="#F38BA8" stroke-width="3" stroke-linecap="round"/></svg>
+     <div style="font-size:22px;font-weight:600" id="lostt">No signal from the sensor</div>
+     <div style="font-size:15px;color:var(--sub);line-height:1.45" id="lostb">Check that it is on and close to the tablet.<br>Recording resumes by itself when the signal returns.</div>
+     <div class="num" style="margin-top:4px;font-size:13px;color:var(--muted)" id="lastread"></div>
+     <button id="btsettings" class="hidden"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Android settings</button>
+    </div>
+   </div>
+   <div class="scrim" id="skipped" style="z-index:6">
+    <div class="card" id="skipcard">
+     <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="24" fill="rgba(250,179,135,.15)"/><path d="M17 24h11M24 19l5 5-5 5" fill="none" stroke="#FAB387" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 18v12" stroke="#FAB387" stroke-width="2.4" stroke-linecap="round"/></svg>
+     <span style="font-size:18px;font-weight:700">Skipping the record of this roast</span>
+     <span style="font-size:14px;color:var(--sub)">Going back to back: the next roast is ready</span>
+     <span id="skipbar"><i></i></span>
+    </div>
+   </div>
+   <div class="scrim" id="ended" style="background:rgba(17,17,27,.6)">
+    <div class="card" id="endcard">
+     <div style="display:flex;align-items:center;gap:12px">
+      <svg width="36" height="36" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="rgba(166,227,161,.16)"/><path d="M12 20.5l5.5 5.5L28.5 15" fill="none" stroke="#A6E3A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span style="font-size:24px;font-weight:600" id="endtitle">Roast complete</span>
+      <button class="hidden" id="printlabel" aria-label="Print label"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path id="labelicon" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+     </div>
+     <div class="sumgrid" id="summary"></div>
+    </div>
+   </div>
+   <div id="banner">
+    <svg width="36" height="36" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="rgba(249,226,175,.14)"/><path d="M20 11v11" stroke="#F9E2AF" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="28.5" r="2.2" fill="#F9E2AF"/></svg>
+    <div style="display:flex;flex-direction:column;gap:2px">
+     <span style="font-size:17px;font-weight:600">This roast was interrupted</span>
+     <span style="font-size:14px;color:var(--sub)" id="bannersub"></span>
+    </div>
+   </div>
+   <div id="recovered">
+    <svg width="36" height="36" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="rgba(250,179,135,.16)"/><path d="M20 11v11" stroke="#FAB387" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="28.5" r="2.2" fill="#FAB387"/></svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+     <span style="font-size:17px;font-weight:600">Link back — the burner is at 0</span>
+     <span style="font-size:14px;color:var(--sub)" id="recoveredsub"></span>
+    </div>
+    <button id="resumefollow" class="hidden" aria-label="Resume following"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="#1E1E2E"/></svg></button>
+   </div>
+   <div id="toast"></div>
+   <div id="alarmtoast" class="gone"></div>
+   <div id="alarmmsg" class="gone"></div>
+   <div id="guide" class="hidden"><span class="gi"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path id="guideicon"/></svg></span>
+    <span><b id="guidet"></b><small id="guides"></small></span></div>
+  </section>
+
+  <aside id="aside">
+   <div class="status">
+    <span id="phase"><span class="dot" id="phasedot"></span><span id="phasename">—</span></span>
+    <span class="num" style="font-size:13px;color:var(--sub)" id="phasetime"></span>
+    <span style="flex:1"></span>
+    <button id="autochip" class="hidden" aria-label="AUTO"></button>
+    <span class="num" id="clock">0:00</span>
+    <span id="prechip" class="hidden"></span>
+   </div>
+
+   <div class="panel" id="readings">
+    <div class="reading">
+     <span class="rk">BEANS</span>
+     <span class="rv"><b class="num" id="bt" style="color:var(--blue)">—</b><span class="deg">°C</span></span>
+     <span class="rn num" id="btnote"></span>
+    </div>
+    <div class="reading">
+     <span class="rk" id="rork">ROR</span>
+     <span class="rv"><b class="num" id="ror" style="color:var(--ror)">—</b><span id="rorunit">°C/min</span></span>
+     <span class="rn num" id="rornote"></span>
+    </div>
+   </div>
+
+   <div id="mainlevers" style="display:flex;flex-direction:column;gap:10px"></div>
+   <div id="rare"></div>
+   <div id="weights" class="hidden" style="display:flex;gap:8px"></div>
+
+   <span style="flex:1"></span>
+
+   <div class="panel" id="phasecard">
+    <div class="track"><div class="rail"></div><div id="steps" style="display:contents"></div></div>
+    <div class="actions" id="primary">
+     <button id="undo" aria-label="Undo last mark"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true"><path d="M9 7L4 12l5 5" fill="none" stroke="#A6ADC8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 12h11a6 6 0 010 12h-3" fill="none" stroke="#A6ADC8" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+     <button id="wait" class="hidden"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4.5a1.5 1.5 0 0 1 3 0V11M14 10.5V6a1.5 1.5 0 0 1 3 0v7a6 6 0 0 1-6 6h-.5a6 6 0 0 1-4.6-2.2L3.5 14a1.5 1.5 0 0 1 2.3-1.9L8 14"/></svg>Wait</button>
+     <button class="big" id="act"><i id="actfill"></i><span class="glyph" id="actglyphbg"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path id="actglyph" fill="none" stroke="#1E1E2E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span style="display:flex;flex-direction:column;gap:3px;min-width:0"><span class="t" id="actlabel"></span><span class="s" id="actsub"></span></span></button>
+    </div>
+    <div class="hidden" id="skiphint"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="flex:none"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#FAB387" stroke-width="2"/><path d="M12 8v5M12 16.5v.5" stroke="#FAB387" stroke-width="2.4" stroke-linecap="round"/></svg>
+     <span><span id="hint1"></span><br><span class="s2" id="hint2"></span></span></div>
+    <div class="actions hidden" id="closing">
+     <button id="newroast"><svg id="newring" class="hidden" viewBox="0 0 104 104" preserveAspectRatio="none" aria-hidden="true"><rect x="2" y="2" width="100" height="100" rx="26" fill="none" stroke="#FAB387" stroke-width="3" pathLength="100" stroke-dasharray="0 100" id="newringpath"/></svg><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="#CDD6F4" stroke-width="2.6" stroke-linecap="round" id="newplus"/></svg><span id="newlabel">New roast</span></button>
+     <button class="big" id="save" style="border-color:var(--green);color:var(--green)"><span class="glyph" style="background:var(--green)"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path id="saveglyph" fill="none" stroke="#1E1E2E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span style="display:flex;flex-direction:column;gap:3px"><span class="t" id="savelabel"></span><span class="s" id="savesub"></span></span></button>
+    </div>
+   </div>
+
+   <div class="overlay hidden" id="alarmsheet">
+    <div class="sheetcard" id="alarmcard">
+     <div class="sheethead"><span id="alarmname" style="font-size:17px;font-weight:600"></span><span id="alarmcount" style="font-size:12px;color:var(--muted)"></span></div>
+     <div id="alarmlist"></div>
+    </div>
+   </div>
+
+   <div class="overlay hidden" id="sheet">
+    <div class="sheetcard" id="sheetcard">
+     <div class="sheethead">
+      <span class="ldot" id="sheetdot" style="width:9px;height:9px"></span>
+      <span id="sheetname" style="font-size:17px;font-weight:600"></span>
+      <span style="flex:1"></span>
+      <span id="sheetnote" style="font-size:12px;color:var(--muted)"></span>
+     </div>
+     <div id="sheetlever"></div>
+     <span style="font-size:12px;color:var(--muted);text-align:center">Tap outside to close</span>
+    </div>
+   </div>
+
+   <div class="overlay hidden" id="roller">
+    <div class="sheetcard" id="rollercard">
+     <div class="sheethead">
+      <span class="ldot" id="rollerdot" style="width:10px;height:10px"></span>
+      <span id="rollername" style="font-size:17px;font-weight:600"></span>
+      <span style="flex:1"></span>
+      <span id="rollernow" class="num" style="font-size:13px;color:var(--muted)"></span>
+     </div>
+     <div id="wheelbox"><div id="wheelband"></div><div id="wheel"></div></div>
+    </div>
+   </div>
+  </aside>
+ </main>
+</div>
+<script>
+"use strict";
+
+var PHASES = [["Ready", "#6C7086"], ["Preheat", "#F9E2AF"], ["Drying", "#89DCEB"], ["Maillard", "#F9E2AF"],
+  ["Development", "#F38BA8"], ["Cooling", "#A6E3A1"], ["Done", "#A6E3A1"]];
+var CHECK = "M6 13.5l4.5 4.5L20 8", DOWN = "M13 5v14M7 13l6 6 6-6";
+var btDenied = false; // Android refused Bluetooth: nothing can connect until it is allowed
+var roaster = null, endRoast = [], LONG_PRESS_MS = 1500; // the roaster declared in Settings, if any
+var ACTIONS = [
+  { label: "Start recording", sub: "Then mark Charge when beans go in", color: "#89B4FA", glyph: "M9 6.5v13l11-6.5z", run: function () {
+    send("start", startMode); // the real roaster's link opens once the session has started (onSnapshot)
+  } },
+  { label: "Charge", sub: "Tap as the beans go in", color: "#89DCEB", glyph: DOWN, run: function () { send("mark", "charge"); } },
+  { label: "Dry end", sub: "Tap when the beans turn yellow", color: "#F9E2AF", glyph: CHECK, run: function () { send("mark", "dry_end"); } },
+  { label: "First crack", sub: "Tap at the first pops", color: "#F38BA8", glyph: CHECK, run: function () { send("mark", "first_crack"); } },
+  { label: "Drop", sub: "Tap as the beans leave the drum", color: "#A6E3A1", glyph: DOWN, run: function () { send("mark", "drop"); } },
+  { label: "End roast", sub: "Cooling is recorded until then", color: "#CDD6F4", glyph: "M7 7h12v12H7z", run: function () { send("stop"); } }
+];
+// START's three faces; each roast starts by hand until another is chosen (no choice kept across roasts)
+var MODES = { hand: { label: "Start by hand", color: "#89B4FA" }, plan: { label: "Follow the plan", color: "#CBA6F7" },
+  auto: { label: "Start on AUTO", color: "#CBA6F7" },
+  roast: { label: "Follow a roast", color: "#FAB387" } };
+var AUTO_WORDS = { charge: "Charge", dry_end: "Dry end", first_crack: "First crack", drop: "Drop" };
+var startMode = "hand", lastStage = null, planReply = null, alarmList = null;
+function modeSub(mode) {
+  if (mode === "auto") return "Burner and air on AUTO · alarms off";
+  if (mode === "plan") {
+    var auto = planReply.auto;
+    return (auto.length ? "Auto " + auto.map(function (m) { return AUTO_WORDS[m]; }).join(", ") : "No auto milestone") + " · alarms off";
+  }
+  if (mode === "roast") {
+    var r = planReply.follow.roast;
+    var day = r.epoch ? "as on " + new Date(r.epoch * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "as recorded";
+    return "Levers " + day + (r.reference ? " ★" : "") + " · the milestones are yours";
+  }
+  return alarmList ? "Your alarm list runs · the milestones are yours" : "The milestones are yours";
+}
+// The curve behind the roast: the plan or the roast it follows (the choice before Start), none by hand
+function followed(d) {
+  var mode = d.state === "idle" ? startMode : d.follow, r = planReply && planReply.follow.roast;
+  if ((mode === "plan" || mode === "auto") && plan)
+    return { curve: plan.curve, marks: plan.marks, steps: plan.steps, chip: "Plan · " + plan.level + " · " + (USES[plan.destination] || plan.destination) };
+  if (mode === "roast" && r) return { curve: r.curve, marks: r.marks, steps: r.lanes, chip: "Following · " + r.title };
+  return null;
+}
+function modeOpen(mode) {
+  return mode === "hand" || ((mode === "plan" || mode === "auto") && !!plan) || (mode === "roast" && !!(planReply && planReply.follow.roast));
+}
+var STEPS = [["charge", "Charge", 2], ["dry_end", "Dry end", 3], ["first_crack", "First crack", 4], ["drop", "Drop", 5]];
+var STALE_GAP_S = 3;
+
+// Burner and air are adjusted all along the roast; drum and extractor rarely,
+// so they wait behind a chip that opens their controls.
+// Colours: the desktop's TilauScope theme, from tilaucore (get_setup); grey until it answers.
+var LEVERS = {
+  burner: { name: "Burner", color: "#6C7086", big: true },
+  air: { name: "Air", color: "#6C7086" },
+  drum: { name: "Drum", color: "#6C7086", note: "Set at charge" },
+  extractor: { name: "Extractor", color: "#6C7086", note: "" }
+};
+function applyColours(c) {
+  Object.keys(c.levers).forEach(function (k) { if (LEVERS[k]) LEVERS[k].color = c.levers[k]; });
+  var root = document.documentElement.style;
+  root.setProperty("--ror", c.grain_rise); root.setProperty("--extractor", c.levers.extractor);
+  $("btp").setAttribute("stroke", c.grain); $("etp").setAttribute("stroke", c.air); $("rorp").setAttribute("stroke", c.grain_rise);
+  $("planbt").setAttribute("stroke", c.grain); $("planror").setAttribute("stroke", c.grain_rise);
+  leverKeys = ""; // rebuilt in the theme colours
+}
+var MAIN = ["burner", "air"], RARE = ["drum", "extractor"], LANE_ORDER = ["burner", "air", "drum", "extractor"];
+
+var snap = null, samples = [], toastTimer = null;
+var plan = null; // the plan chosen in Roast Setup, drawn behind the roast; null without a level
+var USES = { filter: "Filter", omni: "Omni", espresso: "Espresso" };
+var rows = {}, chips = {}, leverKeys = "", sheetKey = null, rollerKey = null, leversOff = false, linkAway = false;
+// While the roaster is unreachable its own levers are locked; the extractor is another machine.
+function locked(key) { return leversOff || (linkAway && key !== "extractor"); }
+
+var stockSaid = false;
+function kgs(g) { return g >= 1000 ? (g / 1000).toFixed(1) + " kg" : Math.round(Math.max(0, g)) + " g"; }
+function fmt(sec) {
+  var s = Math.max(0, Math.round(sec));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+function stageOf(d) {
+  if (d.state === "idle") return 0;
+  var m = d.milestone_s;
+  var stage = m.drop != null ? 5 : m.first_crack != null ? 4 : m.dry_end != null ? 3 : m.charge != null ? 2 : 1;
+  return d.state === "stopped" ? 6 : stage;
+}
+
+function sampleAt(t) {
+  for (var i = 0; i < samples.length; i++) if (samples[i][0] >= t) return samples[i];
+  return samples[samples.length - 1];
+}
+
+/* ---------- levers ---------- */
+
+// Taps still on their way, oldest first: a quick second tap builds on the value asked, not the last one shown.
+// One never answered (the session away) stops counting after 2 s.
+var leverAsked = [];
+function askedLever(key) {
+  leverAsked = leverAsked.filter(function (a) { return Date.now() - a.at < 2000; });
+  for (var i = leverAsked.length - 1; i >= 0; i--) if (leverAsked[i].key === key) return leverAsked[i].value;
+  return snap.levers[key].value;
+}
+function setLever(key, value) {
+  if (!snap || !snap.levers[key] || locked(key)) return;
+  value = Math.max(0, Math.min(100, value));
+  if (value === askedLever(key)) return;
+  leverAsked.push({ key: key, value: value, at: Date.now() });
+  send("set", key + ":" + value);
+}
+function stepLever(key, sign) { setLever(key, askedLever(key) + sign * snap.levers[key].step); }
+
+function leverRow(key, height, size) {
+  var lv = { name: snap.levers[key].name, color: LEVERS[key].color, big: LEVERS[key].big }, el = document.createElement("div");
+  el.className = "lever";
+  el.innerHTML = '<div class="lhead"><span class="ldot"></span><span class="name"></span><span style="flex:1"></span><span class="lecho num"></span><span class="pidtag hidden">TilauPID</span><span class="autotag hidden">AUTO</span></div>' +
+    '<div class="lrow"><button class="step minus"></button><button class="val"><b class="num"></b><span>%</span><i></i></button><button class="step plus"></button></div>';
+  el.querySelector(".ldot").style.background = lv.color;
+  el.querySelector(".name").textContent = lv.name;
+  el.querySelector(".lrow").style.height = height + "px";
+  var num = el.querySelector(".val b"), plus = el.querySelector(".plus");
+  num.style.fontSize = size + "px"; num.style.color = lv.color;
+  el.querySelector(".val i").style.background = lv.color;
+  plus.style.background = lv.big ? lv.color : "#45475A";
+  plus.style.color = lv.big ? "#1E1E2E" : "";
+  el.querySelector(".minus").setAttribute("aria-label", "Lower " + lv.name);
+  plus.setAttribute("aria-label", "Raise " + lv.name);
+  el.querySelector(".val").setAttribute("aria-label", "Choose " + lv.name + " value");
+  el.querySelector(".minus").onclick = function () { stepLever(key, -1); };
+  plus.onclick = function () { stepLever(key, 1); };
+  el.querySelector(".val").onclick = function () { openRoller(key); };
+  return { el: el, num: num, bar: el.querySelector(".val i"), echo: el.querySelector(".lecho"), tag: el.querySelector(".autotag"),
+    minus: el.querySelector(".minus"), plus: plus, buttons: el.querySelectorAll("button") };
+}
+
+function buildLevers() {
+  $("mainlevers").innerHTML = ""; $("rare").innerHTML = ""; $("sheetlever").innerHTML = "";
+  rows = {}; chips = {};
+  MAIN.forEach(function (key) {
+    if (!snap.levers[key]) return;
+    var big = LEVERS[key].big;
+    rows[key] = leverRow(key, big ? 72 : 60, big ? 44 : 34);
+    rows[key].el.classList.add("panel");
+    $("mainlevers").appendChild(rows[key].el);
+  });
+  RARE.forEach(function (key) {
+    if (!snap.levers[key]) return;
+    var lv = LEVERS[key], chip = document.createElement("button");
+    chip.className = "chip";
+    chip.setAttribute("aria-label", "Adjust " + snap.levers[key].name);
+    chip.innerHTML = '<span class="ldot"></span><span class="k"></span>' + (key === "extractor" && airwave ? '<span class="sdot"></span>' : "") +
+      '<span style="flex:1"></span><b class="num"></b><small>%</small>' +
+      '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="#6C7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    chip.querySelector(".ldot").style.background = lv.color;
+    chip.querySelector(".k").textContent = snap.levers[key].name;
+    chip.querySelector("b").style.color = lv.color;
+    chip.onclick = function () { openSheet(key); };
+    $("rare").appendChild(chip);
+    chips[key] = { el: chip, num: chip.querySelector("b"), unit: chip.querySelector("small"), dot: chip.querySelector(".sdot") };
+  });
+}
+
+function echoText(lv) { return lv.pending ? "Sending…" : "✓ " + lv.echo + " %"; }
+
+function renderLevers(stage, restored) {
+  var keys = Object.keys(snap.levers).map(function (k) { return k + snap.levers[k].name; }).join();
+  if (keys !== leverKeys) { leverKeys = keys; closeSheet(); buildLevers(); }
+  leversOff = stage === 6 || restored;
+  linkAway = !!(snap.link && snap.link.state !== "connected");
+  var updateRow = function (row, lv, key) {
+    var off = locked(key);
+    row.num.textContent = lv.value;
+    row.bar.style.width = lv.value + "%";
+    row.echo.textContent = off ? "" : echoText(lv);
+    row.echo.style.color = lv.pending ? "#F9E2AF" : "";
+    row.minus.textContent = "− " + lv.step; row.plus.textContent = "+ " + lv.step;
+    row.buttons.forEach(function (b) { b.disabled = off; });
+    row.el.classList.toggle("off", off);
+    var pilot = snap.pilot, driving = !!pilot && pilot.state === "armed" && stage >= 2 && stage <= 4; // AUTO acts from CHARGE
+    if (row.tag) row.tag.classList.toggle("hidden", !driving);
+    row.el.classList.toggle("flash", driving && pilot.flash.indexOf(key) >= 0);
+  };
+  Object.keys(rows).forEach(function (key) { updateRow(rows[key], snap.levers[key], key); });
+  Object.keys(chips).forEach(function (key) {
+    var lv = snap.levers[key];
+    chips[key].num.textContent = lv.value;
+    chips[key].num.style.color = lv.pending ? "#F9E2AF" : LEVERS[key].color;
+    chips[key].el.disabled = locked(key);
+    chips[key].el.style.opacity = locked(key) ? ".45" : "";
+    chips[key].el.classList.toggle("flash", !!snap.pilot && snap.pilot.state === "armed" && stage >= 2 && stage <= 4
+      && snap.pilot.flash.indexOf(key) >= 0);
+  });
+  if (sheetRow) updateRow(sheetRow, snap.levers[sheetKey], sheetKey);
+  renderAirwaveChip();
+  if (sheetKey === "extractor" && airwave) renderAirwaveSheet();
+  $("rare").classList.toggle("hidden", !Object.keys(chips).length);
+  // Locked levers close their own panels; the weight and colour ones stay open.
+  var shut = function (key) { return snap.levers[key] ? locked(key) : leversOff; };
+  if (sheetKey && shut(sheetKey)) closeSheet();
+  if (rollerKey && shut(rollerKey)) closeRoller();
+}
+
+var sheetRow = null;
+function openSheet(key) {
+  if (locked(key)) return;
+  if (key === "extractor" && airwave) { openAirwaveSheet(); return; }
+  sheetKey = key;
+  var lv = LEVERS[key];
+  $("sheetdot").style.background = lv.color;
+  $("sheetname").textContent = snap.levers[key].name;
+  $("sheetnote").textContent = lv.note;
+  $("sheetlever").innerHTML = "";
+  sheetRow = leverRow(key, 76, 38);
+  sheetRow.el.style.padding = "0";
+  sheetRow.el.querySelector(".lhead").classList.add("hidden");
+  $("sheetlever").appendChild(sheetRow.el);
+  $("sheet").classList.remove("hidden");
+  updateRowNow();
+}
+function updateRowNow() { if (snap) renderLevers(stageOf(snap), snap.interrupted); }
+function closeSheet() { sheetKey = null; sheetRow = null; weighKind = null; $("sheet").classList.add("hidden"); }
+
+function openRoller(key) {
+  if (!snap || !snap.levers[key] || locked(key)) return;
+  var real = key === "extractor" && airwave, now = real ? awSpeed() : snap.levers[key].value;
+  if (real && now == null) return;
+  openWheel({ key: key, name: snap.levers[key].name, color: LEVERS[key].color, min: real ? AW_MIN : 0, max: 100,
+    step: snap.levers[key].step, now: now, unit: "%",
+    pick: function (v) { if (real) send("extractor_speed", String(v)); else setLever(key, v); } });
+}
+
+// One wheel for lever values and weights: scroll, then touch a value.
+var wheelOpts = null;
+function openWheel(o) {
+  wheelOpts = o; rollerKey = o.key;
+  var wheel = $("wheel");
+  $("rollerdot").style.background = o.color;
+  $("rollername").textContent = o.name;
+  $("rollernow").textContent = o.now == null ? "" : "now " + o.now + " " + o.unit;
+  $("wheelband").style.borderColor = o.color;
+  $("wheelband").style.background = o.color + "1f";
+  wheel.innerHTML = '<div style="height:96px"></div>';
+  for (var v = o.min; v <= o.max; v += o.step) {
+    var b = document.createElement("button");
+    b.className = "num"; b.textContent = v; b.dataset.v = v;
+    b.onclick = function (e) { e.stopPropagation(); var pick = wheelOpts.pick; closeRoller(); pick(+this.dataset.v); };
+    wheel.appendChild(b);
+  }
+  wheel.insertAdjacentHTML("beforeend", '<div style="height:96px"></div>');
+  $("roller").classList.remove("hidden");
+  var start = o.now == null ? o.min : Math.max(o.min, Math.min(o.max, o.now));
+  wheel.scrollTop = (start - o.min) / o.step * 48;
+  highlightWheel();
+}
+
+function highlightWheel() {
+  if (!wheelOpts) return;
+  var step = wheelOpts.step;
+  var wheel = $("wheel"), pick = wheelOpts.min + Math.round(wheel.scrollTop / 48) * step;
+  wheel.querySelectorAll("button").forEach(function (b) {
+    var d = Math.abs(+b.dataset.v - pick) / step;
+    b.className = "num" + (d === 0 ? " sel" : d === 1 ? " near" : "");
+  });
+}
+
+function closeRoller() { rollerKey = null; wheelOpts = null; $("roller").classList.add("hidden"); }
+
+/* ---------- colour meter ---------- */
+
+// The meter measures on its own button; the operator says whether it was whole
+// beans or ground. Both values stay apart. A reading taken before the summary
+// waits there.
+var colourDevice = null, cm = null, seenReading = null, pendingColour = null, COLOUR_MIN = 20, COLOUR_MAX = 130;
+
+window.onColour = function (d) {
+  cm = d;
+  if (d.reading_id != null) {
+    if (seenReading == null) seenReading = d.reading_id; // older than this screen
+    else if (d.reading_id !== seenReading) { seenReading = d.reading_id; pendingColour = d.reading; }
+  }
+  if (snap) render();
+};
+
+function colourLevel(v) {
+  var levels = snap.colour_levels || [];
+  for (var i = 0; i < levels.length; i++) if (v >= levels[i][1] && v <= levels[i][2]) return levels[i];
+  return null;
+}
+
+function levelHtml(v) {
+  var l = colourLevel(v);
+  return l ? '<span class="lvl"><i style="background:' + l[3] + '"></i>' + esc(l[0]) + "</span>" : "";
+}
+
+function colourRow() {
+  var el = document.createElement("div"), live = cm && cm.state === "connected", c = snap.colours;
+  el.className = "sum wide";
+  el.style.gap = "8px";
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><span class="k" style="flex:1">Colour</span><span style="font-size:12px;color:' +
+    (live ? "var(--green)" : "var(--muted)") + '">● ' + (live ? "Colour meter connected" : colourDevice ? "Colour meter not answering" : "No colour meter") + "</span></div>" +
+    (pendingColour != null ? '<div class="cband"><span style="display:flex;flex-direction:column"><span class="num nv">' + pendingColour.toFixed(1) + "</span>" +
+      levelHtml(pendingColour) + '</span><span class="q">New reading from the colour meter. Which sample?</span><span style="flex:1"></span>' +
+      '<button data-put="whole">Whole beans</button><button data-put="ground">Ground</button></div>' : "") +
+    // While a reading waits to be sorted it takes the cells' place: the summary keeps its height.
+    (pendingColour != null ? "" : '<div class="ccells">' + ["whole", "ground"].map(function (k) {
+      // A ground reading names the roast level; the whole-bean one then shows its value only.
+      var v = c[k], named = v != null && !(k === "whole" && c.ground != null);
+      return '<button class="ccell" data-hand="' + k + '"><span class="ck">' + (k === "whole" ? "Whole beans" : "Ground") + '</span><span class="cv num"' +
+        (v == null ? ' style="color:var(--muted)"' : "") + ">" + (v == null ? "—" : v.toFixed(1)) + "</span>" + (named ? levelHtml(v) : "") +
+        '<span class="ch">' + (v == null ? "Enter by hand" : "Change") + "</span></button>";
+    }).join("") + "</div>");
+  el.querySelectorAll("[data-put]").forEach(function (b) {
+    b.onclick = function () { send("colour", b.dataset.put + ":" + pendingColour); pendingColour = null; };
+  });
+  el.querySelectorAll("[data-hand]").forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.hand, now = snap.colours[k];
+      openWheel({ key: null, name: "Colour · " + (k === "whole" ? "whole beans" : "ground"), color: "#CBA6F7", min: COLOUR_MIN, max: COLOUR_MAX,
+        step: 1, now: now == null ? null : Math.round(now), unit: "", pick: function (v) { send("colour", k + ":" + v); } });
+    };
+  });
+  return el;
+}
+
+
+/* ---------- scale and weights ---------- */
+
+// Green before the roast, roasted in the summary, whole grams everywhere; by hand
+// on the wheel when no scale answers.
+var scaleDevice = null, sc = null, weighKind = null, WEIGH_MIN = 50, WEIGH_MAX = 1000;
+var WEIGH = { green: ["Green coffee", "#A6E3A1"], roasted: ["Roasted coffee", "#FAB387"] };
+
+window.onScale = function (d) {
+  sc = d;
+  if (!snap) return;
+  renderWeights();
+  if (weighKind) renderWeighSheet();
+};
+
+function scaleLive() { return !!sc && sc.ready && sc.weight_g != null; }
+
+function renderWeights() {
+  var show = !!snap && snap.state === "idle" && !snap.interrupted;
+  $("weights").classList.toggle("hidden", !show);
+  if (!show || heldWhilePressed($("weights"), renderWeights)) return;
+  // The scale's live weight while it is on (its pictogram, a pulse), green with a tick when it is the weight kept
+  // for the roast; without the scale, the weight kept (a tick), else none.
+  var g = snap.weights_g.green, tick = '<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" style="flex:none">' +
+    '<path d="M5 10.5l3.5 3.5L15 7" fill="none" stroke="#A6E3A1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var scaleIcon = function (color) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="flex:none"><path d="M4 18h16l-2-9H6z" fill="none" stroke="' + color +
+      '" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9V6M9 6h6" fill="none" stroke="' + color + '" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  };
+  var live = scaleLive() ? Math.round(sc.weight_g) : null, kept = live != null && live === g;
+  var value = live != null ? scaleIcon("#A6ADC8") + '<span class="sdot pulse" style="background:var(--green)"></span>' + (kept ? tick : "") +
+      '<b class="num" style="color:' + (kept ? "#A6E3A1" : "var(--sub)") + '">' + live + "</b>"
+    : (scaleDevice ? '<span style="opacity:.5;display:flex">' + scaleIcon("#6C7086") + "</span>" : "") +
+      (g != null ? tick + '<b class="num" style="color:#A6E3A1">' + g + "</b>" : '<b class="num" style="color:var(--muted)">—</b>');
+  $("weights").innerHTML = '<button class="chip" id="greenchip" aria-label="Weigh the green coffee"><span class="ldot" style="background:#A6E3A1"></span><span class="k">Green</span>' +
+    '<span style="flex:1"></span>' + value + '<small>g</small>' +
+    '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="#6C7086" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+  $("greenchip").onclick = function () { openWeigh("green"); };
+}
+
+function weighByHand(kind) {
+  var now = snap.weights_g[kind];
+  openWheel({ key: null, name: WEIGH[kind][0], color: WEIGH[kind][1], min: WEIGH_MIN, max: WEIGH_MAX, step: 1,
+    now: now != null ? now : kind === "roasted" && snap.weights_g.green != null ? Math.round(snap.weights_g.green * 0.85) : 250,
+    unit: "g", pick: function (v) { send("weight", kind + ":" + v); } });
+}
+
+function openWeigh(kind) {
+  if (!scaleDevice || !scaleLive()) { weighByHand(kind); return; }
+  weighKind = kind; sheetKey = null; sheetRow = null;
+  $("sheetdot").style.background = WEIGH[kind][1];
+  $("sheetname").textContent = WEIGH[kind][0];
+  $("sheetnote").innerHTML = '<span style="color:var(--green)">● Scale connected</span>';
+  $("sheetlever").innerHTML = '<div style="display:flex;flex-direction:column;gap:12px">' +
+    '<div class="weigh"><b class="num" id="wnum"></b><span class="u">g</span><span class="st" id="wst"></span></div>' +
+    '<div class="wrow"><button class="wbtn" id="wtare">Tare</button><button class="wbtn use" id="wuse"></button></div>' +
+    '<div class="wrow"><span style="font-size:13px;color:var(--muted)">Saved: <b class="num" id="wsaved"></b></span><span style="flex:1"></span>' +
+    '<button class="wlink" id="whand">Enter by hand</button></div></div>';
+  $("wtare").onclick = function () { send("scale_tare"); };
+  $("wuse").onclick = function () {
+    if (scaleLive() && sc.stable) { send("weight", kind + ":" + Math.round(sc.weight_g)); closeSheet(); }
+  };
+  $("whand").onclick = function () { closeSheet(); weighByHand(kind); };
+  $("sheet").classList.remove("hidden");
+  renderWeighSheet();
+}
+
+function renderWeighSheet() {
+  var live = scaleLive(), grams = live ? Math.round(sc.weight_g) : null, ok = live && sc.stable && grams > 0;
+  $("wnum").textContent = grams == null ? "—" : grams;
+  $("wnum").style.color = !live ? "var(--muted)" : sc.stable ? "var(--text)" : "var(--yellow)";
+  $("wst").textContent = !live ? "● No reading" : sc.stable ? "● Stable" : "● Settling…";
+  $("wst").style.color = !live ? "var(--muted)" : sc.stable ? "var(--green)" : "var(--yellow)";
+  $("wuse").textContent = "Use " + (grams == null ? "—" : grams) + " g";
+  $("wuse").disabled = !ok;
+  $("wtare").disabled = !live;
+  var saved = snap.weights_g[weighKind];
+  $("wsaved").textContent = saved == null ? "—" : saved + " g";
+}
+
+/* ---------- ambient probe ---------- */
+
+// Room conditions in the header, as the session reads them: TilauAmbient first, else the MQTT sensors.
+function renderRoom(room) {
+  var t = room ? room.temperature_c : null, h = room ? room.humidity_pct : null, shown = t != null || h != null;
+  $("roomdot").style.background = shown ? "var(--green)" : "var(--muted)";
+  $("roomtext").innerHTML = !shown ? "—" : (t != null ? shownT(t).toFixed(1) + " " + deg() : "") + (t != null && h != null ? ' <span style="color:var(--muted)">·</span> ' : "") + (h != null ? Math.round(h) + " %" : "");
+  $("roomtext").style.color = shown ? "" : "var(--muted)";
+}
+
+// The drop door's contact on the probe: closed, open (it marks DROP as it opens), or grey without a contact.
+function renderDoor(state) {
+  var el = $("door");
+  el.classList.toggle("closed", state === "closed");
+  el.classList.toggle("open", state === "open");
+  $("doorframe").setAttribute("stroke-dasharray", state ? "" : "2.5 2");
+  $("doorleaf").setAttribute("d", state === "closed" ? "M5.5 6h5a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"
+    : state === "open" ? "M4.5 12.5 L4.5 6 L10.5 4 L10.5 10.5 Z" : "");
+  $("doortext").textContent = state === "closed" ? "Closed" : state === "open" ? "Open" : "Door";
+}
+
+/* ---------- AirWave extractor ---------- */
+
+// With an AirWave in the setup, the extractor chip follows the real device and
+// opens its own panel. The service hands its confirmed changes to the session.
+var AW_MIN = 30, airwave = null, aw = null, askedSetup = false, rollerMin = 0, planAskedFor = null;
+
+window.onExtractor = function (d) {
+  aw = d;
+  if (!snap) return;
+  renderAirwaveChip();
+  if (sheetKey === "extractor" && airwave) renderAirwaveSheet();
+};
+
+function awLive() { return !!aw && aw.state === "connected" && aw.ready; }
+function awSpeed() { return !aw ? null : aw.want_speed != null ? aw.want_speed : aw.speed; }
+
+function renderAirwaveChip() {
+  var c = chips.extractor;
+  if (!airwave || !c) return;
+  var live = awLive(), speed = awSpeed();
+  var text = !live || aw.power == null ? "—" : aw.power ? (speed == null ? "—" : speed) : "Off";
+  c.dot.style.background = live ? "var(--green)" : "var(--muted)";
+  c.num.textContent = text;
+  c.num.style.fontSize = typeof text === "number" ? "" : "15px";
+  c.unit.style.display = typeof text === "number" ? "" : "none";
+  c.num.style.color = !live ? "var(--muted)" : aw.want_speed != null ? "#F9E2AF" : LEVERS.extractor.color;
+}
+
+function openAirwaveSheet() {
+  sheetKey = "extractor"; sheetRow = null;
+  $("sheetdot").style.background = LEVERS.extractor.color;
+  $("sheetname").textContent = snap.levers.extractor.name;
+  $("sheetlever").innerHTML = '<div style="display:flex;flex-direction:column;gap:10px">' +
+    '<div class="awnote hidden" id="awnote"></div>' +
+    '<div class="seg" id="awpower"><button data-v="on">On</button><button data-v="off">Off</button></div>' +
+    '<div class="lrow" style="height:76px"><button class="step" id="awminus"></button>' +
+    '<button class="val" id="awval" style="flex-direction:column;gap:0"><span style="display:flex;align-items:baseline;gap:2px;margin:0;color:inherit;font-size:inherit">' +
+    '<b class="num" id="awnum" style="font-size:38px"></b><span>%</span></span><small style="font-size:11px;color:var(--muted)">30 – 100</small></button>' +
+    '<button class="step" id="awplus" style="background:#45475A"></button></div>' +
+    '<span id="awoff" style="font-size:12px;color:var(--muted);text-align:center"></span>' +
+    '<span style="font-size:12px;color:var(--muted);letter-spacing:.3px">MODE</span>' +
+    '<div class="seg" id="awmode"><button data-v="STD">STD</button><button data-v="EXT">EXT</button><button data-v="FAN">FAN</button></div>' +
+    '<div class="awread"><div><small>Inlet</small><b class="num" id="awinlet"></b></div><div><small>Catalyst</small><b class="num" id="awcat"></b></div></div></div>';
+  $("awpower").querySelectorAll("button").forEach(function (b) { b.onclick = function () { send("extractor_power", b.dataset.v); }; });
+  $("awmode").querySelectorAll("button").forEach(function (b) { b.onclick = function () { send("extractor_mode", b.dataset.v); }; });
+  var nudge = function (sign) {
+    var now = awSpeed();
+    if (now != null) send("extractor_speed", String(Math.max(AW_MIN, Math.min(100, now + sign * snap.levers.extractor.step))));
+  };
+  $("awminus").onclick = function () { nudge(-1); };
+  $("awplus").onclick = function () { nudge(1); };
+  $("awval").onclick = function () { openRoller("extractor"); };
+  $("sheet").classList.remove("hidden");
+  renderAirwaveSheet();
+}
+
+function renderAirwaveSheet() {
+  var live = awLive(), powered = live && aw.power === true, speed = awSpeed(), step = snap.levers.extractor.step;
+  $("sheetnote").innerHTML = live ? '<span style="color:var(--green)">● Connected</span>' : '<span style="color:var(--yellow)">● Looking for it…</span>';
+  $("awnote").classList.toggle("hidden", live);
+  $("awnote").textContent = (airwave.name || "The extractor") + " is not answering. Switch it on and keep it close to the tablet; it reconnects by itself.";
+  $("awpower").querySelectorAll("button").forEach(function (b) {
+    b.disabled = !live;
+    b.classList.toggle("on", live && aw.power === (b.dataset.v === "on"));
+  });
+  $("awnum").textContent = live && speed != null ? speed : "—";
+  $("awnum").style.color = !powered ? "#45475A" : aw.want_speed != null ? "#F9E2AF" : LEVERS.extractor.color;
+  $("awminus").textContent = "− " + step; $("awplus").textContent = "+ " + step;
+  $("awminus").disabled = $("awplus").disabled = $("awval").disabled = !powered;
+  $("awoff").textContent = live && aw.power === false && aw.speed != null ? "Starts again at " + aw.speed + " % when you turn it on" : "";
+  $("awoff").classList.toggle("hidden", !$("awoff").textContent);
+  $("awmode").querySelectorAll("button").forEach(function (b) {
+    b.disabled = !powered;
+    b.classList.toggle("on", live && aw.mode === b.dataset.v);
+  });
+  $("awinlet").textContent = live && aw.inlet != null ? shownT(aw.inlet).toFixed(1) + " " + deg() : "—";
+  $("awcat").textContent = live && aw.catalyst != null ? shownT(aw.catalyst).toFixed(1) + " " + deg() : "—";
+}
+
+/* ---------- snapshots ---------- */
+
+window.onSnapshot = function (method, d) {
+  if (method === "get_setup") {
+    if (d && d.reply) applyColours(d.reply.catalogue.colours);
+    // While replaying a roast every device is simulated: none is connected
+    var devices = d && d.reply && !d.reply.simulation ? d.reply.config.devices : {}, device = devices.extractor, probe = devices.ambient;
+    if (device && device.enabled) { airwave = device; leverKeys = ""; send("extractor_connect", device.address); }
+    if (probe && probe.enabled) { $("room").classList.remove("hidden"); $("door").classList.remove("hidden"); send("ambient_connect", probe.address); }
+    var scale = devices.scale;
+    if (scale && scale.enabled) { scaleDevice = scale; send("scale_connect", JSON.stringify({ address: scale.address, name: scale.name })); }
+    var meter = devices.colour;
+    if (meter && meter.enabled) { colourDevice = meter; send("colour_connect", meter.address); }
+    labelPrinter.device = devices.printer && devices.printer.enabled ? devices.printer : null;
+    var config = d && d.reply ? d.reply.config : {};
+    // MQTT sensors (MQTT-SPEC): only their topics; a room sensor shows the Room pill
+    var broker = d && d.reply && !d.reply.simulation ? config.mqtt : null;
+    if (broker && broker.sensors.length) {
+      var topics = [];
+      broker.sensors.forEach(function (x) { if (topics.indexOf(x.topic) < 0) topics.push(x.topic); });
+      if (broker.sensors.some(function (x) { return /^(room_c|room_rh|pressure_hpa)$/.test(x.feeds); })) $("room").classList.remove("hidden");
+      send("mqtt_connect", JSON.stringify({ host: broker.host, port: broker.port, user: broker.user, password: broker.password, tls: broker.tls, topics: topics }));
+    } else send("mqtt_disconnect");
+    alarmList = config.alarm_list || null;
+    roaster = config.roaster && config.machine && !d.reply.simulation ? config.roaster : null; // declared in Settings: the tablet drives it
+    endRoast = (d && d.reply && d.reply.end_roast) || []; // cool first, then stop: run by the link when it is let go hot
+    var known = roaster && d.reply.catalogue.machines[config.machine];
+    if (known) roaster.label = known.manufacturer + " " + known.model;
+    if (snap) render();
+    return;
+  }
+  if (method === "exit_simulation") { if (d) go("roast.html"); return; } // the page again, with the real devices
+  if (method === "export_alog") { // the next snapshot says it is saved
+    if (!d || !d.reply) { saveThenNew = false; toast("The roast could not be saved"); return; }
+    if (saveThenNew) { saveThenNew = false; send("reset"); }
+    return;
+  }
+  if (method === "roast_label") { labelPrinter.print(d && d.reply); return; }
+  if (method === "get_energy") { if (d && d.reply) EnergySheet.show(d.reply); return; }
+  if (method === "get_plan") { planReply = d && d.reply; plan = planReply && planReply.state === "ready" ? planReply : null; if (snap) render(); return; }
+  if (method === "set_lever") leverAsked.shift(); // its answer, taken or refused: the session's value counts again
+  if (d && d.reply) return; // answers meant for the setup pages
+  // A started roast opens the real roaster's link (connecting starts its air and drum); a refused start opens none.
+  if (method === "start" && d && d.state === "recording" && roaster)
+    send("roast_link_connect", JSON.stringify({ address: roaster.address, end: endRoast }));
+  if (!askedSetup) { askedSetup = true; send("get_setup"); send("get_plan", "{}"); }
+  if (!d) { if (method !== "tick") toast("Not possible right now"); return; }
+  // Before Start the plan follows the green weight: asked again when it changes, and for each new roast.
+  var planFor = d.state === "idle" ? "idle:" + d.weights_g.green : d.state;
+  if (planAskedFor !== null && planFor !== planAskedFor && d.state === "idle") send("get_plan", "{}");
+  planAskedFor = planFor;
+  if (d.samples_from === 0) samples = d.samples; else samples = samples.concat(d.samples);
+  setUnit(d.unit);
+  snap = d;
+  render();
+  splashDone();
+};
+
+// The roast label: its lines from the core, drawn and printed by label.js. No sheet: the icon says it all.
+var labelPrinter = Label.printer(function () { renderLabel(); }, function (text) { toast(text); });
+
+function renderLabel() {
+  var d = snap, show = !!(d && stageOf(d) === 6 && !d.interrupted && d.label_coffee && labelPrinter.device);
+  $("printlabel").classList.toggle("hidden", !show);
+  labelPrinter.watch(show); // looked for while the icon shows: grey until it is found
+  if (!show) return;
+  var m = d.milestone_s, icon = labelPrinter.icon(m.dry_end != null && m.first_crack != null && m.drop != null);
+  $("printlabel").classList.toggle("working", icon.working);
+  $("printlabel").style.borderColor = icon.colour;
+  $("printlabel").style.background = icon.colour + "1f";
+  $("labelicon").setAttribute("stroke", icon.colour);
+  $("labelicon").setAttribute("d", icon.path);
+}
+
+// TilauPID (PREHEAT-SPEC P2): until Charge, the RoR slot shows the target the preheat drives to.
+var PREHEAT_FAULTS = { sensor_timeout: "no reading from the probe", sensor_out_of_range: "the probe reading is invalid",
+  sensor_frozen: "the probe reading froze" };
+function preheatColour(p) {
+  return p.state === "paused" ? "#FAB387" : p.state === "arrived" ? "#A6E3A1" : p.state === "fault" ? "#F38BA8" : p.near ? "#F9E2AF" : "#89B4FA";
+}
+function learnedText(b) {
+  if (!b) return "";
+  if (b.level === "Calibrated" || b.level === "Tuned") return b.n_updates + (b.n_updates > 1 ? " preheats" : " preheat") + " learned";
+  if (b.level === "Estimated") return b.n_roasts ? "Estimated from " + b.n_roasts + (b.n_roasts > 1 ? " preheats" : " preheat") : "Estimated";
+  return "Learning";
+}
+function renderPreheat(d, m) {
+  var p = m.charge == null && d.state === "recording" ? d.preheat : null, chip = $("prechip");
+  var burner = rows.burner && rows.burner.el.querySelector(".pidtag");
+  if (burner) burner.classList.toggle("hidden", !(p && (p.state === "climb" || p.state === "arrived")));
+  chip.classList.toggle("hidden", !p || p.state === "done");
+  $("rork").style.color = ""; $("rorunit").textContent = deg() + "/min"; $("ror").style.color = "var(--ror)"; $("rork").textContent = "ROR";
+  if (!p || p.state === "done") return;
+  var col = preheatColour(p);
+  $("rork").textContent = p.state === "arrived" ? "AT TARGET" : p.state === "fault" ? "PREHEAT STOPPED" : "TARGET";
+  $("rork").style.color = col;
+  $("ror").textContent = Math.round(shownT(p.target)); $("ror").style.color = col; $("rorunit").textContent = deg();
+  $("rornote").textContent = p.state === "paused" ? "You have the burner" : p.state === "arrived" ? "Charge now"
+    : p.state === "fault" ? (PREHEAT_FAULTS[p.fault] || "a safety stop") + " · burner at 0"
+    : (p.projected != null ? Math.round(shownT(p.projected)) + " " + deg() + " projected" : "") + (p.eta_s != null ? " · ~" + fmt(p.eta_s) : "");
+  if (p.state === "paused") $("phasename").textContent = "Paused";
+  chip.className = p.state === "paused" ? "resume" : "";
+  chip.textContent = p.state === "paused" ? "Resume preheat" : p.state === "fault" ? "" : learnedText(p.badge);
+  chip.classList.toggle("hidden", p.state === "fault" || !chip.textContent);
+}
+
+function toast(text) {
+  var t = $("toast"); t.textContent = text; t.style.display = "block";
+  clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.style.display = "none"; }, 3000);
+}
+
+// RoR is meaningful from its first positive value after charge, and is shown
+// continuously from there until drop, dips below zero included.
+function rorWindow(m) {
+  if (m.charge == null) return null;
+  for (var i = 0; i < samples.length; i++) {
+    var s = samples[i];
+    if (s[0] < m.charge || s[3] == null) continue;
+    if (m.drop != null && s[0] > m.drop) return null;
+    if (s[3] > 0) return { from: s[0], to: m.drop != null ? m.drop : Infinity };
+  }
+  return null;
+}
+
+// RoR change over the last minute, from recorded values inside the window only.
+function rorChange(win) {
+  var last = samples[samples.length - 1];
+  if (!win || !last || last[3] == null || last[0] - 60 < win.from) return null;
+  for (var i = samples.length - 1; i >= 0; i--) {
+    if (samples[i][0] <= last[0] - 60) return samples[i][3] == null ? null : last[3] - samples[i][3];
+  }
+  return null;
+}
+
+function render() {
+  var d = snap, m = d.milestone_s, stage = stageOf(d);
+  var restored = d.interrupted, recording = d.state === "recording";
+  var lost = recording && d.stale && samples.length > 0;
+  var charge = m.charge;
+  var now = d.elapsed_s;
+  var lastT = d.last_sample_s != null ? d.last_sample_s : 0;
+
+  renderAlarms(d);
+  renderAuto(d);
+  renderPilot(d);
+  renderRoom(d.room);
+  renderDoor(d.door);
+  renderCracks(d);
+
+  // Header
+  $("link").classList.toggle("lost", lost);
+  $("linkdot").style.background = restored ? "#6C7086" : lost ? "#F38BA8" : "#A6E3A1";
+  var link = d.link, cooling = link && link.state === "cooling", linking = link && link.state !== "connected" && !cooling;
+  if (link) {
+    $("linkdot").style.background = cooling ? "#FAB387" : lost || link.state === "reconnecting" ? "#F38BA8" : linking ? "#F9E2AF" : "#A6E3A1";
+    $("linktext").textContent = cooling ? "Cooling the roaster…" : link.state === "reconnecting" ? "Reconnecting" + (lost ? " · " + Math.round(now - lastT) + " s" : "")
+      : linking ? "Connecting to " + link.name + "…" : lost ? "Reconnecting · " + Math.round(now - lastT) + " s" : link.name;
+    $("lostt").textContent = "The link to the roaster dropped";
+    $("lostb").innerHTML = "The roaster cut its burner by itself.<br>The tablet reconnects on its own; recording goes on.";
+  } else {
+    $("linktext").textContent = restored ? "Not connected" : lost ? "No signal · " + Math.round(now - lastT) + " s" : roaster ? roaster.label || roaster.name : "Simulation";
+    if (roaster && !restored && !lost) $("linkdot").style.background = "#6C7086"; // connected with the roast, not before
+  }
+  // The tablet fell behind its clock: peach with a clock, 30 s after the last late tick; a lost link wins
+  // Bluetooth refused: red, a crossed Bluetooth; it wins over every other state of the link
+  var denied = btDenied && !restored;
+  if (denied) { $("link").classList.add("lost"); $("linktext").textContent = "Bluetooth not allowed"; }
+  $("linkbt").classList.toggle("hidden", !denied);
+  var late = !denied && d.late_s != null && !lost && !restored && (!link || link.state === "connected");
+  $("link").classList.toggle("late", late);
+  $("linkdot").classList.toggle("hidden", late || denied);
+  $("linklate").classList.toggle("hidden", !late);
+  if (late) $("linktext").textContent += " · tablet late " + d.late_s + " s";
+  var sim = d.simulation;
+  $("link").classList.toggle("sim", !!sim && !lost);
+  if (sim && !lost) $("linkdot").style.background = "var(--accent)";
+  $("replay").classList.toggle("hidden", !sim);
+  $("exitsim").classList.toggle("hidden", !sim);
+  if (sim) {
+    $("replayat").textContent = fmt(sim.position_s);
+    $("replaylen").textContent = fmt(sim.length_s);
+    $("replaybar").style.width = (sim.length_s ? 100 * sim.position_s / sim.length_s : 0) + "%";
+    $("speeds").querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", +b.dataset.s === sim.speed); });
+    $("replay").classList.toggle("paused", sim.speed === 0);
+  }
+  $("recovered").style.display = link && link.recovered ? "flex" : "none";
+  $("recoveredsub").textContent = d.follow_paused ? "The roaster cut the burner when the link dropped. Following is paused: resume it, or take the levers yourself."
+    : "The roaster cut the burner when the link dropped. Raise it again to go on.";
+  $("resumefollow").classList.toggle("hidden", !d.follow_paused);
+  $("stop").classList.toggle("hidden", !(stage >= 1 && stage <= 4) || !!sim);
+  // While recording the page never changes: what leads away stays greyed.
+  $("gear").classList.remove("hidden"); $("gear").disabled = recording;
+  $("cavebtn").classList.remove("hidden"); $("cavebtn").disabled = recording;
+  // The chosen coffee; peach when the green weight asks more than its stock (never blocking)
+  var cf = d.coffee, green = d.weights_g.green, ahead = d.state === "idle" && cf && cf.decrease && green != null;
+  $("coffee").classList.toggle("hidden", !cf);
+  $("coffee").disabled = recording;
+  if (cf) {
+    var short = green != null ? cf.stock_g < green : cf.stock_g <= 0;
+    $("coffee").classList.toggle("short", short);
+    $("coffeedot").style.background = short ? "var(--peach)" : "var(--green)";
+    $("coffeename").textContent = cf.name;
+    $("coffeestock").style.color = short ? "var(--peach)" : "var(--muted)";
+    $("coffeestock").textContent = green != null && short ? "· only " + kgs(cf.stock_g) + " left for " + green + " g" :
+      ahead ? "· " + green + " g · " + kgs(cf.stock_g - green) + " left after" : "· " + kgs(cf.stock_g) + " left";
+  }
+  // The stock taken at the start, said once
+  var mv = d.stock_move;
+  if (mv && !stockSaid) {
+    stockSaid = true;
+    if (mv.owner === "computer") toast("The computer could not be reached: its stock is not decreased. Transfer the files again after roasting.");
+    else if (!mv.done) toast("The stock could not be decreased: check it in the BeanCave.");
+  }
+  if (!mv) stockSaid = false;
+
+  // Phase, clock
+  var ph = restored ? ["Interrupted", "#A6ADC8"] : PHASES[stage];
+  $("phasename").textContent = ph[0];
+  $("phasedot").style.background = ph[1];
+  $("phase").style.color = ph[1];
+  $("phase").style.background = ph[1] + "22";
+  var starts = { 2: m.charge, 3: m.dry_end, 4: m.first_crack, 5: m.drop };
+  $("phasetime").textContent = stage >= 2 && stage <= 5 ? fmt(now - starts[stage]) + " in phase" : "";
+  $("clock").textContent = stage === 0 ? "0:00" : fmt(charge != null ? now - charge : now);
+
+  // Readings
+  $("bt").textContent = lost || d.bt_c == null ? "—" : shownT(d.bt_c).toFixed(1);
+  $("bt").style.color = lost ? "#6C7086" : "var(--blue)";
+  $("btnote").innerHTML = "";
+  if (lost && d.bt_c != null) $("btnote").textContent = "Last " + Math.round(shownT(d.bt_c)) + " " + deg();
+  else if (!lost && d.et_c != null) $("btnote").innerHTML = 'ET <span style="color:var(--peach);font-weight:600">' + shownT(d.et_c).toFixed(1) + " " + deg() + "</span>";
+  var ror = d.ror_c_per_min, win = rorWindow(m);
+  var showRor = win != null && stage >= 2 && stage <= 4 && ror != null;
+  $("ror").textContent = showRor ? shownD(ror).toFixed(1) : "—";
+  var change = showRor && !lost ? rorChange(win) : null;
+  $("rornote").textContent = change == null ? "" : (change >= 0 ? "+" : "−") + Math.abs(shownD(change)).toFixed(1) + " over the last minute";
+  $("readings").style.opacity = restored ? ".55" : "1";
+  renderPreheat(d, m);
+
+  // Milestone track: nothing to show before the start, and its height goes to the Green chip
+  document.querySelector(".track").classList.toggle("hidden", stage === 0);
+  var nextKey = ["charge", "charge", "dry_end", "first_crack", "drop"][stage];
+  $("steps").innerHTML = "";
+  STEPS.forEach(function (s) {
+    var done = m[s[0]] != null, isNext = !restored && stage >= 1 && stage <= 4 && s[0] === nextKey;
+    var col = PHASES[s[2]][1];
+    var el = document.createElement("div");
+    el.className = "stp";
+    el.innerHTML = '<span class="node' + (isNext && !lost ? " next" : "") + '"></span><span class="name"></span><span class="time num"></span>';
+    el.children[0].style.borderColor = done || isNext ? col : "";
+    el.children[0].style.background = done ? col : "";
+    el.children[1].textContent = s[1];
+    el.children[1].style.color = done || isNext ? "#CDD6F4" : "";
+    el.children[2].textContent = done && charge != null ? fmt(m[s[0]] - charge) : "";
+    $("steps").appendChild(el);
+  });
+
+  // Actions
+  var closing = stage === 6 || restored;
+  $("primary").classList.toggle("hidden", closing);
+  $("closing").classList.toggle("hidden", !closing);
+  var a = ACTIONS[Math.min(stage, 5)];
+  if (stage === 0 && lastStage !== 0) startMode = "hand"; // a new roast starts by hand
+  lastStage = stage;
+  if (!modeOpen(startMode)) startMode = "hand";
+  $("modes").classList.toggle("hidden", stage !== 0 || closing);
+  $("modes").querySelectorAll("button").forEach(function (b) {
+    b.disabled = !modeOpen(b.dataset.mode);
+    b.classList.toggle("on", b.dataset.mode === startMode);
+    b.style.color = b.dataset.mode === startMode ? MODES[startMode].color : "";
+    b.style.background = b.dataset.mode === startMode ? MODES[startMode].color + "29" : "";
+  });
+  if (stage === 0) a = { label: MODES[startMode].label, sub: modeSub(startMode), color: MODES[startMode].color, glyph: a.glyph };
+  var col = lost ? "#6C7086" : a.color;
+  $("act").disabled = lost;
+  $("act").style.borderColor = col;
+  $("act").style.background = col + "1f";
+  $("actglyphbg").style.background = col;
+  $("actglyph").setAttribute("d", a.glyph);
+  $("actlabel").textContent = lost ? "Waiting for signal" : a.label;
+  $("actlabel").style.color = col;
+  $("actsub").textContent = lost ? "Marks are possible once it returns" : a.sub;
+  var pilot = d.pilot, driving = !!pilot && pilot.state === "armed" && stage >= 2 && stage <= 4; // AUTO acts from CHARGE
+  var countdown = driving && pilot.drop_in != null && !lost;
+  if (driving && !lost) $("actsub").textContent = "AUTO marks it"; // the button is only a fallback
+  if (countdown) {
+    $("actlabel").textContent = "Dropping in " + pilot.drop_in;
+    $("actsub").textContent = "Tap to drop now";
+  }
+  var gauge = !lost && stage === 4 && d.drop_gauge != null ? d.drop_gauge : 0;
+  $("actfill").style.width = Math.round(100 * gauge) + "%";
+  $("actfill").style.background = col + "38";
+  $("wait").classList.toggle("hidden", !countdown);
+  $("undo").classList.toggle("hidden", !(stage >= 2 && stage <= 5) || lost || countdown);
+  var saved = !!d.exported; // kept with the roast, so it survives a restart
+  var asking = stage === 6 && askedSave && needsSave(d);
+  if (!asking) askedSave = false;
+  $("save").classList.toggle("ask", asking);
+  $("savelabel").textContent = saved ? "Saved" : asking ? "Save, then new roast" : "Save roast";
+  $("savesub").textContent = saved ? "Touch to share it again" : asking ? "One touch: saved, then the next roast" : "Opens in TilauScope";
+  renderHint();
+  $("saveglyph").setAttribute("d", saved ? CHECK : "M13 5v12M7 11l6 6 6-6M6 21h14");
+  $("save").style.background = saved ? "rgba(166,227,161,.22)" : "rgba(166,227,161,.12)";
+  renderLabel();
+
+  // Overlays
+  $("lost").style.display = lost || denied ? "flex" : "none";
+  $("losticon").classList.toggle("hidden", denied);
+  $("bticon").classList.toggle("hidden", !denied);
+  $("btsettings").classList.toggle("hidden", !denied);
+  if (denied) {
+    $("lostt").textContent = "Bluetooth is not allowed";
+    $("lostb").innerHTML = "The tablet cannot reach the roaster or the accessories.<br>Allow Nearby devices for TilauScope; they connect as soon as you come back.";
+    $("lastread").textContent = "";
+  }
+  if (lost) $("lastread").textContent = "Last reading " + (d.bt_c != null ? Math.round(shownT(d.bt_c)) + " " + deg() + " · " : "") + Math.round(now - lastT) + " s ago";
+  $("ended").style.display = stage === 6 && !restored ? "flex" : "none";
+  if (stage !== 6 || restored) EnergySheet.hide();
+  if (stage === 6 && !restored) renderSummary(m);
+  $("banner").style.display = restored ? "flex" : "none";
+  if (restored) $("bannersub").textContent = "Shown as recorded, up to " + fmt(charge != null ? now - charge : now) + ". It cannot continue.";
+
+  renderLevers(stage, restored);
+  renderWeights();
+  if (weighKind) renderWeighSheet();
+  drawChart(d, m, stage, lost, restored, win);
+}
+
+function renderSummary(m) {
+  if (heldWhilePressed($("summary"), function () { renderSummary(snap.milestone_s); })) return;
+  var c = m.charge, end = m.drop != null ? m.drop : snap.elapsed_s;
+  var fc = m.first_crack, dev = fc != null && m.drop != null ? m.drop - fc : null;
+  var total = c != null ? end - c : null;
+  $("endtitle").textContent = m.drop != null ? "Roast complete" : "Roast stopped";
+  var items = [
+    ["Total time", total != null ? fmt(total) : "—", m.drop != null ? "charge to drop" : "charge to stop"],
+    ["First crack", fc != null && c != null ? fmt(fc - c) : "—", fc != null ? Math.round(shownT(sampleAt(fc)[1])) + " " + deg() : ""],
+    ["Development", dev != null ? fmt(dev) : "—", dev != null && total ? (dev / total * 100).toFixed(1) + " % of the roast" : ""],
+    ["Drop", m.drop != null ? Math.round(shownT(sampleAt(m.drop)[1])) + " " + deg() : "—", m.drop != null ? "bean temperature" : ""]
+  ];
+  if ($("room") && !$("room").classList.contains("hidden")) {
+    var a = snap.ambient_at_charge;
+    var parts = !a ? [] : [a.temperature_c != null ? shownT(a.temperature_c).toFixed(1) + " " + deg() : null, a.humidity_pct != null ? Math.round(a.humidity_pct) + " %" : null,
+      a.pressure_hpa != null ? Math.round(a.pressure_hpa) + " hPa" : null].filter(Boolean); // an MQTT room may lack some
+    items.push(["Room at charge", parts.length ? parts.join(" · ") : "—",
+      a ? "the room as the beans went in" : "no room reading at charge", true]);
+  }
+  var en = snap.energy;
+  if (en) items.push(["Energy", en.kwh.toFixed(3) + " kWh", (en.roast ? "charge to drop" : "since start") + " · " + PROVENANCE[en.provenance],
+    true, false, false, en.per_kg_kwh != null ? " · " + en.per_kg_kwh.toFixed(2) + " kWh/kg green" : ""]);
+  if (snap.late_sampling) items.push(["Tablet late", snap.late_sampling[0] + "×", "longest gap " + Math.round(snap.late_sampling[1]) + " s", true, false, true]);
+  var w = snap.weights_g, gw = w.green, rw = w.roasted;
+  items.push(["Weight", rw == null ? (gw == null ? "—" : gw + " g green") : gw == null ? rw + " g roasted" : gw + " → " + rw + " g",
+    rw == null ? "roasted weight not taken yet" : gw == null ? "" : ((gw - rw) / gw * 100).toFixed(1) + " % lost", true, true]);
+  $("summary").innerHTML = "";
+  items.forEach(function (it) {
+    var el = document.createElement(it[6] != null ? "button" : "div");
+    el.className = "sum" + (it[3] ? " wide" : "") + (it[5] ? " warn" : "");
+    el.innerHTML = '<span class="k"></span><span class="v num"></span><span class="d num"></span>';
+    el.children[0].textContent = it[0]; el.children[1].textContent = it[1]; el.children[2].textContent = it[2];
+    if (it[6] != null) { // Energy: the card opens its sheet
+      var per = document.createElement("span"), body = document.createElement("span");
+      per.style.cssText = "font-size:15px;font-weight:400;color:var(--sub)"; per.textContent = it[6];
+      el.children[1].appendChild(per);
+      body.style.cssText = "display:flex;flex-direction:column;gap:2px;flex:1;min-width:0";
+      while (el.firstChild) body.appendChild(el.firstChild);
+      el.innerHTML = ENERGY_ICON;
+      el.appendChild(body);
+      el.insertAdjacentHTML("beforeend", '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="#6C7086" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+      el.setAttribute("aria-label", "Energy of the roast");
+      el.onclick = function () { send("get_energy"); };
+    }
+    if (it[4]) { // the weight row carries its own button
+      var text = document.createElement("span"), taken = snap.weights_g.roasted != null, b = document.createElement("button");
+      text.style.cssText = "display:flex;flex-direction:column;gap:2px;flex:1;min-width:0";
+      while (el.firstChild) text.appendChild(el.firstChild);
+      el.style.cssText = "flex-direction:row;align-items:center;gap:14px";
+      b.className = "wbtn" + (taken ? "" : " use");
+      b.style.cssText = taken ? "height:48px;padding:0 16px" : "height:52px;padding:0 20px;flex:none";
+      b.textContent = taken ? "Weigh again" : "Weigh roasted";
+      b.onclick = function () { openWeigh("roasted"); };
+      el.appendChild(text); el.appendChild(b);
+    }
+    $("summary").appendChild(el);
+  });
+  $("summary").appendChild(colourRow());
+}
+
+
+/* ---------- curve and settings lanes ---------- */
+
+function drawChart(d, m, stage, lost, restored, win) {
+  var box = $("chart"), W = box.clientWidth, H = box.clientHeight;
+  var laneKeys = LANE_ORDER.filter(function (k) { return d.levers[k]; });
+  var LANE_H = 28, LANE_GAP = 4, zone = laneKeys.length ? laneKeys.length * (LANE_H + LANE_GAP) - LANE_GAP + 18 : 0;
+  var L = 44, R = 40, T = 36, B = 32, pw = W - L - R, ph = H - T - B - zone, bottom = H - B;
+  var charge = m.charge;
+  // The preheat draws its climb from the start; from Charge on, the roast from Charge (and its plan).
+  var preheatMode = charge == null && d.preheat && d.state === "recording";
+  var behind = followed(d), origin = charge != null ? charge : preheatMode ? 0 : null, planOn = behind && !preheatMode;
+  var end = d.last_sample_s != null && origin != null ? d.last_sample_s - origin : 0;
+  var planEnd = planOn && behind.marks.drop != null ? behind.marks.drop * 60 : 0;
+  var span = Math.max(720, Math.ceil(Math.max(end, planEnd) / 120) * 120);
+  var X = function (t) { return L + t / span * pw; };
+  // A preheat climbs from the room: its axis starts at 0; a reading below the floor stays on it, off the lanes
+  var LO = preheatMode ? 0 : 50;
+  var Y = function (v) { return T + (250 - Math.max(LO, v)) / (250 - LO) * ph; };
+  var RY = function (r) { return T + (25 - Math.max(0, Math.min(25, r))) / 25 * ph; };
+  $("svg").setAttribute("viewBox", "0 0 " + W + " " + H);
+  $("svg").setAttribute("width", W); $("svg").setAttribute("height", H);
+
+  var labels = "", grid = "";
+  // Ticks at round values of the unit shown, placed on the °C scale the curve is drawn on
+  var ticks = UNIT === "F" ? (preheatMode ? [100, 200, 300, 400] : [200, 300, 400]) : (preheatMode ? [50, 100, 150, 200, 250] : [100, 150, 200, 250]);
+  ticks.forEach(function (v) {
+    var y = Y(typedT(v));
+    grid += "M" + L + " " + y + " H" + (W - R) + " ";
+    labels += '<span class="lbl num" style="left:0;width:36px;text-align:right;top:' + (y - 8) + 'px">' + v + "</span>";
+  });
+  (UNIT === "F" ? [0, 10, 20, 30, 40] : [0, 5, 10, 15, 20, 25]).forEach(function (r) {
+    labels += '<span class="lbl num" style="left:' + (W - R + 6) + "px;top:" + (RY(r / shownD(1)) - 8) + 'px;color:var(--ror);opacity:.85">' + r + "</span>";
+  });
+  labels += '<span class="lbl" style="left:4px;top:12px;width:36px;text-align:right;font-size:10px">' + deg() + "</span>" +
+    '<span class="lbl" style="left:' + (W - R - 8) + 'px;top:12px;width:48px;text-align:center;font-size:10px;color:var(--ror);opacity:.85">' + deg() + "/min</span>";
+  for (var n = 0; n <= span / 60; n += 2)
+    labels += '<span class="lbl" style="top:' + (H - 24) + 'px;width:50px;text-align:center;left:' + (X(n * 60) - 25) + 'px">' + n + ":00</span>";
+
+  var bt = "", et = "", ror = "", penB = "M", penE = "M", penR = "M", prev = null;
+  if (origin != null) {
+    samples.forEach(function (s) {
+      var t = s[0] - origin;
+      if (t < 0) return;
+      if (prev != null && s[0] - prev > STALE_GAP_S) { penB = penE = penR = "M"; }
+      prev = s[0];
+      var x = X(t).toFixed(1);
+      bt += penB + x + " " + Y(s[1]).toFixed(1) + " "; penB = "L";
+      if (s[2] != null) { et += penE + x + " " + Y(s[2]).toFixed(1) + " "; penE = "L"; } else penE = "M";
+      if (s[3] != null && win && s[0] >= win.from && s[0] <= win.to) { ror += penR + x + " " + RY(s[3]).toFixed(1) + " "; penR = "L"; } else penR = "M";
+    });
+  }
+  // What the roast follows, behind it from Charge: its BT and RoR dashed, its milestones dotted.
+  var pbt = "", pror = "", pmark = "";
+  if (planOn) {
+    var c = behind.curve;
+    c.t.forEach(function (t, i) {
+      var x = X(t * 60).toFixed(1);
+      if (c.bt[i] != null) pbt += (pbt ? "L" : "M") + x + " " + Y(c.bt[i]).toFixed(1) + " ";
+      if (c.ror[i] != null) pror += (pror ? "L" : "M") + x + " " + RY(c.ror[i]).toFixed(1) + " ";
+    });
+    [["dry_end", "DRY"], ["fc_start", "FC"], ["drop", "DROP"]].forEach(function (k) {
+      var t = behind.marks[k[0]]; if (t == null) return;
+      var x = X(t * 60);
+      pmark += "M" + x.toFixed(1) + " " + T + " V" + (T + ph) + " ";
+      labels += '<span class="plbl" style="left:' + (x + 4) + "px;top:" + (T + ph - 16) + 'px">' + k[1] + "</span>";
+    });
+    if (stage !== 0) labels += '<span class="pchip" style="left:' + (L + 4) + 'px;top:' + (T + 6) + 'px">' + esc(behind.chip) + "</span>"; // before Start, the choice says it
+  }
+  $("planbt").setAttribute("d", pbt);
+  $("planror").setAttribute("d", pror);
+  $("planmarks").setAttribute("d", pmark);
+  $("grid").setAttribute("d", grid);
+  // The preheat target, dashed across, and CHARGE NOW at the head of the climb once there (as on the desktop).
+  var pre = preheatMode ? d.preheat : null, preCol = pre ? preheatColour(pre) : "";
+  $("pretarget").setAttribute("d", pre ? "M" + L + " " + Y(pre.target).toFixed(1) + " H" + (W - R) : "");
+  $("pretarget").setAttribute("stroke", preCol);
+  if (pre) {
+    labels += '<span class="plbl" style="right:' + (R + 6) + "px;top:" + (Y(pre.target) - 22) + "px;color:" + preCol + ';font-size:13px;font-weight:700">TARGET ' + Math.round(shownT(pre.target)) + " " + deg() + "</span>";
+    if (pre.state === "arrived" && d.last_sample_s != null)
+      labels += '<span class="plbl" style="left:' + (X(end) + 10) + "px;top:" + (Y(pre.target) + 6) + 'px;color:var(--green);font-size:18px;font-weight:800">CHARGE NOW</span>';
+  }
+  $("btp").setAttribute("d", bt);
+  $("etp").setAttribute("d", et);
+  $("rorp").setAttribute("d", ror);
+
+  // Close milestones (first crack to drop is about a minute) stack on a second row. The turning point, found
+  // from the readings rather than marked, is dotted with a dot on the BT, as on the desktop.
+  var names = { tp: "TP", dry_end: "DRY END", first_crack: "FIRST CRACK", drop: "DROP" }, markp = "", tpp = "", rowEnd = [-1e9, -1e9];
+  var at = { tp: d.tp ? d.tp.s : null, dry_end: m.dry_end, first_crack: m.first_crack, drop: m.drop };
+  Object.keys(names).forEach(function (k) {
+    if (at[k] == null || charge == null) return;
+    var c = k === "tp" ? d.tp.c : sampleAt(at[k])[1]; // the bean temperature at the milestone, as the desktop's chip
+    var x = X(at[k] - charge), text = names[k] + (c != null ? " " + Math.round(shownT(c)) + " " + deg() : "") + " · " + fmt(at[k] - charge);
+    var w = text.length * 7.2, left = Math.min(W - R - w, Math.max(4, x - w / 2));
+    var row = left >= rowEnd[0] + 10 ? 0 : 1;
+    rowEnd[row] = left + w;
+    if (k === "tp") tpp = "M" + x.toFixed(1) + " " + T + " V" + bottom;
+    else markp += "M" + x.toFixed(1) + " " + T + " V" + bottom + " ";
+    labels += '<span class="mlbl" style="left:' + left + "px;top:" + (row ? 20 : 4) + 'px">' + text + "</span>";
+  });
+  $("markp").setAttribute("d", markp);
+  $("tpp").setAttribute("d", tpp);
+  var tpOn = tpp && d.tp.c >= LO;
+  $("tpdot").setAttribute("r", tpOn ? 5 : 0);
+  if (tpOn) { $("tpdot").setAttribute("cx", X(d.tp.s - charge).toFixed(1)); $("tpdot").setAttribute("cy", Y(d.tp.c).toFixed(1)); }
+  $("endp").setAttribute("d", restored && charge != null ? "M" + X(end).toFixed(1) + " " + T + " V" + bottom : "");
+
+  // Settings lanes, as on the desktop: a filled staircase per lever, the new
+  // level beside each step and the level now held at the end of the trace.
+  var lanes = "", tEnd = origin != null ? end : span;
+  laneKeys.forEach(function (key, i) {
+    var top = T + ph + 18 + i * (LANE_H + LANE_GAP), lv = LEVERS[key];
+    var ly = function (v) { return top + LANE_H - 2 - v / 100 * (LANE_H - 4); };
+    lanes += '<rect x="' + L + '" y="' + top + '" width="' + pw + '" height="' + LANE_H + '" rx="4" fill="rgba(49,50,68,.35)"/>';
+    labels += '<span class="lbl" style="left:' + (L + 6) + "px;top:" + (top + 1) + "px;font-size:9px;font-weight:700;letter-spacing:.6px;color:" + lv.color + ';opacity:.8">' + esc(d.levers[key].name.toUpperCase()) + "</span>";
+    var planned = planOn && behind.steps[key];
+    if (planned && planned.length && behind.marks.drop != null) { // the plan's steps, dashed under the live ones
+      var pl = "";
+      planned.forEach(function (st, k) { var x = X(Math.max(0, st[0]) * 60).toFixed(1); pl += (k ? " H" + x + " V" : "M" + x + " ") + ly(st[1]).toFixed(1); });
+      lanes += '<path d="' + pl + " H" + X(behind.marks.drop * 60).toFixed(1) + '" fill="none" stroke="' + lv.color + '" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="4 4"/>';
+    }
+    var pts = [], held = null, byAlarm = d.alarm_settings || [];
+    if (origin == null) held = d.levers[key].value;      // before the roast: the level held now
+    (d.settings || []).forEach(function (st, k) {
+      if (st[1] !== key || origin == null) return;
+      var t = st[0] - origin;
+      if (t <= 0) held = st[2]; else pts.push([t, st[2], byAlarm.indexOf(k) >= 0]);
+    });
+    if (held == null && !pts.length) return;
+    if (held == null) held = pts[0][1];
+    var line = "M" + X(0).toFixed(1) + " " + ly(held).toFixed(1), level = held;
+    pts.forEach(function (pt) { line += " H" + X(pt[0]).toFixed(1) + " V" + ly(pt[1]).toFixed(1); level = pt[1]; });
+    var endX = X(Math.min(tEnd, span));
+    line += " H" + endX.toFixed(1);
+    lanes += '<path d="' + line + " V" + (top + LANE_H - 2) + " H" + X(0).toFixed(1) + ' Z" fill="' + lv.color + '2e"/>' +
+      '<path d="' + line + '" fill="none" stroke="' + lv.color + '" stroke-width="1.8"/>';
+    pts.forEach(function (pt) { // a step an alarm made: a yellow dot, the gesture was not the operator's hand
+      if (pt[2]) lanes += '<circle cx="' + X(pt[0]).toFixed(1) + '" cy="' + ly(pt[1]).toFixed(1) + '" r="3.6" fill="#F9E2AF" stroke="#11111B" stroke-width="1.5"/>';
+    });
+    var chipX = Math.min(L + pw - 28, endX + 4);
+    labels += '<span class="lbl num" style="left:' + chipX + "px;top:" + (top + 6) + "px;padding:0 4px;border-radius:3px;background:#11111B;font-weight:700;color:" + lv.color + '">' + level + "</span>";
+    pts.forEach(function (pt, k) {
+      var x = X(pt[0]) + 3, next = k + 1 < pts.length ? X(pts[k + 1][0]) : chipX;
+      if (x + 24 > next) return;
+      var y = ly(pt[1]), yy = y - 15 < top ? Math.min(y + 2, top + LANE_H - 15) : y - 15;
+      labels += '<span class="lbl num" style="left:' + x + "px;top:" + yy + "px;padding:0 3px;border-radius:3px;background:#11111B;font-size:10px;font-weight:700;color:" + lv.color + '">' + pt[1] + "</span>";
+    });
+  });
+  $("lanesg").innerHTML = lanes;
+  $("labels").innerHTML = labels;
+
+  var bands = "", defs = [["charge", "dry_end", "rgba(137,220,235,.07)"], ["dry_end", "first_crack", "rgba(249,226,175,.07)"], ["first_crack", "drop", "rgba(243,139,168,.08)"]];
+  defs.forEach(function (b) {
+    if (m[b[0]] == null || charge == null) return;
+    var to = m[b[1]] != null ? m[b[1]] : (stage >= 5 ? null : charge + end);
+    if (to == null) return;
+    var x0 = X(m[b[0]] - charge), x1 = X(to - charge);
+    bands += '<div style="position:absolute;top:' + T + "px;height:" + (bottom - T) + "px;left:" + x0 + "px;width:" + Math.max(0, x1 - x0) + "px;background:" + b[2] + '"></div>';
+  });
+  $("bands").innerHTML = bands;
+
+  var last = samples[samples.length - 1];
+  var showDot = charge != null && last && !lost && !restored && stage < 6 && last[0] >= charge;
+  $("dot").style.display = showDot ? "block" : "none";
+  if (showDot) { $("dot").style.left = (X(last[0] - charge) - 6) + "px"; $("dot").style.top = (Y(last[1]) - 6) + "px"; }
+}
+
+/* ---------- milestones that mark themselves (AUTOMATION-SPEC D1): a toast, nothing else ---------- */
+var AUTO_NAMES = { charge: "Charge", dry_end: "Dry end", first_crack: "First crack", drop: "Drop" };
+var autoSeen = null; // the latest event already told; the one a reopened page finds is not told again
+function renderAuto(d) {
+  var a = d.auto;
+  if (!a || a.seq === autoSeen) return;
+  var first = autoSeen === null;
+  autoSeen = a.seq;
+  if (first || !a.kind) return;
+  $("alarmtoast").innerHTML = a.kind === "marked"
+    ? '<span style="color:var(--blue)">✦</span><span><b>' + esc(AUTO_NAMES[a.milestone] || a.milestone) + "</b> · marked automatically</span>"
+    : a.kind === "unfollowed" ? '<span style="color:var(--muted)">↻</span><span>Following off · <b>the levers are yours</b></span>'
+    : '<span style="color:var(--muted)">✦</span><span>Auto milestones off · <b>you mark them</b></span>';
+  $("alarmtoast").classList.remove("gone");
+  clearTimeout(alarmToastTimer);
+  alarmToastTimer = setTimeout(function () { $("alarmtoast").classList.add("gone"); }, 4000);
+}
+
+// AUTO (GUIDED-SPEC): its chip, its moves as toasts, its beep; the guided bubble over the curve
+var pilotSeen = null, beepsHeard = null;
+var GUIDE_ICONS = { guide: "M12 5v14M6 13l6 6 6-6", listen: "M7 10a5 5 0 0 1 10 0c0 3-3 3.5-3 6.5a2.5 2.5 0 0 1-5 0M10 10a2 2 0 0 1 4 0",
+  crash: "M3 6l7 7 4-4 7 8M21 12v5h-5" };
+function renderPilot(d) {
+  var p = d.pilot, recording = d.state === "recording", stage = stageOf(d);
+  // From CHARGE to DROP, when AUTO acts; before, the preheat's chip has the row
+  $("autochip").classList.toggle("hidden", !p || !recording || p.state === "off" || stage < 2 || stage > 4);
+  if (p && recording) {
+    var paused = p.state === "paused";
+    $("autochip").classList.toggle("paused", paused);
+    $("autochip").innerHTML = paused ? '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z" fill="currentColor"/></svg>AUTO' : "AUTO";
+    $("autochip").setAttribute("aria-label", paused ? "Resume AUTO" : "AUTO drives the levers");
+  }
+  if (!p) pilotSeen = null; // between roasts: the next roast's first event is not told
+  if (p && p.seq !== pilotSeen) {
+    var first = pilotSeen === null;
+    pilotSeen = p.seq;
+    if (!first && p.text) {
+      $("alarmtoast").innerHTML = '<span class="autotag">AUTO</span><span>' + esc(p.text) + "</span>";
+      $("alarmtoast").classList.remove("gone");
+      clearTimeout(alarmToastTimer);
+      alarmToastTimer = setTimeout(function () { $("alarmtoast").classList.add("gone"); }, 4000);
+    }
+  }
+  if (p && beepsHeard !== null && p.beeps > beepsHeard) beep();
+  beepsHeard = p ? p.beeps : null;
+  var g = recording ? d.guide : null;
+  $("guide").classList.toggle("hidden", !g);
+  if (g) {
+    $("guide").className = g.tone === "guide" ? "" : g.tone;
+    $("guideicon").setAttribute("d", GUIDE_ICONS[g.tone] || GUIDE_ICONS.guide);
+    $("guidet").textContent = shownWords(g.title);
+    $("guides").textContent = shownWords(g.sub);
+  }
+}
+// A temperature in the bubble's words (°C) in the unit the screens show (UNIT-SPEC)
+function shownWords(text) {
+  return String(text || "").replace(/(\d+(?:\.\d+)?)°/g, function (_m, v) { return Math.round(shownT(+v)) + "°"; });
+}
+
+// Shown only while the probe listens to calibrate (AUTOMATION-SPEC decision 11)
+function renderCracks(d) {
+  var c = d.crack_detection;
+  $("crackchip").classList.toggle("hidden", !c);
+  if (c) $("cracktext").textContent = "Crack counter · " + (c.phase === "empty" ? "empty drum" : "beans") + " · " + c.left_s + " s";
+}
+
+/* ---------- alarms (ALARM-SPEC C2) ---------- */
+var BELL = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 19a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+var alarmSeen = 0, messageSeen = 0, alarmToastTimer = null, alarmMsgTimer = null;
+function renderAlarms(d) {
+  var a = d.alarms;
+  $("alarmchip").classList.toggle("hidden", !a);
+  if (!a) { closeAlarmSheet(); return; }
+  $("alarmtext").innerHTML = "Alarms · " + esc(a.name) + " · <b>" + a.fired + "</b>/" + a.total;
+  var fresh = a.recent.filter(function (r) { return r.id > alarmSeen; });
+  if (fresh.length) {
+    var r = fresh[fresh.length - 1];
+    alarmSeen = r.id;
+    $("alarmtoast").innerHTML = BELL + "<span><b>" + esc(r.what) + "</b> · " + esc(r.when) + "</span>" + (r.run ? "" : '<span class="no">not run on the tablet</span>');
+    $("alarmtoast").classList.remove("gone");
+    clearTimeout(alarmToastTimer);
+    alarmToastTimer = setTimeout(function () { $("alarmtoast").classList.add("gone"); }, 4000);
+    if (fresh.some(function (x) { return x.beep; })) beep();
+  }
+  if (a.message && a.message.id > messageSeen) {
+    messageSeen = a.message.id;
+    $("alarmmsg").innerHTML = '<span class="mi">' + BELL + "</span><span><b>" + esc(a.message.text) + "</b><small>Alarm " + a.message.row + " · " + esc(a.message.when) + "</small></span>";
+    $("alarmmsg").classList.remove("gone");
+    clearTimeout(alarmMsgTimer);
+    alarmMsgTimer = setTimeout(function () { $("alarmmsg").classList.add("gone"); }, 10000);
+  }
+  if (!$("alarmsheet").classList.contains("hidden")) fillAlarmSheet(a);
+}
+// The list as the roast goes: what fired is greyed, a "now" line stands after it, the next alarm is outlined.
+var PHASE_ORDER = ["Setup", "Drying", "Maillard", "Development", "Finish"], alarmScrolled = -1;
+function currentPhase(m) {
+  return m.drop != null ? "Finish" : m.first_crack != null ? "Development" : m.dry_end != null ? "Maillard" : m.charge != null ? "Drying" : "Setup";
+}
+function fillAlarmSheet(a) {
+  $("alarmname").textContent = a.name;
+  $("alarmcount").textContent = a.fired + " of " + a.total + " fired";
+  var now = currentPhase(snap.milestone_s), nowAt = PHASE_ORDER.indexOf(now);
+  var next = -1;
+  a.rows.forEach(function (r, k) { if (next < 0 && r.state === "wait") next = k; });
+  var line = '<div id="nowline">' + fmt(snap.elapsed_s - (snap.milestone_s.charge || 0)) + " · now</div>";
+  var html = "", phase = null, icons = { done: "✓", wait: "○", skip: "–", off: "–" };
+  a.rows.forEach(function (r, k) {
+    if (r.phase !== phase) {
+      phase = r.phase;
+      if (k === next) html += line; // the line stays in the phase that is running
+      var at = PHASE_ORDER.indexOf(phase);
+      html += '<div class="ph' + (at >= 0 && at < nowAt ? " past" : phase === now ? " cur" : "") + '">' + esc(phase) + (phase === now ? " · now" : "") + "</div>";
+    } else if (k === next) html += line;
+    var cls = r.state + (r.state !== "done" && r.fired ? " gone" : "") + (k === next ? " next" : "");
+    var icon = k === next ? "●" : icons[r.state];
+    html += '<div class="ar ' + cls + '"><span class="ic">' + icon + '</span><span class="w">' + esc(r.when) + (r.at ? "<em>" + esc(r.at) + "</em>" : "") +
+      '</span><span><span class="a">' + esc(r.what) + "</span>" + (r.why ? "<small>" + esc(r.why) + "</small>" : "") + "</span></div>";
+  });
+  $("alarmlist").innerHTML = html;
+  if (a.fired !== alarmScrolled) { // when the line moves, it is brought back to a third of the list
+    alarmScrolled = a.fired;
+    var l = $("alarmlist"), n = $("nowline");
+    if (n) l.scrollTop = n.offsetTop - l.offsetTop - l.clientHeight / 3;
+  }
+}
+function closeAlarmSheet() { $("alarmsheet").classList.add("hidden"); }
+$("alarmchip").onclick = function () {
+  if (!snap || !snap.alarms) return;
+  var open = $("alarmsheet").classList.contains("hidden");
+  if (open) { alarmScrolled = -1; fillAlarmSheet(snap.alarms); }
+  $("alarmsheet").classList.toggle("hidden", !open);
+};
+// The list stays for a look: a touch anywhere else closes it.
+document.addEventListener("pointerdown", function (e) {
+  if ($("alarmsheet").classList.contains("hidden")) return;
+  if ($("alarmcard").contains(e.target) || $("alarmchip").contains(e.target)) return;
+  closeAlarmSheet();
+}, true);
+$("alarmmsg").onclick = function () { this.classList.add("gone"); };
+function beep() { tilauSound(true); } // an alarm's bell: Bloom's short take
+
+$("act").onclick = function () {
+  if (!snap) return;
+  ACTIONS[Math.min(stageOf(snap), 5)].run();
+};
+$("modes").querySelectorAll("button").forEach(function (b) { b.onclick = function () { startMode = b.dataset.mode; if (snap) render(); }; });
+$("undo").onclick = function () { send("unmark"); };
+$("wait").onclick = function () { send("cancel_auto_drop"); };
+$("autochip").onclick = function () { if (this.classList.contains("paused")) send("resume_auto"); };
+$("stop").onclick = function () { send("stop"); };
+$("exitsim").onclick = function () { send("exit_simulation"); };
+$("speeds").querySelectorAll("button").forEach(function (b) { b.onclick = function () { send("set_speed", b.dataset.s); }; });
+// New roast never drops an unsaved roast: a touch asks for the save; holding 5 s skips it (back to back).
+var askedSave = false, saveThenNew = false, holding = null, SKIP_HOLD_MS = 5000;
+function needsSave(d) { return !d.exported && d.sample_count > 0; }
+function renderHint() {
+  var closing = !$("closing").classList.contains("hidden");
+  var show = (askedSave || holding) && closing;
+  $("skiphint").classList.toggle("hidden", !show);
+  if (closing) document.querySelector(".track").classList.toggle("hidden", show); // in the milestones' place
+  if (!show) return;
+  $("hint1").textContent = holding ? "Keep holding to skip saving" : "Save this roast before the next one";
+  $("hint2").textContent = holding ? "Let go to keep the roast" : "Hold New roast 5 s to skip saving";
+}
+function endHold() {
+  if (!holding) return;
+  clearInterval(holding.tick); clearTimeout(holding.done); holding = null;
+  $("newroast").classList.remove("hold"); $("newring").classList.add("hidden");
+  $("newlabel").textContent = "New roast"; $("newplus").setAttribute("stroke", "#CDD6F4");
+  renderHint();
+}
+function skipRecord() {
+  endHold();
+  askedSave = false;
+  $("skipped").style.display = "flex";
+  var bar = $("skipbar").firstElementChild; bar.style.width = "0";
+  requestAnimationFrame(function () { bar.style.width = "100%"; });
+  setTimeout(function () { $("skipped").style.display = "none"; send("reset"); }, 2500);
+}
+$("newroast").addEventListener("pointerdown", function () {
+  if (!snap || !needsSave(snap)) return;
+  var t0 = Date.now();
+  holding = {t0: t0, done: setTimeout(skipRecord, SKIP_HOLD_MS), tick: setInterval(function () {
+    var held = Date.now() - t0;
+    if (held < 400) return; // a touch, not yet a hold
+    $("newroast").classList.add("hold"); $("newring").classList.remove("hidden"); $("newplus").setAttribute("stroke", "#FAB387");
+    $("newringpath").setAttribute("stroke-dasharray", Math.min(100, held / SKIP_HOLD_MS * 100) + " 100");
+    $("newlabel").textContent = Math.ceil((SKIP_HOLD_MS - held) / 1000) + " s";
+    renderHint();
+  }, 100)};
+});
+["pointerup", "pointerleave", "pointercancel"].forEach(function (e) { $("newroast").addEventListener(e, function () {
+  if (holding && Date.now() - holding.t0 < 400 && e === "pointerup") { askedSave = true; render(); }
+  endHold();
+}); });
+$("newroast").onclick = function () { if (snap && !needsSave(snap)) send("reset"); };
+$("gear").onclick = function () { go("settings.html"); };
+$("cavebtn").onclick = function () { go("beancave.html"); };
+$("coffee").onclick = function () { go(snap && snap.state === "idle" ? "roast-setup.html" : "beancave.html"); }; // Roast Setup until the start
+$("save").onclick = function () { if (askedSave && snap && needsSave(snap)) saveThenNew = true; send("save"); };
+$("resumefollow").onclick = function () { send("resume_follow"); };
+$("prechip").onclick = function () { if (this.classList.contains("resume")) send("resume_preheat"); };
+$("printlabel").onclick = function () {
+  var m = snap.milestone_s;
+  if (m.dry_end == null || m.first_crack == null || m.drop == null) { toast("The label needs Dry end, First crack and Drop marked"); return; }
+  if (labelPrinter.start()) send("roast_label");
+};
+$("link").onclick = function () { if (snap && snap.simulated && snap.state === "recording") send("toggle_signal"); };
+// Test of the recovery, empty drum only: a long press drops the roaster link as for real.
+(function () {
+  var timer = null;
+  $("link").addEventListener("pointerdown", function () {
+    if (!(snap && snap.link && snap.link.state === "connected" && snap.state === "recording")) return;
+    timer = setTimeout(function () { send("link_drop_test"); toast("Link dropped for the test — the roaster stops its burner"); }, LONG_PRESS_MS);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(function (e) { $("link").addEventListener(e, function () { clearTimeout(timer); }); });
+})();
+window.onLink = function (s) {
+  if (s.state === "denied") { btDenied = true; if (snap) render(); return; }
+  if (s.alert === "burner_overshoot") toast("The burner went above its command: it was set back");
+  else if (s.alert === "burner_unconfirmed") toast("The roaster did not confirm its burner at 0: the tablet tries again");
+};
+$("btsettings").onclick = function () { send("app_settings"); };
+// Granted at a later prompt: the links connect on their own, the warning goes.
+window.onBluetoothGranted = function () { btDenied = false; if (snap) render(); };
+// Allowed in Android's settings: the roast link again when a roast records, then the page connects its devices.
+window.onBluetoothAllowed = function () {
+  if (snap && snap.state === "recording" && roaster) send("roast_link_connect", JSON.stringify({ address: roaster.address, end: endRoast }));
+  location.reload();
+};
+$("roller").onclick = closeRoller;
+$("rollercard").onclick = function (e) { e.stopPropagation(); };
+$("sheet").onclick = closeSheet;
+$("sheetcard").onclick = function (e) { e.stopPropagation(); };
+$("wheel").addEventListener("scroll", function () { if (snap) highlightWheel(); });
+window.addEventListener("resize", function () { if (snap) render(); });
+</script>
+</body>
+</html>

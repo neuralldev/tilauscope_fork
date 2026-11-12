@@ -1,9 +1,11 @@
 ## [4.3] 2026-09-13
+build 58
+* 🐛 [fix(detection)] : automatic DROP is placed where the beans left on every roaster: 2 s before bean temperature's peak by default, as the probe on most roasters stops rising almost at once (the Skywalker V2 keeps its 6 s, the Cormorant CR600e declares 0 s)
 build 57
 * ⚡ [feat(detection)] : automatic CHARGE is placed where bean temperature starts its plunge, one reading before, instead of a few seconds into it; a gentle slope before the beans go in is no longer taken for it
 * ⚡ [feat(detection)] : automatic DROP is marked once bean temperature has fallen from its peak (3 °C on the Skywalker V2), about 15 s after the beans come out, and placed back where they left; a crash after first crack is never taken for it
 * ⚡ [feat(detection)] : a contact on the drop door, wired to the TilauProbe (probe firmware update needed), marks DROP the moment the door opens, even with automatic DROP off; its state shows in TilauScope Config under Sensors and Detection, and without it DROP is still found from the curve
-* ⚡ [feat(android)] : on the Android prototype, the drop door contact on the TilauAmbient probe marks DROP the moment the door opens, and a Door pill in the roast screen's header shows the door closed or open
+* ⚡ [feat(android)] : on the Android prototype, the drop door contact on the TilauAmbient probe marks DROP the moment the door opens, and the Room pill in the roast screen's header shows the door closed or open
 * ⚡ [feat(detection)] : the turning point is the lowest bean temperature between CHARGE and dry end; none is placed later in the roast
 * ⚡ [feat(alarms)] : an alarm set on a milestone with no delay fires at that milestone; a delay counts from where the milestone is placed, so one marked late fires what is already due; with a delay and a temperature, both must hold; a probe that stops reading holds the alarm until it reads again
 * 🐛 [fix(alarms)] : before START, an alarm chained after another one fires again

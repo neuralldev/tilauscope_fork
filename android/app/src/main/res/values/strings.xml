@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<resources>
+    <string name="app_name">TilauScope Android Lab</string>
+    <string name="session_channel">Recording session</string>
+    <string name="session_notification">Session in progress</string>
+</resources>

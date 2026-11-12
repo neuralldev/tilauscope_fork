@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<!-- Android 12+ stretches the splash icon to its whole icon area (about 240 dp);
+     the inset brings the bean back to the 132 dp the start page shows. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_bean"
+    android:inset="22%" />

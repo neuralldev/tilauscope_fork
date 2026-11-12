@@ -1,0 +1,403 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>TilauScope BeanCave</title>
+<link rel="stylesheet" href="common.css">
+<style>
+#app{height:100%;display:flex;flex-direction:column}
+#back{height:40px;padding:0 10px 0 4px;border-radius:12px;color:var(--sub);font-size:15px;display:inline-flex;align-items:center;gap:4px}
+.gl{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--sub)}
+.gl.on{background:rgba(137,180,250,.14);color:var(--blue)}
+.cave{flex:1;min-height:0;display:flex;gap:16px;padding:0 16px 16px}
+.master{width:330px;flex:none;display:flex;flex-direction:column;gap:12px;min-height:0}
+.seg{display:flex;align-self:flex-start;background:var(--overlay);border-radius:12px;padding:3px;gap:3px}
+.seg button{height:38px;padding:0 14px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sub)}
+.seg button.on{background:var(--blue);color:var(--bg)}
+#search{height:44px;flex:none;border-radius:12px;border:1px solid var(--line);background:transparent;padding:0 14px;font:inherit;font-size:15px;color:var(--text);outline:none;-webkit-user-select:text;user-select:text}
+#search:focus{border-color:var(--blue)}
+#list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.it{flex:none;border-radius:14px;background:var(--surface);border:1px solid var(--overlay);padding:10px 14px;display:flex;align-items:center;gap:12px;text-align:left}
+.it.sel{border:2px solid var(--blue);background:rgba(137,180,250,.10);padding:9px 13px}
+.it.out{opacity:.5}
+.ld{width:9px;height:9px;border-radius:5px;flex:none}
+.it .n{flex:1;min-width:0;display:flex;flex-direction:column}
+.it .n{gap:3px}.it .n b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.it .n small{font-size:12px;color:var(--sub)}
+.it .s{text-align:right;font-size:15px;font-weight:600;white-space:nowrap;line-height:1.25}.it .s small{display:block;margin-top:3px;font-size:12px;font-weight:400}
+.none{padding:14px 4px;font-size:14px;color:var(--muted)}
+.sheet{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.cols{flex:1;min-height:0;display:flex;gap:10px}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.zone{flex:none;background:var(--surface);border:1px solid var(--overlay);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.zone.acc{border-color:rgba(137,180,250,.45)}
+.zh{font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600}.zh.acc{color:var(--blue)}
+.nm{font-size:22px;font-weight:700;display:flex;align-items:center;gap:8px}
+.blendtag{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 6px}
+.sb{font-size:13px;color:var(--sub);line-height:1.45}
+.tl{display:grid;gap:6px}.tl div{border:1px solid var(--overlay);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;min-width:0}
+.tl b{font-size:16px;font-family:ui-monospace,monospace;font-weight:600}.tl span{font-size:9px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px}
+.chips span.f{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+.dim{font-size:13px;color:var(--muted);font-style:italic}
+.fam{background:var(--overlay);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--sub);display:flex;gap:10px}.fam b{color:var(--text);font-weight:500}
+.bbar{display:flex;height:8px;border-radius:4px;overflow:hidden}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--sub)}
+.pv{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:14px}.pv span{color:var(--muted);font-size:12px;display:block}
+.bar{flex:none;display:flex;align-items:center;gap:14px}
+.go{height:56px;padding:0 24px;border-radius:16px;background:var(--blue);color:var(--bg);font-size:17px;font-weight:700}
+.go:disabled{background:var(--overlay);color:var(--muted)}
+.bar small{font-size:13px;color:var(--muted)}
+.empty{flex:1;background:var(--surface);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:30px}
+.empty b{font-size:20px}.empty p{margin:0;color:var(--sub);font-size:15px;max-width:48ch;line-height:1.5}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 18px;border-radius:14px;background:var(--overlay);font-size:15px;display:none;z-index:40}
+.zh{display:flex;align-items:center}
+.zcue{margin-left:auto;font-size:20px;color:var(--muted);letter-spacing:0;line-height:1}
+[data-z]{cursor:pointer}
+.add{height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--blue);color:var(--blue);font-size:14px;font-weight:600}
+/* Editors, lists and the flavour dial cover the page */
+#ce,#fd{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column}
+#fd{z-index:30}
+.ehead{height:60px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--overlay)}
+.ehead .t{display:flex;flex-direction:column;min-width:0}.ehead .t b{font-size:13px;letter-spacing:.14em;color:var(--accent);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ehead .t small{font-size:12px;color:var(--muted)}
+.btn{height:48px;padding:0 20px;border-radius:14px;font-size:15px;font-weight:600;border:1px solid var(--line);color:var(--sub)}
+.btn.save{background:var(--green);color:var(--bg);border:0}.btn.save:disabled{background:var(--overlay);color:var(--muted)}
+.ce-body{flex:1;min-height:0;overflow-y:auto;padding:16px 20px 24px}
+.ce-form{display:grid;grid-template-columns:minmax(0,1fr) 330px;column-gap:20px;row-gap:10px;align-items:start}
+.ce-f{grid-column:1;display:flex;align-items:center;gap:14px;min-height:52px}
+.ce-f>label{width:170px;flex:none;font-size:15px;color:var(--sub)}.ce-f>label i{color:var(--peach);font-style:normal}
+.ce-sec{grid-column:1;font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600;padding-top:8px}
+.ce-in{flex:1;height:48px;min-width:0;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 14px;font:inherit;font-size:16px;color:var(--text);outline:none;display:flex;align-items:center;gap:8px;text-align:left;-webkit-user-select:text;user-select:text}
+.ce-in:focus{border-color:var(--blue);background:var(--bg)}
+.ce-in.got{border-color:var(--green);background:rgba(166,227,161,.08)}.ce-in.bad{border-color:var(--red)}
+.ce-in.short{flex:none;width:150px}.ce-in.pick .chev{margin-left:auto;color:var(--muted)}.ce-in.ph{color:var(--muted)}
+.ce-in.memo{height:120px;padding:12px 14px;resize:none}
+.ce-num{display:flex;align-items:center;gap:8px}.ce-num .u{color:var(--muted);font-size:14px}
+.ce-mini{height:48px;padding:0 14px;border-radius:12px;border:1px solid var(--accent);color:var(--accent);font-size:14px;font-weight:600;white-space:nowrap}
+.ce-note{font-size:13px;color:var(--muted)}
+.ce-seg{display:flex;background:var(--overlay);border-radius:12px;padding:3px;gap:3px}.ce-seg button{height:42px;padding:0 18px;border-radius:9px;font-size:15px;font-weight:600;color:var(--sub)}.ce-seg button.on{background:var(--blue);color:var(--bg)}
+.ce-callout{grid-column:1;border:1px solid rgba(250,179,135,.45);background:rgba(250,179,135,.06);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--sub)}
+.ce-devs{grid-column:2;display:flex;flex-direction:column;gap:12px}
+.ce-spark{height:64px;border-radius:10px;background:var(--bg);overflow:hidden}
+.tban{display:flex;align-items:center;gap:12px;border:1px solid var(--overlay);background:var(--bg);border-radius:12px;padding:6px 8px 6px 12px;font-size:14px;color:var(--sub)}
+.tstar{color:var(--yellow);font-size:13px;font-weight:600}
+.tban{width:100%;min-height:46px;text-align:left}.tchev{font-size:22px;color:var(--muted);line-height:1}
+.tsheet{width:640px;max-height:92vh;overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:22px;padding:20px 24px;display:flex;flex-direction:column;gap:12px}
+.tsheet h3{margin:0;font-size:22px}.tsub{font-size:13px;color:var(--sub)}.tq{font-size:15px;font-weight:600;margin-top:4px}.tq small{font-weight:400;color:var(--muted);margin-left:6px}
+.tvrow{display:flex;gap:10px}.tvb{flex:1;height:54px;border-radius:14px;border:1px solid var(--line);font-size:17px;font-weight:600;color:var(--sub)}.tvb.on{background:var(--blue);border-color:var(--blue);color:var(--bg)}
+.tstarb{width:54px;height:54px;flex:none;border-radius:14px;border:1px solid var(--line);font-size:24px;color:var(--muted)}.tstarb.on{border-color:var(--yellow);color:var(--yellow)}
+.tdgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tdb{height:46px;border-radius:12px;border:1px solid var(--line);font-size:14px;color:var(--sub)}.tdb.on{border-color:var(--peach);background:rgba(250,179,135,.14);color:var(--text);font-weight:600}
+.tnotes{height:64px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:10px 12px;font:inherit;font-size:14px;color:var(--text);resize:none;-webkit-user-select:text;user-select:text}
+.tnext{border-radius:14px;background:var(--surface);padding:10px 14px;display:flex;flex-direction:column;gap:3px}.tnext span{font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:700}.tnext b{font-size:16px}.tnext small{font-size:13px;color:var(--sub)}
+.tacts,.tconfirm{display:flex;justify-content:flex-end;align-items:center;gap:12px}.tconfirm{font-size:15px;color:var(--text)}
+.ce-scrim{position:fixed;inset:0;z-index:25;background:rgba(17,17,27,.62);display:flex;align-items:center;justify-content:center}
+.ce-pick{width:620px;max-height:calc(100% - 40px);background:var(--bg);border:1px solid var(--line);border-radius:22px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+.ce-pick h3{margin:0;font-size:22px;font-weight:600}.ce-pick h3 small{font-size:14px;color:var(--muted);font-weight:400}
+#ce-q{flex:none}
+.ce-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.ce-opt{min-height:48px;flex:none;border-radius:12px;border:1px solid var(--overlay);background:var(--surface);padding:0 14px;font-size:16px;text-align:left}
+.ce-opt.sel{border:2px solid var(--blue);background:rgba(137,180,250,.12)}.ce-opt.other{border-style:dashed;color:var(--sub)}
+.fd-body{flex:1;min-height:0;display:flex}
+.fd-side{width:290px;flex:none;padding:18px 0 18px 18px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.fd-tab{height:60px;width:100%;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:15px;font-weight:600;border:1px solid var(--overlay);color:var(--sub);margin-bottom:8px}
+.fd-tab i{width:12px;height:12px;border-radius:6px}.fd-tab.on{color:var(--text);border-width:2px}.fd-tab small{margin-left:auto;font-size:12px;color:var(--muted);font-weight:500}
+#fd-chips{display:flex;flex-direction:column;gap:8px}
+.fd-eb{font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600}
+.fd-chips{display:flex;flex-wrap:wrap;gap:6px}.fd-chips button{border-radius:999px;padding:5px 10px;font-size:13px;font-weight:600}
+.fd-chips span{border:1px dashed var(--line);border-radius:999px;padding:4px 10px;font-size:13px;color:var(--sub)}
+.fd-none{font-size:13px;color:var(--muted)}
+#fd-svg{flex:1;min-width:0;height:100%;touch-action:none}
+#fd-svg text{pointer-events:none;font-family:ui-monospace,monospace}
+/* Roasts tab */
+.tabs{display:flex;background:var(--overlay);border-radius:12px;padding:3px;gap:3px;margin-left:6px}.tabs button{height:36px;padding:0 16px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sub)}.tabs button.on{background:var(--blue);color:var(--bg)}
+#roastsview{flex:1;min-height:0;display:flex;gap:16px;padding:0 16px 16px}
+.rl{width:440px;flex:none;display:flex;flex-direction:column;gap:8px;min-height:0}
+.rbar{display:flex;align-items:center;gap:10px;min-height:0}.rbar:empty{display:none}
+.filt{height:36px;padding:0 12px;border-radius:18px;background:rgba(137,180,250,.14);color:var(--blue);font-size:14px;font-weight:600}
+#rsorts{display:flex;background:var(--overlay);border-radius:12px;padding:3px;gap:3px;align-self:flex-start}#rsorts button{height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:600;color:var(--sub)}#rsorts button.on{background:var(--blue);color:var(--bg)}
+#rsearch{height:42px;flex:none;border-radius:12px;border:1px solid var(--line);background:transparent;padding:0 14px;font:inherit;font-size:15px;color:var(--text);outline:none;-webkit-user-select:text;user-select:text}
+#rlist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
+.gh{display:flex;align-items:center;gap:8px;min-height:30px;font-size:13px;font-weight:600;color:var(--sub);padding:0 4px;flex:none}.gh::after{content:"";flex:1;height:1px;background:var(--overlay)}.gh small{order:2;font-weight:500;color:var(--muted)}
+.rr{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:12px;min-height:58px;text-align:left;flex:none}
+.rr.sel{background:linear-gradient(rgba(137,180,250,.12),rgba(137,180,250,.12)),var(--bg);outline:2px solid var(--blue);outline-offset:-2px}.rr.rdim{opacity:.6}
+.rlane{position:relative;flex:none;display:flex;flex-direction:column;border-radius:12px;overflow:hidden}
+.rlane .rr{position:relative;background-color:var(--bg);transition:transform .2s;touch-action:pan-y}
+.rbin{position:absolute;inset:0;width:100%;display:none;align-items:center;padding-left:28px;background:var(--red);color:var(--bg)}.rlane.open .rbin{display:flex}
+.rdel{width:460px;padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+.rdh{display:flex;gap:14px;align-items:center}.rdh>span:last-child{display:flex;flex-direction:column;gap:2px}.rdh b{font-size:18px}.rdh small{font-size:13px;color:var(--sub)}
+.rdi{width:44px;height:44px;border-radius:22px;flex:none;background:rgba(243,139,168,.15);color:var(--red);display:flex;align-items:center;justify-content:center}
+.rdel p{margin:0;font-size:15px;color:var(--sub);line-height:1.45}.rdel p.rdn{font-size:13px}
+.rda{display:flex;justify-content:flex-end}.rdgo{display:flex;gap:8px;align-items:center;height:46px;padding:0 22px;border-radius:14px;background:var(--red);color:var(--bg);font-size:15px;font-weight:700}
+.rdot{width:10px;height:10px;border-radius:5px;flex:none}.rdot.ring{background:transparent!important;border:2px solid}
+.rt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.rt .l1{display:flex;gap:8px;font-size:16px;font-weight:600}.rt .l1 span:first-child{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.rt .l1 .w{font-weight:400;color:var(--sub);font-size:14px}
+.rt .l2{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--sub)}.rt .l2 span:first-child{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.tag{font-size:11px;font-weight:600;border-radius:6px;padding:2px 7px;border:1px solid var(--line);color:var(--sub);white-space:nowrap}
+.tag.pc{border-color:rgba(137,180,250,.5);color:var(--blue)}.tag.sim{border-color:rgba(249,226,175,.5);color:var(--yellow)}.tag.exc{border-color:rgba(250,179,135,.5);color:var(--peach)}
+#rdetail{flex:1;min-width:0;background:var(--surface);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+#rdetail h3{margin:0;font-size:20px;font-weight:600}.when{font-size:14px;color:var(--sub)}
+.mini{flex:1;min-height:0;background:var(--bg);border-radius:14px;overflow:hidden}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;flex:none}
+.tile{background:var(--bg);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.tile .cap{font-size:13px;color:var(--sub)}.tile .val{font-family:ui-monospace,monospace;font-size:22px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.tile .sub{font-size:13px;color:var(--sub)}.tile .val i{width:12px;height:12px;border-radius:6px;flex:none}.tile .val i.ring{background:transparent!important;border:2px solid}.tile.nr .val{color:var(--muted)}
+#rdetail .tile{background:var(--bg)}#rview .tile{background:var(--surface)}
+.tile.etap{text-align:left;border:1px solid var(--overlay);color:inherit;font-family:inherit}.tile.etap .cap{display:flex;align-items:center;justify-content:space-between;color:var(--sub)}
+.tile.etap .val small{font-size:14px;font-weight:400;color:var(--sub);margin-left:-2px}
+.acts{display:flex;gap:10px;flex:none}.acts .btn{height:44px}
+.rsim{margin-left:auto;width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--accent);color:var(--accent);background:rgba(203,166,247,.12);display:flex;align-items:center;justify-content:center}
+.rsim+.rprint,.rfollow+.rprint{margin-left:0}
+.rfollow{width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--blue);color:var(--blue);background:rgba(137,180,250,.12);display:flex;align-items:center;justify-content:center}
+.rshare{width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--line);color:var(--sub);display:flex;align-items:center;justify-content:center}
+.rprint{margin-left:auto;width:44px;height:44px;flex:none;border-radius:22px;border:2px solid;display:flex;align-items:center;justify-content:center}
+@keyframes rpulse{0%{box-shadow:0 0 0 0 rgba(205,214,244,.45)}70%{box-shadow:0 0 0 8px rgba(205,214,244,0)}100%{box-shadow:0 0 0 0 rgba(205,214,244,0)}}
+.rprint.working{animation:rpulse 1.8s ease-out infinite}.btn.pri{border-color:var(--blue);color:var(--blue)}
+#rview{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column}
+#rview .back{height:40px;padding:0 10px;color:var(--sub);font-size:15px}
+.rvbody{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:0 16px 16px}.mini.big{background:var(--surface)}
+.facts{display:flex;flex-wrap:wrap;gap:6px}.facts span{background:var(--overlay);border-radius:8px;padding:3px 8px;font-size:13px}.facts b{font-family:ui-monospace,monospace}
+.last{font-size:16px;font-weight:600}.eb{font-size:11px;letter-spacing:.1em;color:var(--sub);font-weight:700}
+.zh a,.zh .lnk{margin-left:auto;color:var(--blue);letter-spacing:0;font-size:13px;font-weight:600}
+</style>
+</head>
+<body>
+<script src="common.js"></script>
+<script src="device-cards.js"></script>
+<script src="cave-edit.js"></script>
+<script src="flavour-dial.js"></script>
+<script src="label-metrics.js"></script>
+<script src="label.js"></script>
+<script src="roasts.js"></script>
+<script src="energy-sheet.js"></script>
+<div id="app">
+ <header>
+  <button id="back"><svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 4L6 9l5 5" fill="none" stroke="#A6ADC8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Roast</button>
+  <span class="brand">BeanCave</span>
+  <span class="tabs" id="tabs"><button data-t="coffees" class="on">Coffees</button><button data-t="roasts">Roasts</button></span>
+  <span style="flex:1"></span>
+  <span class="gl on" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 512 512"><g transform="rotate(-28 256 256)"><path fill="currentColor" d="M 256,51 C 338.8,51 406,142.8 406,256 C 406,369.2 338.8,461 256,461 C 173.2,461 106,369.2 106,256 C 106,142.8 173.2,51 256,51 Z"/></g></svg></span>
+  <button class="gl" id="gear" aria-label="Settings"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00-1.2-2.9H3a2 2 0 110-4h.1a1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 002.9-1.2V3a2 2 0 114 0v.1a1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 001.2 2.9H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" fill="none" stroke="#A6ADC8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+ </header>
+ <div class="cave">
+  <div class="master">
+   <div style="display:flex;gap:8px;align-items:center"><div class="seg hidden" id="seg"><button data-f="stock"></button><button data-f="all"></button></div>
+    <span style="flex:1"></span><button class="add hidden" id="add">+ New coffee</button></div>
+   <input id="search" type="search" placeholder="Search a name, a country, a process…" autocomplete="off">
+   <div id="list"></div>
+  </div>
+  <div class="sheet" id="sheet"></div>
+ </div>
+ <div id="roastsview" class="hidden">
+  <div class="rl"><div class="rbar" id="rfilter"></div><input id="rsearch" type="search" placeholder="Search a coffee, a title…" autocomplete="off">
+   <div id="rsorts"></div><div id="rlist"></div></div>
+  <div id="rdetail"></div>
+ </div>
+</div>
+<div id="toast"></div>
+<script>
+"use strict";
+var cave = null, filter = "stock", selected = null, recording = false, asked = false;
+var LEVEL = { warning: "var(--peach)", critical: "var(--red)" };
+var BLEND = ["#CBA6F7", "#94E2D5", "#F5C2E7"];
+
+function toast(text) { var t = $("toast"); t.textContent = text; t.style.display = "block"; setTimeout(function () { t.style.display = "none"; }, 3500); }
+function grams(g) { return g >= 1000 ? (g / 1000).toFixed(1) + " kg" : Math.round(g) + " g"; }
+function plain(t) { return (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+function inStock(c) { return c.stock_g > 0; }
+// As the desktop's format_money: the system's number format, the symbol of the shared table.
+function money(value) {
+  var code = cave.currency || systemCurrency();
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: code }).formatToParts(value)
+      .map(function (p) { return p.type === "currency" ? cave.currencies[code] || code : p.value; }).join("");
+  } catch (e) { return value.toFixed(2) + " " + code; }
+}
+
+window.onSnapshot = function (method, d) {
+  if (d && d.unit) setUnit(d.unit);
+  if (method === "get_roasts") { if (d && d.reply) RoastsTab.rows(d.reply.roasts); return; }
+  if (method === "get_roast") { RoastsTab.roast(d && d.reply); return; }
+  if (method === "delete_roast") { // the coffees' roast memory and counts follow
+    if (d && d.reply) { RoastsTab.rows(d.reply.roasts); send("get_coffees"); } else toast("This roast cannot be deleted now: finish the roast on screen first");
+    return;
+  }
+  if (method === "get_roast_energy") { if (d && d.reply) EnergySheet.show(d.reply); else toast("This roast has no energy"); return; }
+  if (method === "save_tasting") { if (d && d.reply) { RoastsTab.roast(d.reply); send("get_roasts"); } else toast("The tasting could not be saved"); return; }
+  if (method === "get_setup") { if (d && d.reply) { CaveEdit.setDevices(d.reply.config.devices); RoastsTab.setPrinter(d.reply.config.devices.printer); } return; }
+  if (method === "roast_label") { RoastsTab.label(d && d.reply); return; }
+  // The roast screen opens on the replay; refused while a roast is on screen
+  if (method === "set_follow") { // START offers to follow it, on the roast screen
+    if (!d || !d.reply) toast("This roast cannot be followed now: finish the roast on screen first");
+    else if (d.reply.state === "no_coffee") toast("Picked to follow: choose the coffee to roast");
+    else go("roast.html");
+    return;
+  }
+  if (method === "simulate") { if (d && d.reply) go("roast.html"); else toast("This roast cannot be replayed now: finish the roast on screen first"); return; }
+  if (method === "save_coffee") {
+    CaveEdit.saved(d && d.reply);
+    if (!d || !d.reply) return;
+    cave = d.reply; CaveEdit.setCave(cave); selected = cave.saved;
+    var mine = cave.coffees.filter(function (c) { return c.uuid === selected; })[0];
+    if (mine && !inStock(mine)) filter = "all";
+    render();
+    return;
+  }
+  if (method === "get_coffees") {
+    if (!d || !d.reply) return;
+    cave = d.reply; CaveEdit.setCave(cave);
+    var stock = cave.coffees.filter(inStock);
+    if (!stock.length) filter = "all";
+    selected = cave.chosen || (stock[0] || cave.coffees[0] || {}).uuid || null;
+    splashDone(); render();
+    return;
+  }
+  if (method === "choose_coffee") {
+    if (d) go("roast-setup.html"); else toast("The coffee is chosen between roasts");
+    return;
+  }
+  if (!d) return;
+  if (!asked) { asked = true; send("get_coffees"); send("get_setup"); }
+  if (recording !== (d.state === "recording")) { recording = d.state === "recording"; if (cave) render(); }
+};
+
+function shown() {
+  var q = plain($("search").value).trim();
+  return cave.coffees.filter(function (c) {
+    if (filter === "stock" && !inStock(c)) return false;
+    return !q || plain([c.name, c.country, c.process, c.varieties, c.supplier, c.farm].join(" ")).indexOf(q) >= 0;
+  });
+}
+
+function render() {
+  $("add").classList.toggle("hidden", !(cave.present && cave.editable));
+  if (!cave.present || !cave.coffees.length) { renderNone(); return; }
+  var stock = cave.coffees.filter(inStock).length;
+  $("seg").classList.remove("hidden");
+  $("seg").children[0].textContent = "In stock · " + stock;
+  $("seg").children[1].textContent = "All · " + cave.coffees.length;
+  $("seg").querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", b.dataset.f === filter); });
+  var list = shown();
+  $("list").innerHTML = list.length ? list.map(function (c) {
+    var aw = c.aw.value != null, col = !inStock(c) ? "var(--muted)" : LEVEL[c.aw.level] || "var(--green)";
+    var sub = [c.country, (c.process || "").split(" / ")[0], c.crop || ""].filter(Boolean).join(" · ");
+    return '<button class="it' + (c.uuid === selected ? " sel" : "") + (inStock(c) ? "" : " out") + '" data-u="' + esc(c.uuid) + '">' +
+      '<span class="ld" style="background:' + col + '"></span><span class="n"><b>' + esc(c.name || "—") + "</b><small>" + esc(sub) + "</small></span>" +
+      '<span class="s num">' + grams(c.stock_g) + (aw ? '<small style="color:' + (LEVEL[c.aw.level] || "var(--green)") + '">aw ' + c.aw.value.toFixed(2) + "</small>" : "") + "</span></button>";
+  }).join("") : '<div class="none">No coffee matches</div>';
+  $("list").querySelectorAll(".it").forEach(function (b) { b.onclick = function () { selected = b.dataset.u; render(); }; });
+  var c = cave.coffees.filter(function (x) { return x.uuid === selected; })[0];
+  if (c) renderSheet(c); else $("sheet").innerHTML = '<div class="empty"><p>Choose a coffee in the list.</p></div>';
+}
+
+function renderNone() {
+  $("seg").classList.add("hidden");
+  $("list").innerHTML = "";
+  $("sheet").innerHTML = '<div class="empty"><b>No coffee on this tablet yet</b><p>' + (cave.present ?
+    (cave.editable ? "Your BeanCave is empty. Add a coffee with + New coffee, or import the BeanCave folder of TilauScope desktop in Settings › BeanCave." :
+      "Your BeanCave is empty. Import the BeanCave folder of TilauScope desktop in Settings › BeanCave.") :
+    "Import the BeanCave folder of TilauScope desktop, or start an empty BeanCave, in Settings › BeanCave.") +
+    '</p><button class="go" id="tosettings" style="margin-top:8px">Open Settings › BeanCave</button></div>';
+  $("tosettings").onclick = function () { go("settings.html#cave"); };
+}
+
+function tile(value, caption, colour) {
+  return '<div><b style="color:' + (colour || "var(--text)") + '">' + value + "</b><span>" + esc(caption) + "</span></div>";
+}
+
+function measure(m, caption, fmt) {
+  if (m.value == null) return tile("—", caption, "var(--muted)");
+  return tile(fmt(m.value), m.word ? caption + " · " + m.word : caption, LEVEL[m.level]);
+}
+
+function renderSheet(c) {
+  var age = c.crop > 0 ? new Date().getFullYear() - c.crop : 0;
+  var memo = c.memo ? c.memo.split("\n")[0] : "";
+  if (memo && (memo.length > 90 || memo !== c.memo)) memo = memo.slice(0, 88).trim() + "…";
+  var essentials = '<div class="zone"' + tap("essentials") + '><div class="zh">ESSENTIALS' + cue() + '</div><span class="nm">' + esc(c.name || "—") +
+    (c.is_blend ? '<span class="blendtag">BLEND</span>' : "") + '</span><span class="sb">' +
+    esc([c.country, c.process, c.supplier].filter(Boolean).join(" · ") || "—") + "</span>" +
+    '<div class="tl" style="grid-template-columns:repeat(4,minmax(0,1fr))">' +
+    tile(Math.round(c.stock_g) + " g", "Stock", c.stock_g > 0 ? "var(--green)" : "var(--muted)") +
+    tile(c.crop > 0 ? c.crop : "—", "Crop", age >= 3 ? "var(--red)" : age === 2 ? "var(--peach)" : "") +
+    tile(c.sca > 0 ? c.sca.toFixed(1) : "—", "SCA") + tile(c.roasts, "Roasts") + "</div>" +
+    (c.flavours.length ? '<div class="chips"' + tap("sensory") + ">" + c.flavours.map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("") + "</div>"
+      : '<span class="dim"' + tap("sensory") + ">No flavour notes yet</span>") +
+    (memo ? '<span class="sb">' + esc(memo) + "</span>" : "") + "</div>";
+  var memory = memoryZone(c);
+  var chips = [c.process || c.category].filter(Boolean).map(function (w) { return '<span class="f">' + esc(w) + "</span>"; })
+    .concat([c.species, c.varieties, c.screen_size].filter(Boolean).map(function (w) { return "<span>" + esc(w) + "</span>"; }));
+  var characteristics = '<div class="zone"' + tap("characteristics") + '><div class="zh">CHARACTERISTICS' + cue() + "</div>" +
+    (chips.length ? '<div class="chips">' + chips.join("") + "</div>" : "") +
+    '<div class="tl" style="grid-template-columns:repeat(3,minmax(0,1fr))">' +
+    measure(c.density, "Density", function (v) { return v.toFixed(0) + " g/l"; }) +
+    measure(c.humidity, "Humidity", function (v) { return v.toFixed(1) + " %"; }) +
+    measure(c.aw, "aw", function (v) { return v.toFixed(2); }) + "</div>" + (c.blend ? blendBar(c.blend) : "") +
+    '<div class="fam"><span>🌱 Bean family</span><b>' + esc(c.family) + "</b></div></div>";
+  var pv = [["Farm", c.farm], ["Altitude", c.altitude > 0 ? c.altitude + " m" : ""], ["Supplier", c.supplier],
+    ["Price", c.price_per_kg > 0 ? money(c.price_per_kg) + "/kg" : ""]].filter(function (p) { return p[1]; });
+  var provenance = '<div class="zone"' + tap("provenance") + '><div class="zh">PROVENANCE' + cue() + "</div>" + (pv.length ? '<div class="pv">' +
+    pv.map(function (p) { return "<div><span>" + p[0] + "</span>" + esc(p[1]) + "</div>"; }).join("") + "</div>"
+    : '<span class="dim">Farm, altitude and supplier not entered</span>') + "</div>";
+  $("sheet").innerHTML = '<div class="cols"><div class="col">' + essentials + memory + '</div><div class="col">' +
+    characteristics + provenance + "</div></div>" +
+    '<div class="bar"><button class="go" id="roastit"' + (recording || !c.uuid ? " disabled" : "") + ">Roast this coffee</button><small>" +
+    (recording ? "A roast is recording: choose the next coffee once it is over" :
+      c.uuid === cave.chosen ? "Already the coffee of the next roast" : "Its name and link go with the next roast") + "</small></div>";
+  $("roastit").onclick = function () { send("choose_coffee", c.uuid); };
+  // A tap on a zone opens its editor; the flavour notes open their own, inside Essentials.
+  $("sheet").querySelectorAll("[data-z]").forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); CaveEdit.open(b.dataset.z, c); }; });
+  if ($("allroasts")) $("allroasts").onclick = function () { showTab("roasts", { uuid: c.uuid, name: c.name }); };
+}
+
+function showTab(t, coffee) {
+  document.querySelectorAll("#tabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
+  document.querySelector(".cave").classList.toggle("hidden", t !== "coffees");
+  $("roastsview").classList.toggle("hidden", t !== "roasts");
+  if (t === "roasts") RoastsTab.show(coffee); else RoastsTab.hide();
+}
+
+// The desktop's Roast memory zone: the last real roast of the coffee, and All N roasts →
+function memoryZone(c) {
+  var m = c.memory;
+  if (!m) return '<div class="zone acc"><div class="zh acc">ROAST MEMORY</div><span class="sb" style="font-size:14px">Not roasted yet</span></div>';
+  var line = [new Date(m.epoch * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" }), m.level, m.weight_in_g > 0 ? Math.round(m.weight_in_g) + " g" : ""].filter(Boolean).join(" · ");
+  var facts = [["Development", m.dev_pct != null ? Math.round(m.dev_pct) + " %" : null, ""], ["Loss", m.loss_pct != null ? m.loss_pct.toFixed(1) + " %" : null, ""],
+    ["Colour", m.colour != null ? (m.colour_basis === "estimated" ? "~" : "") + Math.round(m.colour) : null,
+     " " + (m.colour_basis === "ground" ? "ground" : m.colour_basis === "estimated" ? "ground (est.)" : "whole")]].filter(function (f) { return f[1] != null; });
+  var tasted = m.said ? '<span class="sb">' + (m.tasted ? "Tasted " + new Date(m.tasted).toLocaleDateString(undefined, { day: "numeric", month: "short" }) + ":" : "Tasted:") +
+    ' <b style="color:' + (m.defects.length ? "var(--red)" : "var(--green)") + '">' + esc(m.said) + "</b></span>" : "";
+  return '<div class="zone acc"><div class="zh acc">ROAST MEMORY<button class="lnk" id="allroasts">All ' + m.count + " roasts →</button></div>" +
+    '<span class="eb">LAST ROAST</span><span class="last num">' + esc(line) + "</span>" +
+    (facts.length ? '<div class="facts num">' + facts.map(function (f) { return "<span>" + f[0] + " <b>" + f[1] + "</b>" + f[2] + "</span>"; }).join("") + "</div>" : "") + tasted + "</div>";
+}
+
+// ✎ only when this tablet keeps the coffees; the flavour ✎ opens Sensory & notes, as on the desktop
+// A touch screen needs no Edit button: the zone itself opens its editor when this tablet keeps the coffees.
+function tap(zone) { return cave.editable ? ' data-z="' + zone + '" role="button"' : ""; }
+function cue() { return cave.editable ? '<span class="zcue">›</span>' : ""; }
+
+function blendBar(parts) {
+  var known = 0, bar = "";
+  parts.forEach(function (p, i) { if (p[1] > 0) { known += p[1]; bar += '<i style="flex:' + p[1] + ";background:" + BLEND[i % 3] + '"></i>'; } });
+  if (known < 100) bar += '<i style="flex:' + (100 - known) + ';background:var(--line)"></i>';
+  return '<div class="bbar">' + bar + '</div><div class="legend">' + parts.map(function (p, i) {
+    return '<span><span style="color:' + BLEND[i % 3] + '">■</span> ' + esc(p[0]) + (p[1] > 0 ? " · " + Math.round(p[1]) + " %" : "") + "</span>";
+  }).join("") + "</div>";
+}
+
+$("seg").querySelectorAll("button").forEach(function (b) { b.onclick = function () { filter = b.dataset.f; render(); }; });
+$("search").oninput = function () { if (cave) render(); };
+$("back").onclick = function () { go("roast.html"); };
+document.querySelectorAll("#tabs button").forEach(function (b) { b.onclick = function () { showTab(b.dataset.t); }; });
+RoastsTab.init(function (uuid, onlyAsk) { // open a coffee from a roast; onlyAsk: is it in the BeanCave?
+  var c = cave && cave.coffees.filter(function (x) { return x.uuid === uuid; })[0];
+  if (onlyAsk) return !!c;
+  selected = uuid; filter = "all"; showTab("coffees"); render();
+});
+$("add").onclick = function () { CaveEdit.open("all", null); };
+$("gear").onclick = function () { go("settings.html#cave"); };
+</script>
+</body>
+</html>

@@ -76,25 +76,35 @@ TilauScope targets **Python 3.14** and **PyQt6**; dependencies are pinned in
 - [Installation](wiki/Installation.md)
 - [Improving translations](wiki/HowToImproveTranslations.md)
 
+## How TilauScope is made
+
+TilauScope is designed and directed by Tilau, a home roaster. Its code is partly built in
+co-construction with an AI coding assistant. Tilau sets each rule from roasting
+
 ## Contributing
 
-Bug reports and ideas are welcome — please open an
+TilauScope is free software and would like to become a shared one: roasters,
+developers and translators are welcome — on the desktop application, the shared
+roasting library (`src/tilaucore`) or the Android application (`android/`).
+[CONTRIBUTING.md](CONTRIBUTING.md) explains where to start.
+
+Bug reports and ideas are welcome too — please open an
 [issue](https://github.com/neuralldev/tilauscope_fork/issues) or a
 [discussion](https://github.com/neuralldev/tilauscope_fork/discussions).
-
-TilauScope is developed by a single person against one main roasting machine, so
-reports that include a profile (`*.alog`) and a settings file (`*.aset`) are far
-more actionable than reports that do not. The bug report form will ask for them.
+TilauScope is tested against one main roasting machine so far, so reports that
+include a profile (`*.alog`) and a settings file (`*.aset`) are far more
+actionable than reports that do not. The bug report form will ask for them.
 
 ## Licence
 
 TilauScope is distributed under the **GNU Affero General Public License v3 or
 later** ([LICENSE](LICENSE)).
 
-Code inherited from Artisan Roaster Scope keeps its original GPL terms and
-headers ([licenses/GPL-3.0.txt](licenses/GPL-3.0.txt)); code original to this fork, under
-`src/tilauscope/`, is AGPL-3.0-or-later. GPLv3 §13 expressly permits this
-combination. [NOTICE](NOTICE) explains the arrangement in full.
+Code inherited from Artisan Roaster Scope keeps its original GPL or AGPL terms
+and headers ([licenses/GPL-3.0.txt](licenses/GPL-3.0.txt)); code original to this
+fork — the desktop layer `src/tilauscope/`, the shared library `src/tilaucore/`
+and the Android application `android/` — is AGPL-3.0-or-later. GPLv3 §13 expressly
+permits this combination. [NOTICE](NOTICE) explains the arrangement in full.
 
 One practical consequence: if you run a modified TilauScope and let other people
 use it remotely over a network — its remote-piloting interface, for instance —

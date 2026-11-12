@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "generated": "2026-11-10T09:28:59Z",
+  "generated": "2026-11-12T07:20:01Z",
   "app_version": "4.3",
-  "source_revision": "bfd86d190",
+  "source_revision": "b8e3c2492",
   "string_count": 3547,
   "sections": [
     {
@@ -176,9 +176,9 @@
       "rtl": true,
       "total": 3547,
       "done": 9,
-      "draft": 100,
-      "empty": 3438,
-      "bytes": 1903433
+      "draft": 99,
+      "empty": 3439,
+      "bytes": 1903548
     },
     {
       "code": "bg",
@@ -189,7 +189,7 @@
       "done": 0,
       "draft": 0,
       "empty": 3547,
-      "bytes": 1725935
+      "bytes": 1725950
     },
     {
       "code": "zh_CN",
@@ -198,9 +198,9 @@
       "rtl": false,
       "total": 3547,
       "done": 3414,
-      "draft": 132,
-      "empty": 1,
-      "bytes": 1956529
+      "draft": 131,
+      "empty": 2,
+      "bytes": 1957661
     },
     {
       "code": "zh_TW",
@@ -209,9 +209,9 @@
       "rtl": false,
       "total": 3547,
       "done": 3414,
-      "draft": 132,
-      "empty": 1,
-      "bytes": 1954668
+      "draft": 131,
+      "empty": 2,
+      "bytes": 1955797
     },
     {
       "code": "cs",
@@ -222,7 +222,7 @@
       "done": 9,
       "draft": 92,
       "empty": 3446,
-      "bytes": 1848697
+      "bytes": 1848712
     },
     {
       "code": "da",
@@ -231,9 +231,9 @@
       "rtl": false,
       "total": 3547,
       "done": 6,
-      "draft": 95,
-      "empty": 3446,
-      "bytes": 1837760
+      "draft": 94,
+      "empty": 3447,
+      "bytes": 1837875
     },
     {
       "code": "nl",
@@ -242,9 +242,9 @@
       "rtl": false,
       "total": 3547,
       "done": 5,
-      "draft": 93,
-      "empty": 3449,
-      "bytes": 1852256
+      "draft": 92,
+      "empty": 3450,
+      "bytes": 1852371
     },
     {
       "code": "fi",
@@ -253,9 +253,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 100,
-      "empty": 3438,
-      "bytes": 1844595
+      "draft": 99,
+      "empty": 3439,
+      "bytes": 1844710
     },
     {
       "code": "fr",
@@ -264,9 +264,9 @@
       "rtl": false,
       "total": 3547,
       "done": 791,
-      "draft": 2756,
-      "empty": 0,
-      "bytes": 2040624
+      "draft": 2755,
+      "empty": 1,
+      "bytes": 2041924
     },
     {
       "code": "de",
@@ -275,9 +275,9 @@
       "rtl": false,
       "total": 3547,
       "done": 3416,
-      "draft": 130,
-      "empty": 1,
-      "bytes": 2018681
+      "draft": 129,
+      "empty": 2,
+      "bytes": 2019992
     },
     {
       "code": "el",
@@ -286,9 +286,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 102,
-      "empty": 3436,
-      "bytes": 1951467
+      "draft": 101,
+      "empty": 3437,
+      "bytes": 1951582
     },
     {
       "code": "he",
@@ -297,9 +297,9 @@
       "rtl": true,
       "total": 3547,
       "done": 9,
-      "draft": 102,
-      "empty": 3436,
-      "bytes": 1886781
+      "draft": 101,
+      "empty": 3437,
+      "bytes": 1886896
     },
     {
       "code": "hu",
@@ -308,9 +308,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 100,
-      "empty": 3438,
-      "bytes": 1862740
+      "draft": 99,
+      "empty": 3439,
+      "bytes": 1862855
     },
     {
       "code": "id",
@@ -319,9 +319,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 100,
-      "empty": 3438,
-      "bytes": 1847470
+      "draft": 99,
+      "empty": 3439,
+      "bytes": 1847585
     },
     {
       "code": "it",
@@ -330,9 +330,9 @@
       "rtl": false,
       "total": 3547,
       "done": 3414,
-      "draft": 132,
-      "empty": 1,
-      "bytes": 2019056
+      "draft": 131,
+      "empty": 2,
+      "bytes": 2020322
     },
     {
       "code": "ja",
@@ -341,9 +341,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 102,
-      "empty": 3436,
-      "bytes": 1877452
+      "draft": 101,
+      "empty": 3437,
+      "bytes": 1877567
     },
     {
       "code": "ko",
@@ -352,9 +352,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 105,
-      "empty": 3433,
-      "bytes": 1867255
+      "draft": 104,
+      "empty": 3434,
+      "bytes": 1867370
     },
     {
       "code": "lv",
@@ -363,9 +363,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 97,
-      "empty": 3441,
-      "bytes": 1854442
+      "draft": 96,
+      "empty": 3442,
+      "bytes": 1854557
     },
     {
       "code": "no",
@@ -374,9 +374,9 @@
       "rtl": false,
       "total": 3547,
       "done": 6,
-      "draft": 96,
-      "empty": 3445,
-      "bytes": 1844410
+      "draft": 95,
+      "empty": 3446,
+      "bytes": 1844525
     },
     {
       "code": "fa",
@@ -385,9 +385,9 @@
       "rtl": true,
       "total": 3547,
       "done": 9,
-      "draft": 103,
-      "empty": 3435,
-      "bytes": 1915331
+      "draft": 102,
+      "empty": 3436,
+      "bytes": 1915446
     },
     {
       "code": "pl",
@@ -396,9 +396,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 99,
-      "empty": 3439,
-      "bytes": 1845175
+      "draft": 98,
+      "empty": 3440,
+      "bytes": 1845290
     },
     {
       "code": "pt",
@@ -407,9 +407,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 99,
-      "empty": 3439,
-      "bytes": 1862054
+      "draft": 98,
+      "empty": 3440,
+      "bytes": 1862169
     },
     {
       "code": "pt_BR",
@@ -418,9 +418,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 101,
-      "empty": 3437,
-      "bytes": 1849178
+      "draft": 100,
+      "empty": 3438,
+      "bytes": 1849293
     },
     {
       "code": "ru",
@@ -429,9 +429,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 103,
-      "empty": 3435,
-      "bytes": 1960448
+      "draft": 102,
+      "empty": 3436,
+      "bytes": 1960563
     },
     {
       "code": "gd",
@@ -442,7 +442,7 @@
       "done": 9,
       "draft": 99,
       "empty": 3439,
-      "bytes": 1863499
+      "bytes": 1863514
     },
     {
       "code": "sk",
@@ -451,9 +451,9 @@
       "rtl": false,
       "total": 3547,
       "done": 8,
-      "draft": 97,
-      "empty": 3442,
-      "bytes": 1850048
+      "draft": 96,
+      "empty": 3443,
+      "bytes": 1850163
     },
     {
       "code": "es",
@@ -462,9 +462,9 @@
       "rtl": false,
       "total": 3547,
       "done": 3416,
-      "draft": 130,
-      "empty": 1,
-      "bytes": 2015135
+      "draft": 129,
+      "empty": 2,
+      "bytes": 2016416
     },
     {
       "code": "sv",
@@ -473,9 +473,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 94,
-      "empty": 3444,
-      "bytes": 1841597
+      "draft": 93,
+      "empty": 3445,
+      "bytes": 1841712
     },
     {
       "code": "th",
@@ -484,9 +484,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 104,
-      "empty": 3434,
-      "bytes": 2004690
+      "draft": 103,
+      "empty": 3435,
+      "bytes": 2004805
     },
     {
       "code": "tr",
@@ -495,9 +495,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 102,
-      "empty": 3436,
-      "bytes": 1848433
+      "draft": 101,
+      "empty": 3437,
+      "bytes": 1848548
     },
     {
       "code": "uk",
@@ -506,9 +506,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 103,
-      "empty": 3435,
-      "bytes": 1936849
+      "draft": 102,
+      "empty": 3436,
+      "bytes": 1936964
     },
     {
       "code": "vi",
@@ -517,9 +517,9 @@
       "rtl": false,
       "total": 3547,
       "done": 9,
-      "draft": 100,
-      "empty": 3438,
-      "bytes": 1863963
+      "draft": 99,
+      "empty": 3439,
+      "bytes": 1864078
     }
   ]
 }

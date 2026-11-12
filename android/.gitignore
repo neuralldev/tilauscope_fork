@@ -1,0 +1,11 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+.idea/
+*.iml
+__pycache__/
+.venv/
+*.egg-info/
+demo-session.json
+node_modules/

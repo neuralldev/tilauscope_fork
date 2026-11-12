@@ -1,0 +1,118 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+   Copyright (c) 2026 Tilau
+   This file is part of TilauScope. */
+
+/* Shared by every page: theme tokens, base and the start screen. Colours come from the theme only. */
+:root{--bg:#1E1E2E;--surface:#181825;--overlay:#313244;--line:#45475A;--text:#CDD6F4;
+ --sub:#A6ADC8;--muted:#6C7086;--blue:#89B4FA;--ror:#457ED9;--extractor:#ffd479;--peach:#FAB387;--red:#F38BA8;--green:#A6E3A1;--yellow:#F9E2AF;--teal:#94E2D5;--accent:#CBA6F7}
+*{box-sizing:border-box}
+.eback{width:48px;height:48px;margin-left:-12px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex:none} /* ‹ at the left of a full screen's title */
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+ font-family:system-ui,sans-serif;-webkit-user-select:none;user-select:none;overflow:hidden}
+button{font-family:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;border:0;padding:0;background:transparent}
+button:active{filter:brightness(1.25)}
+button:disabled{cursor:default;filter:none}
+.num{font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+header{height:52px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px}
+.brand{font-size:16px;font-weight:600}
+#link{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:15px;
+ border:1px solid var(--line);font-size:13px;font-weight:500}
+#link .dot{width:8px;height:8px;border-radius:4px}
+#link.lost{border-color:var(--red);background:rgba(243,139,168,.12)}
+#link.late{border-color:var(--peach);background:rgba(250,179,135,.12)}
+#stop{height:34px;padding:0 14px;border-radius:17px;border:1px solid var(--red);background:rgba(243,139,168,.10);
+ color:var(--red);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+/* Start screen, until the first snapshot arrives */
+#splash{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ background:radial-gradient(circle at 50% 42%,#24243A 0%,#1E1E2E 55%,#181825 100%);transition:opacity .4s ease}
+#splash.done{opacity:0;pointer-events:none}
+@keyframes sproast{0%{color:#94B87A}45%{color:#C9A66B}80%{color:#8A5A3C}100%{color:#94B87A}}
+@keyframes spbreath{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes spbar{0%{left:-40%}100%{left:100%}}
+#splash .bean{width:132px;height:132px;color:#C9A66B;animation:sproast 4.8s ease-in-out infinite,spbreath 2.4s ease-in-out infinite}
+#splash .bar{margin-top:28px;width:180px;height:3px;border-radius:2px;background:var(--overlay);position:relative;overflow:hidden}
+#splash .bar i{position:absolute;top:0;width:40%;height:3px;border-radius:2px;background:var(--blue);animation:spbar 1.4s ease-in-out infinite}
+/* Roaster link check (check.js) */
+@keyframes ckpulse{0%,100%{opacity:1}50%{opacity:.35}}
+.pulse{animation:ckpulse 1.6s ease-in-out infinite}
+.ck{flex:1;min-height:0;display:flex;gap:36px}
+.ck h1{margin:0;font-size:28px;font-weight:600;line-height:1.2}
+.ck .lede{font-size:15px;color:var(--sub);line-height:1.5}
+.ck-left{width:380px;flex:none;display:flex;flex-direction:column;gap:14px}
+.ck-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.ck b{font-weight:600}.ck small{display:block;font-size:13px;color:var(--sub);line-height:1.45}
+.ck-dot{width:8px;height:8px;border-radius:4px;background:var(--muted);flex:none}
+.ck-pill{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;border:1px solid var(--overlay);font-size:16px}
+.ck-pill.ok{background:rgba(166,227,161,.10);border-color:rgba(166,227,161,.35)}
+.ck-pill.warn{background:rgba(249,226,175,.06);border-color:rgba(249,226,175,.45)}
+.ck-temps{background:var(--surface);border-radius:20px;padding:14px 20px 6px;display:flex;flex-direction:column}
+.ck-live{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);padding-bottom:6px}
+.ck-trow{display:flex;align-items:baseline;justify-content:space-between;padding:6px 0;border-top:1px solid var(--overlay);font-size:15px;color:var(--sub)}
+.ck-trow b small{display:inline;font-size:15px;color:var(--muted);font-weight:500}
+.ck-card{border-radius:20px;padding:16px 20px;display:flex;flex-direction:column;gap:14px;border:1px solid var(--overlay);background:var(--surface)}
+.ck-card b{font-size:20px}
+.ck-card.wait{border-style:dashed;border-color:var(--line);background:transparent}
+.ck-card.on{border:2px solid var(--blue);background:rgba(137,180,250,.08)}
+.ck-card.warn{border-color:rgba(249,226,175,.45);background:rgba(249,226,175,.06)}
+.ck-card.bad{border:2px solid var(--red);background:rgba(243,139,168,.08)}
+.ck-card.bad small{font-size:15px}
+.ck-head{display:flex;align-items:center;gap:14px}.ck-head>span:first-child{flex:1}
+.ck-line{display:flex;align-items:center;gap:16px}.ck-line b{font-size:26px}
+.ck-k{width:64px;font-size:13px;color:var(--muted)}
+.ck-bar{flex:1;height:8px;border-radius:4px;background:var(--overlay);overflow:hidden}
+.ck-bar i{display:block;height:8px;border-radius:4px;background:var(--blue);transition:width 1s linear}
+.ck-ask{display:flex;align-items:center;gap:12px;padding-top:14px;border-top:1px solid var(--overlay)}
+.ck-ask b{flex:1;font-size:17px}
+.ck-btn{height:52px;padding:0 22px;border-radius:14px;border:1px solid var(--line);font-size:16px;font-weight:600}
+.ck-btn.primary{background:var(--blue);border:0;color:var(--bg);font-weight:700}
+.ck-btn:disabled{color:var(--muted)}
+.ck-link{height:44px;padding:0 14px;border-radius:12px;color:var(--sub);font-size:14px;font-weight:600}
+.ck-ok{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:var(--green)}
+/* Water activity meter check (water-check.js) */
+#ckbox>.ck{min-width:0}
+.wc-steps{margin:0;padding-left:22px;color:var(--sub);font-size:15px;line-height:1.7}
+.wc-wait{display:flex;align-items:center;gap:10px;color:var(--sub);font-size:15px}
+.wc-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px}
+.wc-head{display:inline-flex;align-items:center;gap:10px;font-size:15px;color:var(--sub)}
+.wc-zone{flex:none;white-space:nowrap;font-size:18px;font-weight:600;padding:6px 14px;border-radius:999px;background:var(--overlay)}
+.wc-row{display:flex;align-items:flex-end;gap:28px}
+.wc-big{display:flex;align-items:baseline;gap:14px}.wc-big .v{font-size:64px;font-weight:700;line-height:1}.wc-big .u{font-size:20px;color:var(--muted)}
+.wc-spark{flex:1;min-width:0;display:flex;gap:8px;padding-bottom:18px}
+.wc-axis{display:flex;flex-direction:column;justify-content:space-between;height:70px;font-size:12px;color:var(--muted)}
+.wc-plot{position:relative;flex:1;min-width:0;height:70px;border-left:1px solid var(--overlay);border-bottom:1px solid var(--overlay)}
+.wc-plot svg{display:block;width:100%;height:70px;overflow:visible}
+.wc-end{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:4px;background:var(--blue)}
+.wc-limit{position:absolute;right:4px;transform:translateY(-110%);font-size:11px}
+.wc-time{position:absolute;left:0;right:0;top:100%;display:flex;justify-content:space-between;padding-top:2px;font-size:12px;color:var(--muted)}
+.wc-scale{position:relative;padding-top:18px}
+.wc-bar{display:flex;height:12px;border-radius:6px;overflow:hidden}.wc-bar i{display:block;height:12px}
+.wc-marker{position:absolute;top:0;width:2px;height:34px;margin-left:-1px;background:var(--text);border-radius:1px}
+.wc-ticks{position:relative;height:16px;font-size:12px;color:var(--muted);margin-top:6px}
+.wc-ticks span{position:absolute;transform:translateX(-50%)}.wc-ticks span:first-child{transform:none}.wc-ticks span:last-child{transform:translateX(-100%)}
+.wc-legend{display:flex;gap:18px;font-size:13px;color:var(--sub);flex-wrap:wrap}.wc-legend span{display:inline-flex;align-items:center;gap:6px}.wc-legend i{width:10px;height:10px;border-radius:5px}
+.wc-note{font-size:13px;color:var(--muted)}
+/* Label printer check (printer-check.js) */
+.pc-stat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pc-stat div{background:var(--surface);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.pc-stat span{font-size:13px;color:var(--muted)}.pc-stat b{font-size:18px}
+.pc-label{display:block;max-width:100%;height:auto;border-radius:6px;image-rendering:pixelated}
+.pc-prog{display:flex;flex-direction:column;gap:8px}.pc-prog>div:first-child{display:flex;justify-content:space-between;font-size:15px;color:var(--sub)}
+/* Device cards beside the field a device fills (device-cards.js) */
+.ce-dev{border-radius:18px;border:2px solid var(--accent);background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.ce-dev.wait{border:1px dashed var(--line)}
+.ce-eb{font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
+.ce-eb .st{margin-left:auto;letter-spacing:0;font-weight:500;display:flex;align-items:center;gap:6px}
+.ce-dot{width:8px;height:8px;border-radius:4px}
+.ce-read{font-family:ui-monospace,monospace;font-size:40px;font-weight:600;color:var(--accent);line-height:1.1}.ce-read small{font-size:18px;color:var(--muted)}.ce-read.dim{color:var(--muted)}
+.ce-use{height:52px;border-radius:14px;background:var(--accent);color:var(--bg);font-size:16px;font-weight:700}.ce-use:disabled{background:var(--overlay);color:var(--muted)}
+.ce-hint{font-size:13px;color:var(--sub);line-height:1.45}
+.ce-vols{display:flex;gap:6px}.ce-vols button{flex:1;height:40px;border-radius:10px;border:1px solid var(--line);font-size:13px;color:var(--sub)}.ce-vols button.on{border:2px solid var(--accent);color:var(--text);font-weight:600}
+.ce-row{display:flex;align-items:center;gap:10px}.ce-tare{margin-left:auto;height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);font-size:13px;letter-spacing:.08em;color:var(--sub)}
+/* The energy sheet (energy-sheet.js) */
+.escrim{position:fixed;inset:0;z-index:35;background:rgba(17,17,27,.78);display:none;align-items:center;justify-content:center}
+.ecard{background:var(--bg);border:1px solid var(--line);border-radius:20px;box-sizing:border-box}
+#energycard{width:880px;display:flex;flex-direction:column;gap:16px;padding:22px 26px}
+.etile{background:var(--surface);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.etile .k{font-size:13px;color:var(--sub)}.etile .v{font-size:22px;font-weight:600}.etile .d{font-size:13px;color:var(--muted)}
+.esrc{display:flex;align-items:center;gap:12px;padding:8px 2px;font-size:15px}.esrc + .esrc{border-top:1px solid var(--overlay)}

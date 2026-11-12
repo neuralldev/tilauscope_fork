@@ -1,0 +1,8 @@
+{
+  "name": "tilauscope-android-page-bench",
+  "private": true,
+  "description": "Test bench of the WebView pages (jsdom, the real Python core behind a fake TilauBridge). Development only: never in the APK.",
+  "type": "module",
+  "scripts": { "test": "node --test" },
+  "devDependencies": { "jsdom": "26.1.0" }
+}

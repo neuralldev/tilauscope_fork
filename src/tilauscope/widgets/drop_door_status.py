@@ -56,7 +56,7 @@ def _sensors_text(status: DoorStatus, dropped_at: str | None) -> str:
         return QApplication.translate('tilauscope_devices', 'Door open.')
     if status is DoorStatus.NOT_WIRED:
         return QApplication.translate('tilauscope_devices',
-                                      'No door contact seen. DROP is found from the curve, about 15 s after the beans leave.')
+                                      'No door contact seen. DROP is found from the curve, within about 15 s after the beans leave.')
     if status is DoorStatus.OFFLINE:
         return QApplication.translate('tilauscope_devices',
                                       'Probe not connected. DROP is found from the curve until it reconnects.')

@@ -1,0 +1,31 @@
+TilauScope for Android
+Copyright (c) 2025-2026 Tilau
+
+This application and the shared library it includes (tilaucore, from
+src/tilaucore/ in the TilauScope repository) are original works by Tilau. They
+contain no code derived from Artisan Roaster Scope. Roast files (.alog, .alrm,
+.aset) are read and written in the format Artisan uses, so that roasts move
+between this application and the desktop.
+
+This application is free software, licensed under the GNU Affero General Public
+License version 3 or, at your option, any later version. Its full source, this
+directory and src/tilaucore/, is published with TilauScope:
+https://github.com/neuralldev/tilauscope_fork
+
+Test builds before TilauScope 4.3 build 57 contained portions derived from
+Artisan Roaster Scope (AGPL-3.0-or-later); their source is available on request
+from Tilau.
+
+It is distributed WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General
+Public License (../LICENSE) for details.
+
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+Bundled in the application, each under its own licence:
+
+  * the Python runtime and standard library: Python Software Foundation License;
+  * Chaquopy (Python for Android): MIT License;
+  * the Kotlin standard library: Apache License 2.0.

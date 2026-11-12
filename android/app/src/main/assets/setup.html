@@ -1,0 +1,236 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>TilauScope setup</title>
+<link rel="stylesheet" href="common.css">
+<style>
+#page{height:100%;display:flex;flex-direction:column;padding:24px 36px;gap:18px}
+.steps{display:flex;align-items:center;gap:12px}
+.steps .lead{font-size:15px;color:var(--sub)}
+.step{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.step i{width:22px;height:22px;border-radius:11px;border:2px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:12px}
+.step.on{color:var(--blue);font-weight:600}.step.on i{background:var(--blue);border-color:var(--blue);color:var(--bg)}
+.step.done{color:var(--sub)}.step.done i{background:var(--overlay);border-color:var(--overlay);color:var(--green)}
+.rail{width:32px;height:2px;background:var(--overlay)}
+h1{margin:0;font-size:28px;font-weight:600;line-height:1.2}
+.lede{margin-top:6px;font-size:15px;color:var(--sub);line-height:1.5}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mcard{height:92px;border-radius:18px;border:2px solid var(--overlay);background:var(--surface);padding:14px 18px;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.mcard.sel{border-color:var(--blue);background:rgba(137,180,250,.10)}
+.mcard .brand2{font-size:13px;color:var(--sub)}.mcard .model{font-size:20px;font-weight:600}
+.badge{font-size:12px;color:#89DCEB;padding:2px 8px;border-radius:9px;background:rgba(137,220,235,.12)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chipx{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--overlay);font-size:13px;color:var(--muted)}
+.chipx small{font-size:11px;color:#585B70}
+.label{font-size:12px;color:var(--muted);letter-spacing:.3px}
+.found{height:80px;border-radius:18px;border:2px solid var(--overlay);background:var(--surface);padding:0 20px;display:flex;align-items:center;gap:16px;text-align:left;width:100%}
+.found.sel{border-color:var(--blue);background:rgba(137,180,250,.10)}
+.found .t{font-size:19px;font-weight:600}.found .s{font-size:13px;color:var(--sub)}
+.bars{display:inline-flex;align-items:flex-end;gap:3px}.bars span{width:5px;border-radius:2px;background:var(--line)}
+.looking{height:60px;border-radius:18px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:14px}
+.note{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:var(--surface);font-size:14px;color:var(--sub);line-height:1.5}
+.problem{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;background:rgba(249,226,175,.08);border:1px solid rgba(249,226,175,.35);font-size:15px}
+.drow{height:76px;border-radius:16px;background:var(--surface);border:1px solid var(--overlay);display:flex;align-items:center;gap:14px;padding:0 18px}
+.drow.ok{border-color:rgba(166,227,161,.35)}
+.drow .ic{width:40px;height:40px;border-radius:20px;background:var(--overlay);display:flex;align-items:center;justify-content:center}
+.drow.ok .ic{background:rgba(166,227,161,.14)}
+.drow .t{font-size:17px;font-weight:600}.drow .s{font-size:13px;color:var(--muted)}
+.switch{width:52px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:12px;background:var(--bg);transition:left .15s}
+.switch.on{background:var(--green)}.switch.on::after{left:25px}
+.foot{display:flex;align-items:center;gap:12px}
+.btn{height:56px;padding:0 26px;border-radius:16px;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.btn.ghost{border:1px solid var(--line);color:var(--sub)}
+.btn.primary{background:var(--blue);color:var(--bg);font-weight:700;padding:0 32px}
+.btn.finish{background:var(--green);color:var(--bg);font-weight:700;padding:0 32px}
+.btn:disabled{opacity:.4}
+.small{font-size:13px;color:var(--muted)}
+.pinger{position:relative;width:220px;height:220px;align-self:center;margin-top:20px}
+@keyframes ping{0%{transform:scale(.35);opacity:.7}100%{transform:scale(1);opacity:0}}
+.pinger span{position:absolute;inset:0;border-radius:50%;border:2px solid var(--blue);animation:ping 2.4s ease-out infinite}
+.pinger span+span{animation-delay:1.2s}
+.pinger b{position:absolute;left:75px;top:75px;width:70px;height:70px;border-radius:35px;background:rgba(137,180,250,.14);display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<script src="common.js"></script>
+<script src="check.js"></script>
+<div id="page">
+ <div class="steps">
+  <span class="lead">First setup</span><span style="flex:1"></span>
+  <span class="step" id="st1"><i>1</i>Machine</span><span class="rail"></span>
+  <span class="step" id="st2"><i>2</i>Connection</span><span class="rail"></span>
+  <span class="step" id="st3"><i>3</i>Check</span><span class="rail"></span>
+  <span class="step" id="st4"><i>4</i>Devices</span>
+ </div>
+ <div id="body" style="flex:1;min-height:0;display:flex;flex-direction:column;gap:18px"></div>
+ <div class="foot" id="foot"></div>
+</div>
+<script>
+"use strict";
+var CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5l2.2 2.2L9.5 3.8" fill="none" stroke="#A6E3A1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var TICK = '<svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#89B4FA"/><path d="M5.5 10.5l3 3 6-6.5" fill="none" stroke="#1E1E2E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var BT = '<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17" fill="none" stroke="#89B4FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var ICONS = {
+  extractor: "M3 9h11a3 3 0 10-3-3M3 15h15a3 3 0 11-3 3",
+  ambient: "M12 3v12M8 15a4 4 0 108 0M12 3a2 2 0 012 2v8",
+  scale: "M4 20h16M6 20l2-9h8l2 9M12 11V5M9 5h6",
+  colour: "M12 3a9 9 0 100 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 004-4 9 9 0 00-9-8z",
+  water: "M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z",
+  printer: "M7 9V3h10v6M7 17H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2M7 14h10v7H7z"
+};
+
+var setup = null, draft = null, step = 1, heard = [], scanState = "", asked = false;
+
+function bars(rssi) {
+  var n = rssi > -60 ? 3 : rssi > -75 ? 2 : 1, out = '<span class="bars" aria-label="Signal">';
+  [8, 13, 18, 23].forEach(function (h, i) { out += '<span style="height:' + h + 'px;background:' + (i < n ? "var(--green)" : "") + '"></span>'; });
+  return out + "</span>";
+}
+function strength(rssi) { return rssi > -60 ? "strong signal" : rssi > -75 ? "medium signal" : "weak signal"; }
+
+window.onSnapshot = function (method, d) {
+  if (d && d.unit) setUnit(d.unit);
+  if (!d) return;
+  if (!asked) { asked = true; send("get_setup"); }
+  if (method === "get_setup" && d.reply) {
+    setup = d.reply; draft = JSON.parse(JSON.stringify(setup.config));
+    splashDone(); render();
+  } else if (method === "save_setup" && d.reply) {
+    go("roast.html");
+  } else if (method === "classify_scan" && d.reply) {
+    heard = d.reply; if (step === 2 || step === 4) render();
+  }
+};
+window.onScanState = function (state) { scanState = state; if (step !== 3) render(); };
+
+function stepper() {
+  [1, 2, 3, 4].forEach(function (n) {
+    var el = $("st" + n);
+    el.className = "step" + (n === step ? " on" : n < step ? " done" : "");
+    el.querySelector("i").innerHTML = n < step ? CHECK : n;
+  });
+}
+
+function render() {
+  if (!setup || heldWhilePressed($("body"), render)) return;
+  stepper();
+  if (step === 1) renderMachine(); else if (step === 2) renderConnection(); else if (step === 3) checkFoot(); else renderDevices();
+}
+
+function renderMachine() {
+  var cat = setup.catalogue, html = '<div><h1>Which roaster do you use?</h1><div class="lede">The tablet talks to it over Bluetooth.</div></div><div class="grid3">';
+  Object.keys(cat.machines).forEach(function (key) {
+    var m = cat.machines[key], sel = draft.machine === key;
+    html += '<button class="mcard' + (sel ? " sel" : "") + '" data-m="' + key + '"><span style="display:flex;align-items:center"><span class="brand2">' + esc(m.manufacturer) +
+      '</span><span style="flex:1"></span>' + (sel ? TICK : "") + '</span><span style="display:flex;align-items:baseline;gap:10px"><span class="model">' +
+      esc(m.model) + '</span><span style="flex:1"></span><span class="badge">' + esc(m.link) + "</span></span></button>";
+  });
+  html += '</div><div style="display:flex;flex-direction:column;gap:8px"><span class="label">NOT AVAILABLE ON THE TABLET YET</span><div class="chips">';
+  cat.unavailable.forEach(function (u) { html += '<span class="chipx">' + esc(u[0]) + "<small>" + esc(u[1]) + "</small></span>"; });
+  $("body").innerHTML = html + "</div></div>";
+  $("body").querySelectorAll(".mcard").forEach(function (b) {
+    b.onclick = function () {
+      if (draft.machine !== b.dataset.m) draft.roaster = null;
+      draft.machine = b.dataset.m; render();
+    };
+  });
+  $("foot").innerHTML = '<span class="small">Nothing is changed before the last step.</span><span style="flex:1"></span>' +
+    '<button class="btn ghost" id="later">Later</button><button class="btn primary" id="next"' + (draft.machine ? "" : " disabled") + ">Next ›</button>";
+  $("later").onclick = function () { go("roast.html"); };
+  $("next").onclick = function () { step = 2; send("scan_start"); render(); };
+}
+
+function problem() {
+  if (scanState === "denied") return '<div class="problem">The tablet needs permission to look for Bluetooth devices.<button class="btn ghost" id="retry" style="align-self:flex-start">Allow</button></div>';
+  if (scanState === "bluetooth_off") return '<div class="problem">Bluetooth is off. Turn it on, then try again.<button class="btn ghost" id="retry" style="align-self:flex-start">Try again</button></div>';
+  return "";
+}
+
+function renderConnection() {
+  var m = setup.catalogue.machines[draft.machine];
+  var found = heard.filter(function (h) { return h.kind === "machine" && h.key === draft.machine; });
+  var html = '<div style="flex:1;display:flex;gap:40px;min-height:0"><div style="width:400px;display:flex;flex-direction:column">' +
+    "<h1>Switch on your<br>" + esc(m.manufacturer + " " + m.model) + '</h1><div class="lede">Keep it close to the tablet. It appears here as soon as it is found.</div>' +
+    '<div class="pinger"><span></span><span></span><b>' + BT + "</b></div></div>" +
+    '<div style="flex:1;display:flex;flex-direction:column;gap:12px">' + problem() + '<span class="label">FOUND NEARBY</span>';
+  found.forEach(function (f) {
+    var sel = draft.roaster && draft.roaster.address === f.address;
+    html += '<button class="found' + (sel ? " sel" : "") + '" data-a="' + esc(f.address) + '" data-n="' + esc(f.name) + '">' + (sel ? TICK : "") +
+      '<span style="display:flex;flex-direction:column;gap:3px"><span class="t">' + esc(m.manufacturer + " " + m.model) + '</span><span class="s num">' +
+      esc(f.name) + " · " + esc(f.address.slice(-5)) + '</span></span><span style="flex:1"></span>' + bars(f.rssi) + "</button>";
+  });
+  if (!found.length && scanState === "scanning") html += '<div class="looking"><span style="width:8px;height:8px;border-radius:4px;background:var(--muted)"></span>Still looking…</div>';
+  html += '<span style="flex:1"></span><div class="note"><span style="color:var(--yellow)">●</span>Next connects to the roaster. Before anything else, the tablet makes sure the burner is off.</div></div></div>';
+  $("body").innerHTML = html;
+  if ($("retry")) $("retry").onclick = function () { send("scan_start"); };
+  $("body").querySelectorAll(".found").forEach(function (b) {
+    b.onclick = function () { draft.roaster = { name: b.dataset.n, address: b.dataset.a }; render(); };
+  });
+  $("foot").innerHTML = '<button class="btn ghost" id="back">‹ Back</button><span style="flex:1"></span>' +
+    (draft.roaster ? "" : '<span class="small">You can link it later in Settings.</span>') + '<button class="btn primary" id="next">Next ›</button>';
+  $("back").onclick = function () { step = 1; send("scan_stop"); render(); };
+  $("next").onclick = function () {
+    if (!draft.roaster) { step = 4; render(); return; } // nothing to check
+    step = 3; send("scan_stop"); Check.open($("body"), draft.roaster.address); render();
+  };
+}
+
+// Step 3 draws its body in check.js; the page keeps the footer.
+Check.onChange = function () { if (step === 3) checkFoot(); };
+function leaveCheck(to) { Check.close(); step = to; if (to === 4) send("scan_start"); render(); }
+function checkFoot() {
+  $("foot").innerHTML = '<button class="btn ghost" id="back">‹ Back</button><span style="flex:1"></span>' +
+    (Check.passed() ? "" : '<button class="btn ghost" id="skip" style="border:0">Skip the check</button>') +
+    '<button class="btn primary" id="next"' + (Check.passed() ? "" : " disabled") + ">Next ›</button>";
+  $("back").onclick = function () { leaveCheck(2); send("scan_start"); };
+  $("next").onclick = function () { leaveCheck(4); };
+  if ($("skip")) $("skip").onclick = function () { leaveCheck(4); };
+}
+
+function renderDevices() {
+  var devices = setup.catalogue.devices, html = '<div><h1>Your other devices</h1><div class="lede">Switch on the ones you use. Each one found nearby can be added.</div></div>' + problem() + '<div class="grid2">';
+  Object.keys(devices).forEach(function (key) {
+    var f = heard.filter(function (h) { return h.kind === "device" && h.key === key; }).sort(function (a, b) { return b.rssi - a.rssi; })[0];
+    var kept = draft.devices[key], on = kept && kept.enabled;
+    var status = f ? "Found · " + strength(f.rssi) : kept ? "Saved · not heard right now" : "Not found · switch it on to add it";
+    html += '<div class="drow' + (f || kept ? " ok" : "") + '"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="' + ICONS[key] +
+      '" fill="none" stroke="' + (f || kept ? "#A6E3A1" : "#6C7086") + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span class="t">' + esc(devices[key].label) + '</span><span class="s">' + esc(status) + "</span></span>" +
+      (f || kept ? '<button class="switch' + (on ? " on" : "") + '" role="switch" aria-checked="' + !!on + '" aria-label="Use ' + esc(devices[key].label) + '" data-k="' + key + '" data-a="' +
+        esc(f ? f.address : kept.address) + '" data-n="' + esc(f ? f.name : kept.name) + '"></button>' : "") + "</div>";
+  });
+  html += "</div>";
+  var others = heard.filter(function (h) { return h.kind === "other"; });
+  if (others.length) {
+    html += '<div style="display:flex;flex-direction:column;gap:8px"><span class="label">ALSO NEARBY · RECOGNISED, NOT USED BY TILAUSCOPE</span><div class="chips">';
+    others.forEach(function (o) { html += '<span class="chipx" style="color:var(--sub)"><span style="width:8px;height:8px;border-radius:4px;background:#CBA6F7"></span>' + esc(o.key) + "</span>"; });
+    html += "</div></div>";
+  }
+  $("body").innerHTML = html;
+  if ($("retry")) $("retry").onclick = function () { send("scan_start"); };
+  $("body").querySelectorAll(".switch").forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.k, cur = draft.devices[k];
+      if (cur && cur.enabled) delete draft.devices[k];
+      else draft.devices[k] = { name: b.dataset.n, address: b.dataset.a, enabled: true };
+      render();
+    };
+  });
+  $("foot").innerHTML = '<button class="btn ghost" id="back">‹ Back</button><span style="flex:1"></span><span class="small">You can add the others later in Settings.</span>' +
+    '<button class="btn finish" id="finish">✓ Finish</button>';
+  $("back").onclick = function () {
+    if (!draft.roaster) { step = 2; render(); return; }
+    step = 3; send("scan_stop"); Check.open($("body"), draft.roaster.address); render();
+  };
+  $("finish").onclick = function () { send("scan_stop"); send("save_setup", JSON.stringify(draft)); };
+}
+</script>
+</body>
+</html>

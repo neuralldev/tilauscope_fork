@@ -95,7 +95,7 @@ DROP_MIN_S: Final[float] = 7 * 60.0
 # measured on Cyberroaster and Skywalker.
 DROP_FALL_C: Final[float] = 3.0       # BT this far under its peak…
 DROP_PEAK_S: Final[float] = 120.0     # …the peak of the last two minutes
-DROP_PROBE_LAG_S: Final[float] = 6.0  # BT peaks this long after the beans left (corpus median)
+DROP_PROBE_LAG_S: Final[float] = 2.0  # BT peaks this long after the beans left (22 roasts of 8 other roasters; the Skywalker V2 declares 6)
 _drop_roaster: tuple[float, float] = (DROP_FALL_C, DROP_PROBE_LAG_S)
 
 

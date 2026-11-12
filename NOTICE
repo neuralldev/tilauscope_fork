@@ -21,10 +21,10 @@ LICENSING OF THE COMBINED WORK
 This distribution combines code under two licences:
 
   * Code inherited from Artisan Roaster Scope, principally under `src/artisanlib/`,
-    remains under the terms stated in its own file headers (GNU General Public
-    License, version 2 or 3 or, at your option, any later version). The full GPL
-    text is kept in licenses/GPL-3.0.txt. Those headers and copyright notices have not
-    been altered.
+    remains under the terms stated in its own file headers: the GNU General Public
+    License or the GNU Affero General Public License, version 3 or, at your option,
+    any later version, depending on the file. The full GPL text is kept in
+    licenses/GPL-3.0.txt. Those headers and copyright notices have not been altered.
 
   * Code original to TilauScope, principally under `src/tilauscope/`, is licensed
     under the GNU Affero General Public License version 3 or later. The full text
@@ -32,9 +32,12 @@ This distribution combines code under two licences:
 
   * The shared domain library `src/tilaucore/` and the Android application
     `android/` are original works by Tilau, licensed under the GNU Affero General
-    Public License version 3 or later. The few files there that contain portions
-    derived from Artisan Roaster Scope say so in their header and name the
-    Artisan files concerned; those portions keep their original licence.
+    Public License version 3 or later. Since TilauScope 4.3 build 57 they contain no
+    code derived from Artisan Roaster Scope: each piece that came from it was
+    redesigned from roasting practice (android/LICENSING-SPEC.md). They read and
+    write roast files (.alog, .alrm, .aset) in the format Artisan uses, so roasts
+    move freely between the two. Earlier versions, which still held such portions,
+    remain under the AGPL; their source is available on request from Tilau.
 
 Section 13 of the GNU General Public License version 3 expressly permits linking
 GPLv3-covered code with code covered by the GNU Affero General Public License
@@ -53,6 +56,10 @@ THIRD-PARTY MATERIAL
 
 Fonts bundled under `src/includes/` (Source Han Sans, WenQuanYi Zen Hei) are
 distributed under their own licences by their respective authors.
+
+The Android application bundles the Python runtime and standard library (Python
+Software Foundation License), Chaquopy (MIT) and the Kotlin standard library
+(Apache License 2.0), each under its own licence; see android/NOTICE.
 
 The colour palette used throughout the TilauScope interface is derived from
 Catppuccin (https://github.com/catppuccin/catppuccin), MIT licensed.

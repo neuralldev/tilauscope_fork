@@ -1,0 +1,346 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>TilauScope Roast Setup</title>
+<link rel="stylesheet" href="common.css">
+<style>
+#app{height:100%;display:flex;flex-direction:column}
+.ehead{height:60px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--overlay)}
+.ehead .t{display:flex;flex-direction:column;min-width:0}.ehead .t b{font-size:13px;letter-spacing:.14em;color:var(--accent);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ehead .t small{font-size:12px;color:var(--muted)}
+.btn{height:48px;padding:0 20px;border-radius:14px;font-size:15px;font-weight:600;border:1px solid var(--line);color:var(--sub)}
+.body{flex:1;min-height:0;display:flex;gap:20px;padding:18px 20px;overflow-y:auto}
+.colL{width:330px;flex:none;display:flex;flex-direction:column;gap:12px}
+.colM{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--overlay);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.eb{font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}.eb .st{margin-left:auto;letter-spacing:0;font-weight:500;display:flex;align-items:center;gap:6px}
+.nm{font-size:22px;font-weight:700}.sb{font-size:13px;color:var(--sub);line-height:1.45}
+.fam{background:var(--overlay);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--sub)}.fam b{color:var(--text);font-weight:500}
+.stock{display:flex;align-items:baseline;gap:8px}.stock b{font-family:ui-monospace,monospace;font-size:26px;color:var(--green)}.stock span{color:var(--muted);font-size:13px}
+.room{display:flex;gap:10px}.room div{flex:1;background:var(--bg);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column}.room span{font-size:12px;color:var(--muted)}.room b{font-family:ui-monospace,monospace;font-size:20px}
+.big{display:flex;align-items:stretch;gap:18px}
+.weight{flex:1;min-height:110px;border-radius:16px;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;gap:6px}
+.weight input{width:220px;background:transparent;border:0;outline:none;color:var(--text);font-family:ui-monospace,monospace;font-size:56px;font-weight:600;text-align:right;-webkit-user-select:text;user-select:text}
+.weight span{font-size:18px;color:var(--muted)}.weight input.got{color:var(--green)}
+#scale{width:300px;flex:none}
+.check{display:flex;align-items:center;gap:12px;font-size:15px;text-align:left}
+.box{width:26px;height:26px;border-radius:7px;border:2px solid var(--line);color:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:800}.box.on{background:var(--blue);border-color:var(--blue)}
+.after{font-size:13px;color:var(--sub)}.after b{color:var(--text);font-family:ui-monospace,monospace}
+.warn{border:1px solid rgba(250,179,135,.5);background:rgba(250,179,135,.08);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--sub);line-height:1.45}.warn b{color:var(--peach)}
+.info{border:1px solid rgba(137,180,250,.45);background:rgba(137,180,250,.06);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--sub);line-height:1.45}
+.f{display:flex;align-items:center;gap:14px;min-height:50px}.f>label{width:170px;flex:none;font-size:15px;color:var(--sub)}
+.in{height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 14px;font:inherit;font-size:16px;color:var(--text);outline:none;-webkit-user-select:text;user-select:text}
+.in:focus{border-color:var(--blue)}.in.got{border-color:var(--green)}.in.bad{border-color:var(--red)}
+.in.short{width:140px}.in.wide{flex:1;min-width:0}.u{color:var(--muted);font-size:14px}
+.mini{height:46px;padding:0 14px;border-radius:12px;border:1px solid var(--accent);color:var(--accent);font-size:14px;font-weight:600}
+.bar{flex:none;display:flex;align-items:center;gap:14px;padding:0 20px 18px}.bar small{font-size:13px;color:var(--muted);max-width:70ch}
+.go{height:56px;padding:0 26px;border-radius:16px;background:var(--blue);color:var(--bg);font-size:17px;font-weight:700}.go:disabled{background:var(--overlay);color:var(--muted)}
+.seg{display:flex;background:var(--overlay);border-radius:14px;padding:4px;gap:4px}
+.seg button{height:42px;padding:0 20px;border-radius:11px;font-size:15px;font-weight:600;color:var(--sub)}.seg button.on{background:var(--blue);color:var(--bg)}
+.pbody{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:14px 20px}
+.pchoice{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.pchoice .k{width:190px;flex:none;font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600;text-transform:uppercase}
+.pchoice .opts{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:40px;padding:0 14px;border-radius:12px;border:1px solid var(--line);font-size:14px;color:var(--sub)}.chip.on{background:var(--blue);border-color:var(--blue);color:var(--bg);font-weight:700}
+.pcols{flex:1;min-height:0;display:flex;gap:14px}
+.prm{width:480px;flex:none;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.rmcard{background:var(--surface);border:1px solid var(--overlay);border-radius:16px;overflow:hidden}
+.rmrow{display:grid;grid-template-columns:12px 112px 86px 56px 1fr;align-items:center;gap:8px;padding:0 14px;min-height:54px;border-top:1px solid var(--overlay)}
+.rmrow:first-child{border-top:0}.rmrow i{width:10px;height:10px;border-radius:5px}
+.rmrow .n{font-size:12px;letter-spacing:.12em;font-weight:700;color:var(--sub)}.rmrow .t{font-family:ui-monospace,monospace;font-size:22px;font-weight:600}
+.rmrow .w{font-family:ui-monospace,monospace;font-size:14px;color:var(--sub)}
+/* AUTO: this milestone marks itself (AUTOMATION-SPEC D1); one touch arms or disarms it */
+.auto{height:24px;padding:0 8px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid var(--line);color:var(--muted);align-self:flex-start}
+.rmrow .nm{display:flex;flex-direction:column;gap:5px;padding:8px 0}
+.auto.on{background:var(--blue);border-color:var(--blue);color:var(--bg)}.auto:disabled{border-style:dashed;opacity:.5}.rmrow .l{font-size:13px;color:var(--sub);line-height:1.35}
+.rmfoot{background:rgba(137,180,250,.10);border-top:1px solid var(--overlay);padding:9px 14px;font-size:13px;color:var(--sub)}.rmfoot b{color:var(--blue);font-family:ui-monospace,monospace}
+.pnote{font-size:13px;line-height:1.45;color:var(--sub)}.pn-tasting,.pn-warn{color:var(--peach)} /* the desktop: tasting and a guessing plan in peach */
+.pref{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--yellow);border-radius:10px;padding:8px 12px;background:rgba(249,226,175,.08);font-size:13px;line-height:1.45;color:var(--text)}
+.pref .pstar{color:var(--yellow);font-size:16px;line-height:1.2}.pref.off{border:1px dashed #7F849C;background:transparent;color:var(--sub)}.pref.off .pstar{color:#7F849C}
+.pchart{flex:1;min-width:0;background:var(--surface);border:1px solid var(--overlay);border-radius:16px;position:relative;overflow:hidden}
+.pleg{position:absolute;left:14px;top:10px;display:flex;gap:14px;font-size:12px;color:var(--sub)}.pleg span{display:flex;align-items:center;gap:6px}.pleg i{width:16px;height:3px;border-radius:2px}
+.phint{padding:20px 4px;font-size:15px;color:var(--sub)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 18px;border-radius:14px;background:var(--overlay);font-size:15px;display:none;z-index:40}
+</style>
+</head>
+<body>
+<script src="common.js"></script>
+<script src="device-cards.js"></script>
+<div id="app">
+ <div class="ehead"><button class="eback" id="back" aria-label="Back to the roast"><svg width="24" height="24" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 4L6 9l5 5" fill="none" stroke="#A6ADC8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="t"><b id="title">ROAST SETUP</b><small>What goes with this roast, and its plan</small></span><span style="flex:1"></span><div class="seg" id="tabs"><button data-t="setup" class="on">Setup</button><button data-t="plan">Plan</button></div><span style="flex:1"></span></div>
+ <div class="pbody hidden" id="plan"></div>
+ <div class="body" id="setup">
+  <div class="colL"><div id="left" style="display:contents"></div>
+   <div class="card" style="gap:8px"><div class="eb">PREHEAT · TILAUPID<span class="st"><span class="seg" style="padding:3px" id="phon"><button data-on="0" style="height:34px;padding:0 14px">Off</button><button data-on="1" style="height:34px;padding:0 14px">On</button></span></span></div>
+    <div class="f" style="min-height:46px"><label style="width:70px">Target</label><input class="in short" id="phtarget" inputmode="decimal" placeholder="—" style="width:90px"><span class="u deg">°C</span><span class="sb" id="phnote"></span></div>
+    <div class="f" style="min-height:46px"><label style="width:70px">Input</label><span class="seg" style="padding:3px" id="phinput"><button data-in="BT" style="height:34px;padding:0 16px">BT</button><button data-in="ET" style="height:34px;padding:0 16px">ET</button></span></div>
+   </div>
+  </div>
+  <div class="colM">
+   <div class="card"><div class="eb">GREEN WEIGHT</div>
+    <div class="big"><label class="weight"><input id="green" inputmode="numeric" placeholder="—"><span>g</span></label><div id="scale"></div></div>
+    <div id="stockbox"></div></div>
+   <div class="card"><div class="eb">BEFORE THE ROAST</div>
+    <div class="f"><label>Density</label><input class="in short" id="density" inputmode="decimal" placeholder="—"><span class="u">g/l</span><button class="mini" id="measure">⚖ Measure</button></div>
+    <div id="denscard" class="hidden"></div>
+    <div class="f"><label>Moisture</label><input class="in short" id="moisture" inputmode="decimal" placeholder="—"><span class="u">%</span><span class="sb" id="moisturenote"></span></div>
+    <div class="f"><label>Bean temperature</label><input class="in short" id="greens_temp" inputmode="decimal" placeholder="—"><span class="u deg">°C</span></div>
+    <div class="f"><label>Roast title</label><input class="in wide" id="rtitle"></div>
+   </div>
+  </div>
+ </div>
+ <div class="bar"><button class="go" id="ready">Ready to roast ›</button><small id="barnote"></small></div>
+</div>
+<div id="toast"></div>
+<script>
+"use strict";
+// The desktop's Roast Setup for the chosen coffee: what goes into the roast file and the stock.
+var cave = null, coffee = null, snap = null, devices = {}, sc = null, asked = false, decrease = true, volume = 100, measuring = false;
+
+function toast(text) { var t = $("toast"); t.textContent = text; t.style.display = "block"; setTimeout(function () { t.style.display = "none"; }, 3500); }
+function kgs(g) { return g >= 1000 ? (g / 1000).toFixed(1) + " kg" : Math.round(Math.max(0, g)) + " g"; }
+function num(id) { var v = $(id).value.replace(",", ".").trim(); return v === "" ? 0 : Number(v); }
+function shown(n, d) { return n ? Number(n).toFixed(d) : ""; }
+
+window.onSnapshot = function (method, d) {
+  if (d && d.unit) setUnit(d.unit);
+  if (method === "get_coffees") {
+    if (!d || !d.reply) return;
+    cave = d.reply;
+    coffee = cave.coffees.filter(function (c) { return c.uuid === cave.chosen; })[0];
+    if (!coffee || !cave.setup) { go("beancave.html"); return; }
+    fill(); splashDone(); render();
+    return;
+  }
+  if (method === "get_setup") {
+    if (!d || !d.reply) return;
+    preheat.on = !!d.reply.config.preheat_on; preheat.input = d.reply.config.preheat_input || "BT";
+    renderPreheat();
+    var s = d.reply.config.devices.scale;
+    devices.scale = s && s.enabled ? s : null;
+    if (devices.scale) send("scale_connect", JSON.stringify({ address: devices.scale.address, name: devices.scale.name }));
+    var p = d.reply.config.devices.ambient;
+    if (p && p.enabled) send("ambient_connect", p.address);
+    devices.probe = p && p.enabled ? p : null;
+    if (cave) render();
+    return;
+  }
+  if (method === "get_plan" || method === "set_plan_choice" || method === "set_auto_mark") {
+    if (d && d.reply) { plan = d.reply; if (tab === "plan") renderPlan(); offerPlanCharge(); }
+    else toast("The plan could not be built");
+    return;
+  }
+  if (method === "set_roast_setup") { if (d) go("roast.html"); else toast("Roast Setup could not be applied"); return; }
+  if (!d || d.reply) return;
+  snap = d;
+  if (!asked) { asked = true; send("get_coffees"); send("get_setup"); }
+  if (cave) renderBar();
+};
+window.onScale = function (d) { sc = d; if (cave) renderDevices(); };
+window.onAmbient = function (d) { room = d; if (cave) renderLeft(); };
+var room = null;
+
+// Plan: the desktop's PLAN tab — level, use, roadmap and notes — with the planned curve over the band of past roasts.
+var plan = null, tab = "setup", planTimer = null;
+var USES = { filter: "Filter", omni: "Omni", espresso: "Espresso" };
+var MARKS = { charge: "var(--blue)", dry_end: "var(--yellow)", fc_start: "var(--peach)", drop: "var(--red)" };
+var AUTO_OF = { charge: "charge", dry_end: "dry_end", fc_start: "first_crack", drop: "drop" }; // plan row -> milestone
+function autoChip(r) {
+  var m = AUTO_OF[r.key], on = plan.auto.indexOf(m) >= 0;
+  return '<button class="auto' + (on ? " on" : "") + '" data-auto="' + m + '">' + (on ? "✦ AUTO" : "AUTO") + "</button>";
+}
+function typedGreen() { var g = parseInt($("green").value, 10); return g > 0 ? g : 0; }
+function askPlan(extra) {
+  var body = { green: typedGreen() };
+  for (var k in extra || {}) body[k] = extra[k];
+  send(extra ? "set_plan_choice" : "get_plan", JSON.stringify(body));
+}
+function showTab(t) {
+  tab = t;
+  document.querySelectorAll("#tabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
+  $("setup").classList.toggle("hidden", t !== "setup");
+  $("plan").classList.toggle("hidden", t !== "plan");
+  if (t === "plan") { renderPlan(); askPlan(); }
+}
+function chartSvg(p, W, H) {
+  var c = p.curve, b = p.band, L = 46, R = 40, T = 34, B = 26, last = c.t.length ? c.t[c.t.length - 1] : 1;
+  var tmax = Math.max(last, b ? b.time_min[b.time_min.length - 1] : 0) + 0.2;
+  function X(t) { return L + t / tmax * (W - L - R); } function Y(v) { return T + (1 - (v - 50) / 200) * (H - T - B); }
+  function RY(r) { return T + (1 - (r + 2) / 27) * (H - T - B); }
+  var s = "";
+  // The curves are in °C; the ticks are in the unit shown, placed back in °C (as the roast screen's).
+  (UNIT === "F" ? [200, 300, 400] : [100, 150, 200, 250]).forEach(function (v) { var y = Y(typedT(v));
+    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="var(--overlay)"/><text x="' + (L - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="var(--muted)">' + v + "</text>"; });
+  (UNIT === "F" ? [0, 10, 20, 30, 40] : [0, 5, 10, 15, 20, 25]).forEach(function (r) { s += '<text x="' + (W - R + 6) + '" y="' + (RY(r / shownD(1)) + 4) + '" font-size="11" fill="var(--ror)">' + r + "</text>"; });
+  s += '<text x="' + (L - 6) + '" y="' + (T - 12) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + deg() + '</text><text x="' + (W - R + 6) + '" y="' + (T - 12) + '" font-size="10" fill="var(--ror)">' + deg() + "/min</text>";
+  for (var m = 0; m <= tmax; m += 2) s += '<text x="' + X(m) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + m + ":00</text>";
+  function path(ts, vs, fy) { var d = ""; for (var i = 0; i < ts.length; i++) { if (vs[i] == null) continue; d += (d ? "L" : "M") + X(ts[i]).toFixed(1) + " " + fy(vs[i]).toFixed(1); } return d; }
+  function area(lo, hi, fy) {
+    var up = "", dn = "";
+    for (var i = 0; i < b.time_min.length; i++) if (b[lo][i] != null && b[hi][i] != null) up += (up ? "L" : "M") + X(b.time_min[i]).toFixed(1) + " " + fy(b[hi][i]).toFixed(1);
+    for (var j = b.time_min.length - 1; j >= 0; j--) if (b[lo][j] != null && b[hi][j] != null) dn += "L" + X(b.time_min[j]).toFixed(1) + " " + fy(b[lo][j]).toFixed(1);
+    return up ? up + dn + "Z" : "";
+  }
+  if (b) {
+    s += '<path d="' + area("bt_min", "bt_max", Y) + '" fill="var(--blue)" fill-opacity=".16"/><path d="' + area("ror_min", "ror_max", RY) + '" fill="var(--ror)" fill-opacity=".14"/>' +
+      '<path d="' + path(b.time_min, b.bt_mean, Y) + '" fill="none" stroke="var(--blue)" stroke-opacity=".55" stroke-width="1.2" stroke-dasharray="3 4"/>' +
+      '<path d="' + path(b.time_min, b.ror_mean, RY) + '" fill="none" stroke="var(--ror)" stroke-opacity=".6" stroke-width="1.2" stroke-dasharray="3 4"/>';
+  }
+  [["dry_end", "DRY"], ["fc_start", "FC"], ["drop", "DROP"]].forEach(function (m) {
+    var t = p.marks[m[0]]; if (t == null) return;
+    s += '<line x1="' + X(t) + '" x2="' + X(t) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--muted)" stroke-dasharray="4 5"/><text x="' + (X(t) + 4) + '" y="' + (T + 12) + '" font-size="11" font-weight="600" fill="var(--sub)">' + m[1] + "</text>";
+  });
+  s += '<path d="' + path(c.t, c.ror, RY) + '" fill="none" stroke="var(--ror)" stroke-width="2"/><path d="' + path(c.t, c.bt, Y) + '" fill="none" stroke="var(--blue)" stroke-width="3"/>';
+  return '<div class="pleg"><span><i style="background:var(--blue)"></i>Planned BT</span><span><i style="background:var(--ror)"></i>Planned RoR</span>' +
+    (b ? '<span><i style="background:var(--blue);opacity:.35;height:9px"></i>Past roasts, min–max and mean</span>' : "") +
+    '</div><svg width="100%" height="100%" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' + s + "</svg>";
+}
+function renderPlan() {
+  var box = $("plan");
+  if (!plan) { box.innerHTML = '<div class="phint">⟳ Building the roadmap…</div>'; return; }
+  var html = '<div class="pchoice"><span class="k">Roast level</span><div class="opts">' + plan.levels.map(function (l) {
+      return '<button class="chip' + (l === plan.level ? " on" : "") + '" data-level="' + esc(l) + '">' + esc(l) + "</button>"; }).join("") + "</div></div>" +
+    '<div class="pchoice"><span class="k">What is this coffee for?</span><div class="opts">' + plan.destinations.map(function (d) {
+      return '<button class="chip' + (d === plan.destination ? " on" : "") + '" data-use="' + d + '">' + esc(USES[d] || d) + "</button>"; }).join("") + "</div></div>";
+  var hint = { no_coffee: "Choose a coffee in the BeanCave first.", no_machine: "Choose your machine in Settings › General to see the plan.",
+    no_level: "Choose a roast level above to see the roadmap.", no_weight: "Weigh the batch to compute the plan, before starting the roast." }[plan.state];
+  if (hint) html += '<div class="phint">' + esc(hint) + "</div>";
+  else {
+    html += '<div class="pcols"><div class="prm"><div class="rmcard">' + plan.rows.map(function (r) {
+        return '<div class="rmrow"><i style="background:' + MARKS[r.key] + '"></i><span class="nm"><span class="n">' + esc(r.label) + "</span>" + autoChip(r) + '</span><span class="t">' + (isNaN(parseFloat(r.temp)) ? esc(r.temp) : Math.round(shownT(parseFloat(r.temp)))) + " " + deg() + '</span><span class="w">' +
+          esc(r.time) + '</span><span class="l">' + esc(r.levers) + "</span></div>"; }).join("") +
+      (plan.cooled.grams ? '<div class="rmfoot">After cooling, aim for <b>−' + esc(plan.cooled.loss) + " %</b> · ≈ " + plan.cooled.grams + " g on the scale</div>" : "") + "</div>" +
+      plan.notes.map(function (n) {
+        if (n.kind === "reference") // the desktop's ★ line, or ☆ when the reference is not used
+          return '<div class="pref' + (n.used ? "" : " off") + '"><span class="pstar">' + (n.used ? "★" : "☆") + "</span><span>" + esc(n.text) + "</span></div>";
+        return '<div class="pnote pn-' + n.kind + '">' + esc(n.text) + "</div>"; }).join("") +
+      "</div><div class=\"pchart\" id=\"pchart\"></div></div>";
+  }
+  box.innerHTML = html;
+  if (!hint) {
+    var ch = $("pchart");
+    ch.innerHTML = chartSvg(plan, ch.clientWidth || 640, ch.clientHeight || 420);
+  }
+  box.querySelectorAll("[data-level]").forEach(function (b) { b.onclick = function () { askPlan({ plan_level: b.dataset.level }); }; });
+  box.querySelectorAll("[data-use]").forEach(function (b) { b.onclick = function () { askPlan({ roast_destination: b.dataset.use }); }; });
+  box.querySelectorAll("[data-auto]").forEach(function (b) { b.onclick = function () {
+    send("set_auto_mark", JSON.stringify({ milestone: b.dataset.auto, on: !b.classList.contains("on"), green: typedGreen() })); }; });
+}
+
+function fill() {
+  var s = cave.setup;
+  $("title").textContent = "ROAST SETUP — " + coffee.name.toUpperCase();
+  $("green").value = s.green || (snap && snap.weights_g.green) || "";
+  decrease = s.decrease;
+  $("density").value = shown(s.density, 0);
+  $("moisture").value = shown(s.moisture, 1);
+  $("greens_temp").value = shown(s.greens_temp ? shownT(s.greens_temp) : 0, 1);
+  $("rtitle").value = s.title;
+  preheat.typed = !!s.preheat_typed; // the operator's own target, else the plan's charge temperature
+  $("phtarget").value = s.preheat_target != null ? Math.round(shownT(s.preheat_target)) : "";
+  askPlan();
+  renderPreheat();
+}
+
+// TilauPID at the start, as the desktop's "TilauPID on START": on/off and the probe are kept, the target
+// is the plan's charge temperature until the operator types their own.
+var preheat = { on: false, input: "BT", typed: false, planCharge: null };
+function offerPlanCharge() {
+  var charge = plan && plan.state === "ready" && plan.rows && plan.rows[0] ? parseFloat(plan.rows[0].temp) : null;
+  preheat.planCharge = charge > 0 ? charge : null;
+  if (!preheat.typed && preheat.planCharge != null) $("phtarget").value = Math.round(shownT(preheat.planCharge));
+  renderPreheat();
+}
+function renderPreheat() {
+  document.querySelectorAll("#phon button").forEach(function (b) { b.classList.toggle("on", (b.dataset.on === "1") === preheat.on); });
+  document.querySelectorAll("#phinput button").forEach(function (b) { b.classList.toggle("on", b.dataset.in === preheat.input); });
+  var typed = parseFloat($("phtarget").value);
+  $("phnote").textContent = preheat.planCharge != null && !preheat.typed ? "the plan's charge"
+    : preheat.planCharge != null && Math.abs(typed - shownT(preheat.planCharge)) >= 0.5 ? "plan: " + Math.round(shownT(preheat.planCharge)) + " " + deg() : "";
+}
+
+function renderLeft() {
+  $("left").innerHTML = '<div class="card"><div class="eb">THE COFFEE</div><span class="nm">' + esc(coffee.name) + '</span><span class="sb">' +
+    esc([coffee.country, coffee.process, coffee.varieties, coffee.sca > 0 ? "SCA " + coffee.sca.toFixed(1) : ""].filter(Boolean).join(" · ")) + "</span>" +
+    '<div class="stock"><b class="num">' + Math.round(coffee.stock_g) + ' g</b><span>in stock</span></div><div class="fam">🌱 Bean family <b>' + esc(coffee.family) + "</b></div></div>" +
+    '<div class="card"><div class="eb">ROOM · PROBE' + (room && room.temperature_c != null ? '<span class="st">' + DeviceCards.dot("var(--green)") + "live</span>" : "") + "</div>" +
+    (devices.probe ? '<div class="room num"><div><span>Temperature</span><b>' + (room && room.temperature_c != null ? shownT(room.temperature_c).toFixed(1) + " " + deg() : "—") +
+      "</b></div><div><span>Humidity</span><b>" + (room && room.humidity_pct != null ? Math.round(room.humidity_pct) + " %" : "—") + '</b></div></div><span class="sb">Kept with the roast at Charge.</span>'
+      : '<span class="sb">No room probe in Settings › Devices.</span>') + "</div>";
+}
+
+function renderStock() {
+  var g = parseInt($("green").value, 10) || 0;
+  if (cave.owner === "computer") {
+    $("stockbox").innerHTML = '<div class="info">The computer keeps this stock: it takes the green weight off when it receives this roast. ' +
+      "If the tablet cannot reach it when the roast starts, it tells you, and the computer's stock stays as it is.</div>";
+    return;
+  }
+  var html = '<button class="check" id="decrease"><span class="box' + (decrease ? " on" : "") + '">' + (decrease ? "✓" : "") + "</span>Decrease the stock by this weight</button>";
+  if (decrease && g > 0) html += g > coffee.stock_g ? '<div class="warn"><b>Only ' + Math.round(coffee.stock_g) + " g in stock for " + g + " g.</b> The roast is not blocked; the stock goes to 0 g. Check the weight, or the stock in the BeanCave.</div>"
+    : '<div class="after">Left after this roast: <b class="num">' + Math.round(coffee.stock_g - g) + " g</b> · taken off when the recording starts</div>";
+  $("stockbox").innerHTML = html;
+  $("decrease").onclick = function () { decrease = !decrease; renderStock(); };
+}
+
+function renderDevices() {
+  DeviceCards.scale($("scale"), sc, { configured: !!devices.scale, use: "Use as green weight",
+    missing: "No scale in Settings › Devices. Type the weight, or pair the scale there.", typing: "You can type the weight meanwhile." },
+    function (grams) { $("green").value = grams; $("green").classList.add("got"); renderStock(); });
+  if (measuring) DeviceCards.density($("denscard"), sc, !!devices.scale, volume, function (v) { volume = v; renderDevices(); },
+    function (v) { $("density").value = v; $("density").classList.add("got"); });
+}
+
+function renderBar() {
+  var idle = snap && snap.state === "idle";
+  $("ready").disabled = !idle;
+  $("barnote").textContent = !snap ? "" : snap.state === "recording" ? "A roast is recording: Roast Setup is for the next one." :
+    snap.state === "stopped" ? "Start a new roast on the roast screen first (New roast)." :
+    "Name, link to the bean, weight, density, moisture and bean temperature go into the roast file, as from the desktop.";
+}
+
+function render() {
+  renderLeft(); renderStock(); renderDevices(); renderBar();
+  var c = cave.coffees.filter(function (x) { return x.uuid === coffee.uuid; })[0];
+  $("moisturenote").textContent = c && c.edit.last_humidity && num("moisture") === c.edit.last_humidity ? "from the coffee" : "";
+}
+
+function ready() {
+  var g = $("green").value.trim(), lim = cave.limits, bad = null;
+  ["density", "moisture", "greens_temp", "phtarget"].forEach(function (id) { $(id).classList.remove("bad"); });
+  if (g !== "" && !/^\d+$/.test(g)) bad = ["green", "The green weight is a whole number of grams"];
+  [["density", lim.density], ["moisture", lim.last_humidity]].forEach(function (p) {
+    var n = num(p[0]);
+    if (!bad && (isNaN(n) || n < p[1][0] || n > p[1][1])) bad = [p[0], p[0][0].toUpperCase() + p[0].slice(1) + " is between " + p[1][0] + " and " + p[1][1]];
+  });
+  if (!bad && isNaN(num("greens_temp"))) bad = ["greens_temp", "The bean temperature is a number"];
+  var ph = $("phtarget").value.trim(), target = ph === "" ? null : typedT(num("phtarget"));
+  if (!bad && target != null && !(target >= 50 && target <= 300)) // as the session checks it, said in the unit shown
+    bad = ["phtarget", UNIT === "F" ? "A preheat target is between 122 and 572 °F" : "A preheat target is between 50 and 300 °C"];
+  if (bad) { $(bad[0]).classList.add("bad"); toast(bad[1]); return; }
+  send("set_roast_setup", JSON.stringify({ green: g === "" ? null : parseInt(g, 10), decrease: cave.owner !== "computer" && decrease,
+    density: num("density"), moisture: num("moisture"), greens_temp: num("greens_temp") ? typedT(num("greens_temp")) : 0, title: $("rtitle").value,
+    preheat: { on: preheat.on, input: preheat.input, target: target, typed: preheat.typed } }));
+}
+
+$("green").oninput = function () {
+  $("green").classList.remove("got"); renderStock();
+  clearTimeout(planTimer); planTimer = setTimeout(function () { askPlan(); }, 500); // the plan's charge feeds the preheat target
+};
+document.querySelectorAll("#tabs button").forEach(function (b) { b.onclick = function () { showTab(b.dataset.t); }; });
+$("moisture").oninput = function () { render(); };
+$("measure").onclick = function () { measuring = !measuring; $("denscard").classList.toggle("hidden", !measuring); renderDevices(); };
+$("ready").onclick = ready;
+document.querySelectorAll("#phon button").forEach(function (b) { b.onclick = function () { preheat.on = b.dataset.on === "1"; renderPreheat(); }; });
+document.querySelectorAll("#phinput button").forEach(function (b) { b.onclick = function () { preheat.input = b.dataset.in; renderPreheat(); }; });
+$("phtarget").oninput = function () { preheat.typed = true; renderPreheat(); };
+$("back").onclick = function () { go("roast.html"); };
+document.querySelectorAll("input").forEach(function (el) {
+  el.onfocus = function () { setTimeout(function () { el.scrollIntoView({ block: "center", behavior: "smooth" }); }, 350); };
+});
+</script>
+</body>
+</html>

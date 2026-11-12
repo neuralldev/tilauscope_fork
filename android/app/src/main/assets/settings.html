@@ -1,0 +1,596 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>TilauScope settings</title>
+<link rel="stylesheet" href="common.css">
+<style>
+#page{height:100%;display:flex}
+nav{width:250px;flex:none;background:var(--surface);padding:20px 14px;display:flex;flex-direction:column;gap:6px}
+#back{align-self:flex-start;height:40px;padding:0 12px 0 6px;border-radius:12px;color:var(--sub);font-size:15px;display:inline-flex;align-items:center;gap:6px;margin-bottom:10px}
+nav h2{margin:0 10px 12px;font-size:24px;font-weight:600}
+.tab{height:56px;border-radius:14px;padding:0 14px;display:flex;align-items:center;gap:12px;text-align:left;font-size:16px;font-weight:500}
+.tab small{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+.tab.on{background:rgba(137,180,250,.14);color:var(--blue);font-weight:600}
+main{flex:1;min-width:0;padding:28px 36px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+h1{margin:0;font-size:24px;font-weight:600}
+.lede{margin-top:4px;font-size:14px;color:var(--sub)}
+.panel{background:var(--surface);border-radius:18px;padding:4px 20px}
+.row{display:flex;align-items:center;gap:16px;min-height:72px;border-top:1px solid var(--overlay)}
+.row:first-child{border-top:0}
+.row .k{width:190px;flex:none;display:flex;flex-direction:column;gap:2px}
+.row .k b{font-size:16px;font-weight:600}.row .k small{font-size:12px;color:var(--muted)}
+.field{flex:1;height:48px;border-radius:12px;background:var(--bg);border:1px solid var(--overlay);padding:0 14px;font:inherit;font-size:16px;color:var(--text)}
+.field[readonly]{color:var(--sub)}
+input.field{border-color:var(--line);outline:none}
+input.field:focus{border-color:var(--blue)}
+.stepper{width:170px;flex:none;display:flex;align-items:center;height:48px;border-radius:12px;background:var(--overlay);overflow:hidden}
+.stepper button{width:48px;height:48px;font-size:20px;color:var(--sub)}
+.stepper b{flex:1;text-align:center;font-size:17px}
+.head{display:flex;align-items:center;gap:16px;height:40px;font-size:12px;color:var(--muted);letter-spacing:.3px}
+.note{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:var(--surface);font-size:14px;color:var(--sub);line-height:1.5}
+.btn{height:48px;padding:0 20px;border-radius:14px;font-size:15px;font-weight:600;border:1px solid var(--line);color:var(--sub)}
+.btn.primary{background:var(--blue);color:var(--bg);border:0}
+.btn.primary:disabled{background:var(--overlay);color:var(--muted)}
+.status{font-size:13px;color:var(--muted)}
+.switch{width:52px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:12px;background:var(--bg);transition:left .15s}
+.switch.on{background:var(--green)}.switch.on::after{left:25px}
+.pick{height:56px;border-radius:14px;border:2px solid var(--overlay);padding:0 16px;display:flex;align-items:center;gap:12px;text-align:left}
+.pick.sel{border-color:var(--blue);background:rgba(137,180,250,.10)}
+.seg{display:flex;background:var(--overlay);border-radius:14px;padding:4px;gap:4px}
+.seg button{height:44px;padding:0 18px;border-radius:11px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;font-size:15px;font-weight:600;color:var(--sub)}
+.seg button small{font-size:11px;font-weight:400;color:var(--muted)}
+.seg button.on{background:var(--blue);color:var(--bg)}.seg button.on small{color:var(--overlay)}
+.facts{display:flex;gap:10px;flex:1}.facts div{flex:1;background:var(--bg);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.facts span{font-size:12px;color:var(--muted)}.facts b{font-size:22px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:var(--surface);border-radius:18px;padding:30px}
+.empty b{font-size:20px}.empty p{margin:0;color:var(--sub);font-size:15px;max-width:52ch;line-height:1.5}
+.btn.danger{background:var(--red);color:var(--bg);border:0}
+#scrim{position:fixed;inset:0;background:rgba(17,17,27,.6);display:none;align-items:center;justify-content:center;z-index:10}
+.sheet{width:560px;max-width:calc(100% - 32px);background:var(--bg);border:1px solid var(--line);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:16px}
+.sheet h3{margin:0;font-size:22px;font-weight:600}.sheet p{margin:0;color:var(--sub);font-size:15px;line-height:1.5}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cmp div{background:var(--surface);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.cmp span{font-size:12px;color:var(--muted)}.cmp b{font-size:18px}.cmp small{font-size:13px;color:var(--sub)}
+.curbtn{height:48px;min-width:250px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 14px;display:flex;align-items:center;gap:10px;font-size:16px;text-align:left}
+.curbtn .sym{color:var(--sub)}.curbtn .chev{margin-left:auto;color:var(--muted)}
+.tag{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.sheet:has(.curgrid){width:660px}
+.curgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.curgrid button{height:48px;border-radius:12px;border:1px solid var(--overlay);background:var(--surface);display:flex;align-items:center;gap:6px;padding:0 12px;font-size:15px}
+.curgrid button span{color:var(--sub)}.curgrid button small{margin-left:auto;font-size:10px;letter-spacing:.06em;color:var(--muted)}
+.curgrid button.sel{border:2px solid var(--blue);background:rgba(137,180,250,.12);padding:0 11px}.curgrid button.sel small{color:var(--blue)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 18px;border-radius:14px;background:var(--overlay);font-size:15px;display:none}
+/* Alarm editor (alarm-editor.js) */
+.al-top{display:flex;align-items:center;gap:10px}
+.ib{width:48px;height:48px;border-radius:24px;border:1px solid var(--line);color:var(--sub);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ib.yel{border-color:rgba(249,226,175,.55);color:var(--yellow);background:rgba(249,226,175,.08)}
+.lists{display:flex;flex-direction:column;gap:8px}
+.swipe{position:relative;border-radius:14px;overflow:hidden;flex:none;touch-action:pan-y}
+.swipe .under{position:absolute;right:0;top:0;bottom:0;width:110px;background:var(--red);color:var(--bg);display:flex;align-items:center;justify-content:center}
+.lrow{display:flex;align-items:center;gap:14px;height:64px;padding:0 16px;border-radius:14px;border:2px solid var(--overlay);background:var(--bg);position:relative;z-index:1;transition:transform .2s}
+.lrow.sel{border-color:var(--yellow);background:#2a2a35}
+.lrow b{display:block;font-size:16px}.lrow small{color:var(--muted);font-size:12.5px}.lrow .nr{display:inline-flex;align-items:center;gap:3px}
+.chk{width:26px;height:26px;border-radius:13px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--bg);flex:none}
+.lrow.sel .chk{background:var(--yellow);border-color:var(--yellow)}
+.chev{margin-left:auto;width:44px;height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;color:var(--sub);background:var(--surface)}
+.alist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.alist .ph{font-size:12px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);padding:6px 6px 0}
+.rowin{display:flex;align-items:center;gap:8px;height:52px;padding:0 8px;background:var(--surface);border-radius:14px;position:relative;z-index:1;transition:transform .2s}
+.grip{color:var(--line);display:flex;padding:8px 4px;touch-action:none}
+.c{height:34px;padding:0 12px;border-radius:17px;display:inline-flex;align-items:center;gap:7px;font-size:15px;font-weight:600;white-space:nowrap}
+.c.t{background:rgba(137,180,250,.14);color:var(--blue)}.c.r{background:rgba(245,194,231,.14);color:#F5C2E7}
+.c.k{background:rgba(203,166,247,.14);color:#CBA6F7}.c.a{background:rgba(148,226,213,.14);color:#94E2D5}
+.c.a.lv-air{background:rgba(0,150,255,.16);color:#4FB3FF}.c.a.lv-burner{background:rgba(255,38,0,.16);color:#FF6A4D}
+.c.a.lv-drum{background:rgba(0,143,0,.2);color:#4CC24C}.c.a.lv-extractor{background:rgba(255,212,121,.14);color:#ffd479}
+.c.a.no{opacity:.5;text-decoration:line-through}.c.g{border:1px dashed var(--line);color:var(--muted)}
+.arrow{color:var(--muted)}
+.bell{margin-left:auto;color:var(--muted);display:flex;padding:8px}.bell.on{color:var(--yellow)}
+/* the alarm's number is its on/off switch: green when on, outlined when off */
+.num{min-width:38px;height:30px;padding:0 9px;border-radius:15px;border:1.5px solid var(--line);color:var(--muted);font-size:13px;font-weight:700;
+ display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;margin-right:4px;flex:none}
+.num.on{border-color:transparent;background:rgba(166,227,161,.18);color:var(--green)}
+.arow.off .rowin>*:not(.num):not(.grip){opacity:.35}
+.arow.lift{z-index:3;overflow:visible}.arow.lift .rowin{box-shadow:0 14px 34px rgba(0,0,0,.55);outline:2px solid var(--blue);background:#262637}
+.arow.drop-before{box-shadow:0 -4px 0 var(--blue)}.arow.drop-after{box-shadow:0 4px 0 var(--blue)}
+.empty-al{flex:1;display:flex;align-items:center;justify-content:center;color:var(--line)}
+.al-undo{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:none;align-items:center;gap:16px;padding:8px 10px 8px 18px;border-radius:14px;background:var(--overlay);font-size:15px;z-index:12}
+.und{width:40px;height:40px;border-radius:20px;background:rgba(249,226,175,.15);color:var(--yellow);display:flex;align-items:center;justify-content:center}
+#zscrim{position:fixed;inset:0;background:rgba(17,17,27,.5);display:none;z-index:13}
+#zsheet{position:fixed;left:250px;right:0;bottom:0;max-height:70%;overflow-y:auto;z-index:14;background:var(--bg);border-top:1px solid var(--line);border-radius:22px 22px 0 0;padding:22px 26px;display:none;flex-direction:column;gap:12px}
+#zsheet .grab{width:44px;height:5px;border-radius:3px;background:var(--line);position:absolute;left:50%;top:8px;transform:translateX(-50%)}
+.zh{color:var(--muted);display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.zrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.segs{display:flex;flex-wrap:wrap;gap:8px}
+.seg-b{height:42px;padding:0 14px;border-radius:12px;border:1px solid var(--overlay);font-size:15px;color:var(--sub)}
+.seg-b.on{background:var(--blue);border-color:var(--blue);color:var(--bg);font-weight:700}.seg-b.on.k{background:#CBA6F7;border-color:#CBA6F7}
+.seg-b.dimb{opacity:.55;font-size:13px;height:36px}
+.step{display:flex;align-items:center;gap:6px}.step button{width:52px;height:44px;border-radius:12px;background:var(--surface);color:var(--sub);font-size:15px}
+.step b{min-width:90px;text-align:center;font-size:22px;font-variant-numeric:tabular-nums}
+.tiles{display:grid;grid-template-columns:repeat(9,1fr);gap:10px}
+.tile{height:84px;border-radius:16px;border:1px solid var(--overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--sub)}
+.tile small{font-size:11.5px}.tile.on{background:rgba(148,226,213,.16);border-color:#94E2D5;color:#94E2D5}.tile.dim{opacity:.35}
+.ztext{max-width:420px}
+/* Network (MQTT-SPEC) */
+.mq-grid{display:grid;grid-template-columns:2.2fr .8fr 1.2fr 1.2fr;gap:10px;padding:4px 0 16px}
+.mq-grid label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.5px;color:var(--muted);min-width:0}
+.mq-grid .field,#sheet .field{flex:none;width:100%;min-width:0;box-sizing:border-box}
+.mq-row.mq-head{min-height:40px;font-size:12px;color:var(--muted);letter-spacing:.3px;border-top:0}
+.mq-row{display:grid;grid-template-columns:1.3fr 2fr 1.2fr .9fr;gap:10px;align-items:center;min-height:56px;width:100%;text-align:left;border-top:1px solid var(--overlay)}
+.mq-row .t{font-size:13px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mq-row .v{text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chipb{height:42px;padding:0 14px;border-radius:21px;border:1px solid var(--line);color:var(--sub);font-size:14px}
+.chipb.on{border-color:var(--blue);background:rgba(137,180,250,.14);color:var(--blue);font-weight:600}
+.live{height:48px;padding:0 14px;border-radius:12px;background:var(--surface);display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub)}
+.live b{font-size:18px;color:var(--text)}
+</style>
+</head>
+<body>
+<script src="common.js"></script>
+<script src="check.js"></script>
+<script src="extractor-check.js"></script>
+<script src="water-check.js"></script>
+<script src="label.js"></script>
+<script src="printer-check.js"></script>
+<script src="alarm-editor.js"></script>
+<div id="page">
+ <nav>
+  <button id="back"><svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 4L6 9l5 5" fill="none" stroke="#A6ADC8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Roast</button>
+  <h2>Settings</h2>
+  <button class="tab" data-t="general">⚙<span>General<small>Machine, your name</small></span></button>
+  <button class="tab" data-t="controls">☰<span>Controls<small>Names and steps</small></span></button>
+  <button class="tab" data-t="devices">ᛒ<span>Devices<small>Roaster link, sensors</small></span></button>
+  <button class="tab" data-t="network"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="19" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 7.3L6.3 15.8M13 7.3l4.7 8.5M7.5 18h9" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Network<small>MQTT broker, sensors</small></span></button>
+  <button class="tab" data-t="alarms"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 19a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Alarms<small>For every roast</small></span></button>
+  <button class="tab" data-t="cave"><svg width="20" height="20" viewBox="0 0 512 512" aria-hidden="true"><g transform="rotate(-28 256 256)"><path fill="currentColor" d="M 256,51 C 338.8,51 406,142.8 406,256 C 406,369.2 338.8,461 256,461 C 173.2,461 106,369.2 106,256 C 106,142.8 173.2,51 256,51 Z"/></g></svg><span>BeanCave<small>Your green coffees</small></span></button>
+ </nav>
+ <main id="main"></main>
+</div>
+<div id="toast"></div>
+<div id="al-undo" class="al-undo"></div>
+<div id="zscrim"></div><div id="zsheet"></div>
+<div id="scrim"><div class="sheet" id="sheet"></div></div>
+<script>
+"use strict";
+var cave = null; // what the tablet holds (get_cave)
+var alarms = null; // the alarm lists on the tablet and the active one (get_alarms)
+var roastCount = null; // {tablet, computer}: the roasts it holds (get_roasts)
+// Opened from the BeanCave screen (#cave): its tab first, and back there.
+var fromCave = location.hash === "#cave", home = fromCave ? "beancave.html" : "roast.html";
+var setup = null, draft = null, tab = fromCave ? "cave" : "controls", heard = [], scanState = "", asked = false, leaving = false, checking = false;
+var LEVER_WHERE = { burner: "Always on screen", air: "Always on screen", drum: "Opened on demand", extractor: "Opened on demand" };
+
+function dirty() { return JSON.stringify(draft) !== JSON.stringify(setup.config); }
+function toast(text) { var t = $("toast"); t.textContent = text; t.style.display = "block"; setTimeout(function () { t.style.display = "none"; }, 3500); }
+
+window.onSnapshot = function (method, d) {
+  if (d && d.unit) setUnit(draft && draft.unit || d.unit); // the unit being chosen, until saved
+  if (!d) { if (leaving) { leaving = false; toast("Settings change only between roasts"); } return; }
+  if (!asked) { asked = true; send("get_setup"); if (tab === "cave") { send("get_cave"); send("get_roasts"); } }
+  if (method === "get_setup" && d.reply) {
+    setup = d.reply; draft = JSON.parse(JSON.stringify(setup.config)); splashDone(); render();
+  } else if (method === "save_setup" && d.reply) {
+    go(leaving || home);
+  } else if ((method === "get_cave" || method === "cave_import" || method === "cave_start_empty") && d.reply) {
+    cave = d.reply; closeSheet(); if (tab === "cave") render();
+  } else if (method === "get_roasts" && d.reply) {
+    roastCount = { tablet: 0, computer: 0 };
+    d.reply.roasts.forEach(function (r) { roastCount[r.origin]++; });
+    if (tab === "cave") render();
+  } else if (method === "roasts_preview" && d.reply) {
+    // What the picked folder holds, and Import in our own words (the system picker cannot say it).
+    var v = d.reply;
+    openSheet("<h3>Roasts from the computer</h3><p>" + (v.new + v.already + v.invalid) + " files in “" + esc(v.folder) + "”.</p>" +
+      '<div class="facts"><div><span>To import</span><b class="num">' + v.new + '</b></div><div><span>Already on the tablet</span><b class="num">' + v.already +
+      '</b></div><div><span>Not a roast file</span><b class="num">' + v.invalid + "</b></div></div>" +
+      '<div style="display:flex;justify-content:flex-end;gap:10px"><button class="btn primary" id="imp-go"' +
+      (v.new ? "" : " disabled") + ">Import " + (v.new ? v.new + " roasts" : "") + "</button></div>", function () { send("roasts_import_cancel"); });
+    $("imp-go").onclick = function () { send("roasts_import_confirm"); closeSheet(); };
+  } else if (method === "import_roasts" && d.reply) {
+    var n = d.reply;
+    openSheet("<h3>Roasts from the computer</h3><div class=\"facts\"><div><span>Imported</span><b class=\"num\">" + n.imported + "</b></div><div><span>Already on the tablet</span><b class=\"num\">" +
+      n.already + "</b></div><div><span>Not a roast file</span><b class=\"num\">" + n.invalid + "</b></div></div><p>They show in BeanCave › Roasts, marked from the computer.</p>" +
+      '<div style="display:flex;justify-content:flex-end"><button class="btn primary" id="imp-ok">Done</button></div>');
+    $("imp-ok").onclick = closeSheet;
+    send("get_roasts");
+  } else if (method === "cave_preview" && d.reply) {
+    previewFile(d.reply);
+  } else if (d.reply && onAlarmReply(method, d.reply)) {
+    // the alarm editor took it (alarm-editor.js)
+  } else if ((method === "get_alarms" || method === "set_alarm_list" || method === "import_alarms" || method === "delete_alarm_list") && d.reply) {
+    alarms = d.reply;
+    // Saved at once: the draft follows, so leaving the page keeps it.
+    draft.alarm_list = setup.config.alarm_list = alarms.active;
+    if (method === "import_alarms") toast("“" + alarms.active + "” is used for every roast");
+    if (tab === "alarms") render();
+  } else if (method === "save_mqtt" && d.reply) {
+    setup.config.mqtt = d.reply.mqtt; // saved: leaving the page has nothing more to keep for it
+  } else if (method === "mqtt_check" && d.reply) {
+    mqHeard[d.reply.key] = d.reply;
+    if (tab === "network") { if (d.reply.key === "sheet") renderSheetLive(); else renderSensorValues(); }
+  } else if (method === "classify_scan" && d.reply) {
+    heard = d.reply; if (tab === "devices" && !checking) render();
+  }
+};
+window.onScanState = function (state) { scanState = state; if (!checking) render(); };
+
+function selectTab(t) {
+  stopCheck();
+  tab = t;
+  send(t === "devices" ? "scan_start" : "scan_stop");
+  if (t === "network") brokerConnect();
+  if (t === "cave") { send("get_cave"); send("get_roasts"); }
+  if (t === "alarms") send("get_alarms");
+  render();
+}
+
+function render() {
+  if (!setup || heldWhilePressed($("main"), render)) return;
+  document.querySelectorAll(".tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === tab); });
+  if (tab === "general") renderGeneral(); else if (tab === "controls") renderControls(); else if (tab === "cave") renderCave();
+  else if (tab === "alarms") renderAlarms(); else if (tab === "network") renderNetwork(); else renderDevices();
+}
+
+function renderGeneral() {
+  var m = draft.machine ? setup.catalogue.machines[draft.machine] : null;
+  $("main").innerHTML = '<div><h1>General</h1><div class="lede">Your machine, the name on your roasts and the temperature unit.</div></div><div class="panel">' +
+    '<div class="row"><span class="k"><b>Machine</b><small>From the first setup</small></span><span class="field" style="display:flex;align-items:center">' +
+    esc(m ? m.manufacturer + " " + m.model : "Not chosen yet") + '</span><button class="btn" id="redo">Change</button></div>' +
+    '<div class="row"><span class="k"><b>Your name</b><small>Shown on roast records</small></span><input class="field" id="operator" maxlength="40" value="' + esc(draft.operator) + '"></div>' +
+    '<div class="row"><span class="k"><b>Temperature unit</b><small>Readings, curves, targets and alarms. Roast files stay in °C</small></span><div class="seg" id="unit">' +
+    '<button data-u="C"' + (draft.unit !== "F" ? ' class="on"' : "") + '>°C</button><button data-u="F"' + (draft.unit === "F" ? ' class="on"' : "") + ">°F</button></div></div>" +
+    detectRow("charge_detection", "Charge detection", "Marks Charge from the bean probe, by hand or following a roast") +
+    detectRow("dry_end_detection", "Dry end detection", "Marks Dry end from the bean probe when you roast without a plan") +
+    detectRow("crack_detection", "Crack detection", "TilauAmbient listens to the cracks: CAL1, CAL2, then counting to Drop") + logRow() + "</div>";
+  $("main").querySelectorAll(".seg[data-key] button").forEach(function (b) {
+    b.onclick = function () { draft[b.parentNode.dataset.key] = b.dataset.v === "1"; render(); };
+  });
+  $("unit").querySelectorAll("button").forEach(function (b) { b.onclick = function () { draft.unit = b.dataset.u; setUnit(draft.unit); render(); }; });
+  $("redo").onclick = function () { leave("setup.html"); };
+  $("sharelog").onclick = function () { send("share_log"); };
+  $("operator").oninput = function () { draft.operator = this.value; };
+}
+
+// The diagnostic log, sent with a problem: its size and since when, and the share picto.
+function logRow() {
+  var info = { bytes: 0, since: "" };
+  try { if (window.TilauBridge && TilauBridge.logInfo) info = JSON.parse(TilauBridge.logInfo()); } catch (e) { /* no log yet */ }
+  var size = info.bytes >= 1e6 ? (info.bytes / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(info.bytes / 1e3)) + " kB";
+  var day = info.since ? new Date(info.since + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+  return '<div class="row"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="flex:none"><path d="M6 3h9l4 4v14H6z" fill="none" stroke="#A6ADC8" stroke-width="1.8" stroke-linejoin="round"/>' +
+    '<path d="M9 11h7M9 14.5h7M9 18h5" stroke="#A6ADC8" stroke-width="1.8" stroke-linecap="round"/></svg>' +
+    '<span class="k" style="flex:1;width:auto"><b>Diagnostic log</b><small>What the app did lately, to send with a problem' + (info.bytes ? " · " + size + (day ? " since " + day : "") : "") + "</small></span>" +
+    '<button id="sharelog" aria-label="Share the diagnostic log" style="width:52px;height:52px;border-radius:26px;background:var(--blue);display:flex;align-items:center;justify-content:center;flex:none">' +
+    '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5.5" r="2.5" fill="none" stroke="#1E1E2E" stroke-width="2"/><circle cx="6" cy="12" r="2.5" fill="none" stroke="#1E1E2E" stroke-width="2"/>' +
+    '<circle cx="18" cy="18.5" r="2.5" fill="none" stroke="#1E1E2E" stroke-width="2"/><path d="M8.2 10.9l7.6-4.2M8.2 13.1l7.6 4.2" stroke="#1E1E2E" stroke-width="2"/></svg></button></div>';
+}
+
+function detectRow(key, title, sub) {
+  return '<div class="row"><span class="k"><b>' + title + "</b><small>" + sub + '</small></span><div class="seg" data-key="' + key + '">' +
+    '<button data-v="0"' + (draft[key] ? "" : ' class="on"') + '>Off</button><button data-v="1"' + (draft[key] ? ' class="on"' : "") + ">On</button></div></div>";
+}
+
+function renderControls() {
+  var keys = Object.keys(draft.levers).filter(function (k) {
+    var mine = draft.machine ? setup.catalogue.machines[draft.machine].levers : ["burner", "air", "drum"];
+    return mine.indexOf(k) >= 0 || k === "extractor";
+  });
+  var html = '<div><h1>Controls</h1><div class="lede">Names and steps used on the roast screen. Colours follow the theme.</div></div><div class="panel">' +
+    '<div class="head"><span style="width:190px">CONTROL</span><span style="flex:1">NAME ON SCREEN</span><span style="width:170px">STEP PER TAP</span></div>';
+  keys.forEach(function (k) {
+    var lv = draft.levers[k], free = k === "extractor";
+    html += '<div class="row"><span class="k"><b>' + esc(k.charAt(0).toUpperCase() + k.slice(1)) + "</b><small>" + LEVER_WHERE[k] + "</small></span>" +
+      (free ? '<input class="field" id="extname" maxlength="24" value="' + esc(lv.name) + '">' : '<span class="field" style="display:flex;align-items:center;color:var(--sub)">' + esc(lv.name) + "</span>") +
+      '<span class="stepper"><button data-k="' + k + '" data-d="-1" aria-label="Smaller step">−</button><b class="num">' + lv.step + ' %</b><button data-k="' + k + '" data-d="1" aria-label="Larger step">+</button></span></div>';
+  });
+  html += '</div><div class="note"><span style="color:var(--blue)">ⓘ</span>The extractor is a separate device: rename it as you call it. Changes apply when you go back to the roast screen, never during a roast.</div>';
+  $("main").innerHTML = html;
+  if ($("extname")) $("extname").oninput = function () { draft.levers.extractor.name = this.value; };
+  $("main").querySelectorAll(".stepper button").forEach(function (b) {
+    b.onclick = function () {
+      var lv = draft.levers[b.dataset.k];
+      lv.step = Math.max(1, Math.min(25, lv.step + +b.dataset.d)); render();
+    };
+  });
+}
+
+// A device check replaces the Devices page until the operator goes back.
+function startCheck(check, arg) {
+  checking = check; send("scan_stop");
+  $("main").innerHTML = '<button class="btn" id="ckback" style="align-self:flex-start;border:0;padding:0 8px">‹ Devices</button><div id="ckbox" style="flex:1;min-height:0;display:flex"></div>';
+  $("ckback").onclick = function () { stopCheck(); send("scan_start"); render(); };
+  check.open($("ckbox"), arg);
+}
+function stopCheck() { if (checking) { checking.close(); checking = false; } }
+
+// A test needs the device nearby: its Test button stays grey until the scan hears it.
+function heardNow(kind, address) { return heard.some(function (h) { return h.kind === kind && h.address === address; }); }
+
+function renderDevices() {
+  var cat = setup.catalogue, m = draft.machine ? cat.machines[draft.machine] : null;
+  var html = '<div><h1>Devices</h1><div class="lede">The tablet looks for them while this page is open. Nothing is sent to them here.</div></div>';
+  if (scanState === "denied") html += '<div class="note">The tablet needs permission to look for Bluetooth devices. <button class="btn" id="retry">Allow</button></div>';
+  if (scanState === "bluetooth_off") html += '<div class="note">Bluetooth is off. Turn it on, then try again. <button class="btn" id="retry">Try again</button></div>';
+  html += '<div class="panel"><div class="row"><span class="k"><b>Roaster</b><small>' + esc(m ? m.manufacturer + " " + m.model : "No machine chosen") + "</small></span>" +
+    '<span class="field" style="display:flex;align-items:center">' + esc(draft.roaster ? draft.roaster.name + " · " + draft.roaster.address.slice(-5) : "Not linked") + "</span>" +
+    (draft.roaster ? '<button class="btn primary" id="test"' + (heardNow("machine", draft.roaster.address) ? "" : " disabled") + '>Test</button><button class="btn" id="forget">Forget</button>' : "") + "</div>";
+  if (m) {
+    heard.filter(function (h) { return h.kind === "machine" && h.key === draft.machine; }).forEach(function (f) {
+      var sel = draft.roaster && draft.roaster.address === f.address;
+      html += '<div class="row"><span class="k"><small>Found nearby</small></span><button class="pick' + (sel ? " sel" : "") + '" style="flex:1" data-a="' + esc(f.address) +
+        '" data-n="' + esc(f.name) + '">' + esc(f.name) + ' <span class="status num">' + esc(f.address.slice(-5)) + "</span></button></div>";
+    });
+  }
+  html += "</div><div class=\"panel\">";
+  Object.keys(cat.devices).forEach(function (key) {
+    var f = heard.filter(function (h) { return h.kind === "device" && h.key === key; }).sort(function (a, b) { return b.rssi - a.rssi; })[0];
+    var kept = draft.devices[key], on = kept && kept.enabled;
+    var status = kept ? (f && f.address === kept.address ? "Saved · heard now" : "Saved · not heard right now") : f ? "Found nearby" : "Not found";
+    html += '<div class="row"><span class="k"><b>' + esc(cat.devices[key].label) + '</b><small>' + status + '</small></span><span style="flex:1"></span>' +
+      (kept && key === "extractor" ? '<button class="btn primary" id="xtest"' + (heardNow("device", kept.address) ? "" : " disabled") + '>Test</button>' : "") +
+      (kept && key === "water" ? '<button class="btn primary" id="wtest"' + (heardNow("device", kept.address) ? "" : " disabled") + '>Test</button>' : "") +
+      (kept && key === "printer" ? '<button class="btn primary" id="ptest"' + (heardNow("device", kept.address) ? "" : " disabled") + '>Test</button>' : "") +
+      (kept ? '<button class="btn" data-forget="' + key + '">Forget</button>' : "") +
+      (f || kept ? '<button class="switch' + (on ? " on" : "") + '" role="switch" aria-checked="' + !!on + '" aria-label="Use ' + esc(cat.devices[key].label) + '" data-k="' + key +
+        '" data-a="' + esc(f ? f.address : kept.address) + '" data-n="' + esc(f ? f.name : kept.name) + '"></button>' : "") + "</div>";
+  });
+  $("main").innerHTML = html + "</div>";
+  if ($("retry")) $("retry").onclick = function () { send("scan_start"); };
+  if ($("test")) $("test").onclick = function () { startCheck(Check, draft.roaster.address); };
+  if ($("xtest")) $("xtest").onclick = function () { startCheck(ExtractorCheck, draft.devices.extractor); };
+  if ($("wtest")) $("wtest").onclick = function () { startCheck(WaterCheck, draft.devices.water); };
+  if ($("ptest")) $("ptest").onclick = function () { startCheck(PrinterCheck, draft.devices.printer); };
+  if ($("forget")) $("forget").onclick = function () { draft.roaster = null; render(); };
+  $("main").querySelectorAll(".pick").forEach(function (b) { b.onclick = function () { draft.roaster = { name: b.dataset.n, address: b.dataset.a }; render(); }; });
+  $("main").querySelectorAll("[data-forget]").forEach(function (b) { b.onclick = function () { delete draft.devices[b.dataset.forget]; render(); }; });
+  $("main").querySelectorAll(".switch").forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.k, cur = draft.devices[k];
+      if (cur) cur.enabled = !cur.enabled; else draft.devices[k] = { name: b.dataset.n, address: b.dataset.a, enabled: true };
+      render();
+    };
+  });
+}
+
+// BeanCave: the desktop's BeanCave files (coffees, tastings, brews), imported from its folder and sent back together.
+function day(epoch) { var d = new Date(epoch * 1000), p = function (n) { return ("0" + n).slice(-2); }; return p(d.getDate()) + "-" + p(d.getMonth() + 1) + "-" + d.getFullYear(); }
+function kg(g) { return g >= 1000 ? (g / 1000).toFixed(1) + " kg" : g + " g"; }
+function facts(c) {
+  return '<div class="facts"><div><span>Coffees</span><b class="num">' + c.coffees + '</b></div><div><span>In stock</span><b class="num">' + c.in_stock +
+    '</b></div><div><span>Green stock</span><b class="num">' + kg(c.stock_g) + '</b></div><div><span>Tastings</span><b class="num">' + c.tastings + "</b></div></div>";
+}
+
+// Currency of purchase prices: the desktop's list, the system one until one is chosen.
+var CURRENCY_NOTE = "Currency of the green-bean prices and of the roast and stock costs shown in BeanCave.";
+function currencyCodes() {
+  var codes = Object.keys(setup.catalogue.currencies), system = systemCurrency();
+  if (codes.indexOf(system) < 0) codes.unshift(system);
+  return codes;
+}
+function currencyLabel(code) { return '<b>' + esc(code) + '</b><span class="sym">— ' + esc(setup.catalogue.currencies[code] || code) + "</span>"; }
+// Roasts in and out, the only place they are exchanged: the computer's files in, the tablet's out.
+function roastsRow() {
+  var held = roastCount ? roastCount.tablet + " made here · " + roastCount.computer + " from the computer" : "";
+  return '<div class="row"><span class="k"><b>Roasts</b><small>' + held + '</small></span><span style="flex:1"></span>' +
+    '<button class="btn" id="rs-import">Import from the computer…</button><button class="btn primary" id="rs-send">Send the tablet\'s roasts…</button></div>';
+}
+function currencyRow() {
+  var code = draft.currency || systemCurrency();
+  return '<div class="row"><span class="k"><b>Currency</b><small>Purchase prices</small></span><button class="curbtn" id="cv-currency">' + currencyLabel(code) +
+    (draft.currency ? "" : '<span class="tag">SYSTEM</span>') + '<span class="chev">›</span></button><span class="status" style="max-width:34ch">' + CURRENCY_NOTE + "</span></div>";
+}
+function pickCurrency() {
+  var current = draft.currency || systemCurrency(), system = systemCurrency();
+  openSheet("<h3>Currency</h3><p>" + CURRENCY_NOTE + '</p><div class="curgrid num">' + currencyCodes().map(function (code) {
+    return '<button data-c="' + esc(code) + '"' + (code === current ? ' class="sel"' : "") + ">" + currencyLabel(code) + (code === system ? "<small>SYSTEM</small>" : "") + "</button>";
+  }).join("") + "</div>");
+  $("sheet").querySelectorAll(".curgrid button").forEach(function (b) { b.onclick = function () { draft.currency = b.dataset.c; closeSheet(); render(); }; });
+}
+
+function renderCave() {
+  var tablet = draft.cave_owner !== "computer";
+  var html = '<div><h1>BeanCave</h1><div class="lede">Your green coffees and their tastings, in the same files as TilauScope on a computer.</div></div>' +
+    '<div class="panel"><div class="row"><span class="k"><b>Stock kept by</b><small>Who decreases the stock at each roast</small></span><div class="seg">' +
+    '<button data-o="tablet"' + (tablet ? ' class="on"' : "") + '>This tablet<small>Coffees edited here</small></button>' +
+    '<button data-o="computer"' + (tablet ? "" : ' class="on"') + ">A computer<small>TilauScope desktop</small></button></div></div>";
+  if (cave && cave.present) {
+    var from = (cave.source ? "from " + cave.source + " " : "") + "on " + day(cave.since);
+    html += '<div class="row"><span class="k"><b>' + (tablet ? "On this tablet" : "Copy from the computer") + "</b><small>" +
+      (cave.source ? "Imported " + esc(from) : "Started empty " + day(cave.since)) + (tablet ? "" : " · read only") + "</small></span>" + facts(cave) + "</div>";
+    if (!tablet) html += '<div class="row"><span class="k"><b>To send back</b><small>Applied once by the computer</small></span><span class="status" style="flex:1">Nothing waiting. Roasts and measurements made on the tablet will wait here.</span></div>';
+    html += '<div class="row"><span class="k"><b>BeanCave files</b><small>beancave.json · tastings.json · brewlog.json</small></span><span style="flex:1"></span>' +
+      '<button class="btn" id="cv-import">Import the BeanCave…</button><button class="btn primary" id="cv-export">Send the BeanCave…</button></div>' + roastsRow() + currencyRow() + "</div>" +
+      '<div class="note">Import: choose the BeanCave folder of TilauScope; the coffees and their tastings are read together. Send: put the files in the BeanCave folder of TilauScope on the computer, replacing the ones there.</div>';
+  } else if (cave) {
+    html += roastsRow() + currencyRow() + '</div><div class="empty"><b>No coffee on this tablet yet</b><p>' + (tablet ?
+      "Import the BeanCave folder of TilauScope desktop, or start an empty BeanCave and add your coffees here." :
+      "Import the BeanCave folder of TilauScope desktop: the tablet keeps a read-only copy.") + '</p><div style="display:flex;gap:12px">' +
+      (tablet ? '<button class="btn" id="cv-empty">Start empty</button>' : "") + '<button class="btn primary" id="cv-import">Import the BeanCave…</button></div></div>';
+  } else html += roastsRow() + currencyRow() + "</div>";
+  $("main").innerHTML = html;
+  $("main").querySelectorAll(".seg button").forEach(function (b) { b.onclick = function () { draft.cave_owner = b.dataset.o; render(); }; });
+  var on = function (id, fn) { var el = $(id); if (el) el.onclick = fn; };
+  on("cv-import", function () { send("cave_pick"); });
+  on("cv-export", function () { send("cave_export"); });
+  on("cv-empty", function () { send("cave_start_empty"); });
+  on("cv-currency", pickCurrency);
+  on("rs-import", function () { send("roasts_import"); });
+  on("rs-send", function () { send("roasts_send"); });
+}
+
+var sheetDismiss = null; // what touching outside the sheet does besides closing it
+function openSheet(html, onDismiss) { $("sheet").innerHTML = html; $("scrim").style.display = "flex"; sheetDismiss = onDismiss || null; }
+function closeSheet() { $("scrim").style.display = "none"; }
+$("scrim").onclick = function (e) { if (e.target !== this) return; var dismiss = sheetDismiss; closeSheet(); if (dismiss) dismiss(); };
+
+// The picked folder: refused unless every BeanCave file in it reads, compared before it replaces the tablet's.
+function previewFile(p) {
+  if (!p.valid) {
+    openSheet('<h3 style="color:var(--red)">' + esc(p.reason) + '</h3><p>Folder “' + esc(p.source) + '”. Nothing was changed on the tablet.</p>' +
+      '<div style="display:flex;justify-content:flex-end"><button class="btn primary" id="sh-ok">OK</button></div>');
+    $("sh-ok").onclick = closeSheet;
+    return;
+  }
+  if (!cave || !cave.present) { send("cave_import"); return; }
+  openSheet("<h3>Replace the BeanCave on this tablet?</h3><div class=\"cmp\"><div><span>On this tablet</span><b class=\"num\">" + cave.coffees + " coffees</b><small>" + cave.in_stock +
+    " in stock · " + cave.tastings + " tastings · since " + day(cave.since) + '</small></div><div><span>In the folder</span><b class="num">' + p.coffees + " coffees</b><small>" + p.in_stock +
+    " in stock · " + p.tastings + " tastings · " + esc(p.source) + "</small></div></div><p>Files in the folder: " + p.files.join(" · ") +
+    ".</p><p>The folder replaces the tablet's coffees, tastings and brews. Send them first to keep a copy of what the tablet holds.</p>" +
+    '<div style="display:flex;gap:12px;justify-content:flex-end"><button class="btn" id="sh-export">Send first…</button>' +
+    '<button class="btn danger" id="sh-replace">Replace</button></div>');
+  $("sh-export").onclick = function () { send("cave_export"); };
+  $("sh-replace").onclick = function () { send("cave_import"); };
+}
+/* ---------- Network: the MQTT broker and its sensors (MQTT-SPEC) ---------- */
+var MQ_FEEDS = [["room_c", "Room temperature"], ["room_rh", "Room humidity"], ["pressure_hpa", "Pressure"], ["roaster_w", "Roaster power"], ["extractor_w", "Extractor power"]];
+var MQ_UNIT = { room_c: "°C", room_rh: "%", pressure_hpa: "hPa", roaster_w: "W", extractor_w: "W" };
+var mqState = "", mqHeard = {}, mqSheet = null, mqTimer = null;
+// Names, topics and fields are case-sensitive: some keyboards capitalise the first letter whatever the
+// field asks, so a first letter typed into an empty field is put back in lower case (operator, 2026-10-23).
+function lowerFirst(input) { if (input.value.length === 1) input.value = input.value.toLowerCase(); }
+function feedName(f) { return MQ_FEEDS.filter(function (x) { return x[0] === f; })[0][1]; }
+function broker() { return draft.mqtt || { host: "", port: 1883, user: "", password: "", tls: false, sensors: [] }; }
+window.onMqtt = function (s) { mqState = s.state; if (tab === "network" && $("mq-state")) $("mq-state").innerHTML = brokerState(); };
+
+// While this page is open the tablet listens to the sensors' topics and to the one being typed, never to
+// every topic: a busy broker would flood the worker that also samples the roast.
+function oneTopic(t) { return t.trim() && !/[+#]/.test(t) ? t.trim() : null; }
+function brokerConnect() {
+  var b = broker(), topics = [];
+  b.sensors.map(function (x) { return x.topic; }).concat(mqSheet && oneTopic(mqSheet.s.topic) ? [oneTopic(mqSheet.s.topic)] : [])
+    .forEach(function (t) { if (topics.indexOf(t) < 0) topics.push(t); });
+  if (b.host.trim()) send("mqtt_connect", JSON.stringify({ host: b.host.trim(), port: b.port, user: b.user, password: b.password, tls: b.tls, topics: topics }));
+  else send("mqtt_disconnect");
+}
+// Saved at each change: an app closed before leaving the page keeps the broker and its sensors.
+function saveBroker() {
+  var b = broker();
+  if (!b.host.trim() && b.sensors.length) return; // sensors wait for their broker's host
+  send("save_mqtt", JSON.stringify(b.host.trim() ? b : null));
+}
+function askReadings() {
+  if (tab !== "network") { clearInterval(mqTimer); mqTimer = null; return; }
+  broker().sensors.forEach(function (x, i) { send("mqtt_check", JSON.stringify(Object.assign({ key: i }, x))); });
+  if (mqSheet) checkSheet();
+}
+function shownValue(h, feeds) {
+  if (!h || !h.heard) return '<span style="color:var(--muted)">not heard</span>';
+  if (h.value == null) return '<span style="color:var(--peach)">no number</span>';
+  var v = feeds === "room_c" ? shownT(h.value).toFixed(1) : Math.round(h.value); // a room temperature in the unit shown
+  return '<span style="color:var(--green)">' + v + " " + (feeds === "room_c" ? deg() : MQ_UNIT[feeds]) + "</span>";
+}
+
+// Live values and the broker's state are written in place: a full render would drop what is being typed.
+function renderSensorValues() {
+  broker().sensors.forEach(function (x, i) { var el = $("mq-v-" + i); if (el) el.innerHTML = shownValue(mqHeard[i], x.feeds); });
+}
+function brokerState() {
+  var state = { connected: ["var(--green)", "Connected"], connecting: ["var(--yellow)", "Connecting…"], refused: ["var(--red)", "Refused: check the user and password"],
+    unreachable: ["var(--red)", "Not reachable: check the host and port, and the Wi-Fi"] }[mqState];
+  return broker().host.trim() && state ? '<span style="color:' + state[0] + '">● ' + state[1] + "</span>" : "MQTT 3.1.1";
+}
+
+function renderNetwork() {
+  if (!mqTimer) mqTimer = setInterval(askReadings, 2000);
+  var b = broker();
+  var html = '<div><h1>Network</h1><div class="lede">Sensors read over MQTT: room conditions and power. TilauAmbient wins over them when it reads.</div></div>' +
+    '<div class="panel"><div class="row" style="border:0"><span class="k"><b>Broker</b><small id="mq-state">' + brokerState() + '</small></span><span style="flex:1"></span>' +
+    '<span class="status">TLS</span><button class="switch' + (b.tls ? " on" : "") + '" role="switch" aria-checked="' + b.tls + '" aria-label="Encrypted connection" id="mq-tls"></button></div>' +
+    '<div class="mq-grid"><label>HOST<input class="field" id="mq-host" value="' + esc(b.host) + '" placeholder="192.168.1.20" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false"></label>' +
+    '<label>PORT<input class="field" id="mq-port" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" inputmode="numeric" value="' + b.port + '"></label>' +
+    '<label>USER<input class="field" id="mq-user" value="' + esc(b.user) + '" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false"></label>' +
+    '<label>PASSWORD<input class="field" id="mq-pass" type="password" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" value="' + esc(b.password) + '"></label></div></div>' +
+    '<div class="panel"><div class="mq-row mq-head"><span>SENSOR</span><span>TOPIC</span><span>FEEDS</span><span style="text-align:right">NOW</span></div>';
+  b.sensors.forEach(function (x, i) {
+    html += '<button class="mq-row" data-i="' + i + '"><span>' + esc(x.name) + '</span><span class="t">' + esc(x.topic) + (x.field ? " › " + esc(x.field) : "") +
+      '</span><span style="font-size:13px;color:' + (/_w$/.test(x.feeds) ? "var(--peach)" : "var(--teal)") + '">' + feedName(x.feeds) + '</span><span class="v" id="mq-v-' + i + '">' + shownValue(mqHeard[i], x.feeds) + "</span></button>";
+  });
+  html += '<div style="display:flex;justify-content:center;padding:12px 0;border-top:' + (b.sensors.length ? "1px solid var(--overlay)" : "0") + '"><button class="ib" id="mq-add" aria-label="Add a sensor">' +
+    '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div></div>';
+  $("main").innerHTML = html;
+  function field(id, key, number) {
+    $(id).onchange = function () {
+      var next = broker(); var port = parseInt(this.value, 10);
+      next[key] = number ? (port >= 1 && port <= 65535 ? port : 1883) : this.value; draft.mqtt = next; brokerConnect(); saveBroker();
+    };
+  }
+  field("mq-host", "host"); field("mq-port", "port", true); field("mq-user", "user"); field("mq-pass", "password");
+  ["mq-host", "mq-user"].forEach(function (id) { $(id).oninput = function () { lowerFirst(this); }; });
+  $("mq-tls").onclick = function () { var next = broker(); next.tls = !next.tls; draft.mqtt = next; brokerConnect(); saveBroker(); render(); };
+  $("mq-add").onclick = function () { openSensor(null); };
+  $("main").querySelectorAll(".mq-row").forEach(function (r) { r.onclick = function () { openSensor(+r.dataset.i); }; });
+}
+
+// A sensor's sheet: touching outside leaves it as it was; ✓ keeps the change.
+function openSensor(index) {
+  var x = index == null ? { name: "", topic: "", field: "", feeds: "room_c", unit: "C", multiplier: 1, divider: 1 } : broker().sensors[index];
+  mqSheet = { index: index, s: JSON.parse(JSON.stringify(x)) };
+  delete mqHeard.sheet;
+  openSheet("", function () { mqSheet = null; render(); });
+  renderSheet();
+}
+function renderSheet() {
+  var s = mqSheet.s;
+  $("sheet").innerHTML = '<div style="display:flex;align-items:center;gap:12px"><h3 style="flex:1">' + (mqSheet.index == null ? "New sensor" : esc(s.name)) + "</h3>" +
+    (mqSheet.index == null ? "" : '<button class="ib" id="sh-del" aria-label="Delete the sensor" style="color:var(--red)"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>') +
+    '<button class="ib" id="sh-ok" aria-label="Keep" style="color:var(--green);border-color:var(--green)"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>' +
+    '<div class="mq-grid" style="grid-template-columns:1fr 1.6fr 1fr;padding:0"><label>SENSOR<input class="field" id="sh-label" maxlength="24" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" value="' + esc(s.name) + '"></label>' +
+    '<label>TOPIC<input class="field" id="sh-topic" value="' + esc(s.topic) + '" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="zigbee2mqtt/lab"></label>' +
+    '<label>FIELD<input class="field" id="sh-field" value="' + esc(s.field) + '" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="value"></label></div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px"><span class="zh">FEEDS</span><div class="chips">' + MQ_FEEDS.map(function (f) {
+      return '<button class="chipb' + (s.feeds === f[0] ? " on" : "") + '" data-f="' + f[0] + '">' + f[1] + "</button>"; }).join("") + "</div></div>" +
+    (s.feeds === "room_c" ? '<div class="seg" style="align-self:flex-start"><button data-u="C"' + (s.unit !== "F" ? ' class="on"' : "") + '>°C</button><button data-u="F"' + (s.unit === "F" ? ' class="on"' : "") + ">°F</button></div>" : "") +
+    '<div style="display:flex;align-items:flex-end;gap:10px"><label class="zh" style="flex-direction:column;align-items:flex-start;width:110px">MULTIPLY BY<input class="field" id="sh-mul" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" inputmode="decimal" value="' + s.multiplier + '" style="width:110px"></label>' +
+    '<label class="zh" style="flex-direction:column;align-items:flex-start;width:110px">DIVIDE BY<input class="field" id="sh-div" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" inputmode="decimal" value="' + s.divider + '" style="width:110px"></label>' +
+    '<span style="flex:1"></span><span class="live" id="sh-live"></span></div>';
+  function text(id, key) { $(id).oninput = function () { lowerFirst(this); s[key] = this.value; }; $(id).onchange = checkSheet; }
+  text("sh-label", "name"); text("sh-topic", "topic"); text("sh-field", "field"); text("sh-mul", "multiplier"); text("sh-div", "divider");
+  $("sh-topic").onchange = function () { brokerConnect(); checkSheet(); };
+  $("sheet").querySelectorAll(".chipb").forEach(function (b) { b.onclick = function () { s.feeds = b.dataset.f; renderSheet(); checkSheet(); }; });
+  $("sheet").querySelectorAll("[data-u]").forEach(function (b) { b.onclick = function () { s.unit = b.dataset.u; renderSheet(); checkSheet(); }; });
+  if ($("sh-del")) $("sh-del").onclick = function () { var next = broker(); next.sensors.splice(mqSheet.index, 1); draft.mqtt = next; mqSheet = null; mqHeard = {}; closeSheet(); render(); brokerConnect(); saveBroker(); };
+  $("sh-ok").onclick = function () {
+    if (!s.name.trim() || !s.topic.trim()) { toast("A sensor needs a name and a topic"); return; }
+    if (/[+#]/.test(s.topic)) { toast("A sensor reads one topic, without + or #"); return; }
+    if (!(+s.multiplier) || !(+s.divider)) { toast("Multiply and divide by a number other than 0"); return; }
+    var next = broker(), kept = { name: s.name.trim(), topic: s.topic.trim(), field: s.field.trim(), feeds: s.feeds, unit: s.feeds === "room_c" ? s.unit || "C" : "", multiplier: +s.multiplier, divider: +s.divider };
+    if (mqSheet.index == null) next.sensors.push(kept); else next.sensors[mqSheet.index] = kept;
+    draft.mqtt = next; mqSheet = null; mqHeard = {}; closeSheet(); render(); brokerConnect(); saveBroker(); askReadings();
+  };
+  renderSheetLive(); checkSheet();
+}
+function checkSheet() {
+  var s = mqSheet && mqSheet.s;
+  if (s && oneTopic(s.topic) && +s.multiplier && +s.divider)
+    send("mqtt_check", JSON.stringify({ key: "sheet", name: s.name || "?", topic: s.topic.trim(), field: s.field.trim(), feeds: s.feeds, unit: s.unit, multiplier: +s.multiplier, divider: +s.divider }));
+}
+function renderSheetLive() {
+  var h = mqHeard.sheet, el = $("sh-live");
+  if (!el) return;
+  el.innerHTML = !h ? "Type the topic to listen" : !h.heard ? '<span style="color:var(--muted)">● nothing on this topic yet</span>' :
+    '<span style="color:var(--green)">●</span> heard ' + h.age_s + " s ago " + (h.value == null ? '<b style="color:var(--peach)">no number</b>' : "<b>" + (mqSheet.s.feeds === "room_c" ? shownT(h.value).toFixed(1) + " " + deg() : Math.round(h.value) + " " + MQ_UNIT[mqSheet.s.feeds]) + "</b>");
+}
+
+window.onRoastsSent = function (n) { if (!n) toast("No roast saved on this tablet yet"); };
+
+document.querySelectorAll(".tab").forEach(function (b) { b.onclick = function () { selectTab(b.dataset.t); }; });
+if (fromCave) $("back").lastChild.textContent = "BeanCave";
+// Leaving Settings, by Back or for the machine assistant: what was changed is saved first.
+function leave(page) {
+  stopCheck();
+  send("scan_stop");
+  if (draft && draft.mqtt && !draft.mqtt.host.trim()) {
+    if (draft.mqtt.sensors.length) { selectTab("network"); toast("The broker needs a host, or delete its sensors"); return; }
+    draft.mqtt = null; // nothing typed: no broker
+  }
+  if (setup && dirty()) { leaving = page; send("save_setup", JSON.stringify(draft)); } else go(page);
+}
+$("back").onclick = function () { leave(home); };
+</script>
+</body>
+</html>

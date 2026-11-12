@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (c) 2026 Tilau
+     This file is part of TilauScope. -->
+<!-- TilauScope bean mark (src/includes/Icons/tilauscope-mark.svg). Vector drawables
+     have no masks: the crease is stroked in the background colour instead. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="132dp"
+    android:height="132dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group android:rotation="-28" android:pivotX="256" android:pivotY="256">
+        <path
+            android:fillColor="#94B87A"
+            android:pathData="M256,51 C338.8,51 406,142.8 406,256 C406,369.2 338.8,461 256,461 C173.2,461 106,369.2 106,256 C106,142.8 173.2,51 256,51 Z" />
+        <path
+            android:strokeColor="#1E1E2E"
+            android:strokeWidth="36"
+            android:strokeLineCap="round"
+            android:pathData="M256,104 C294,170 218,212 256,256 C294,300 218,342 256,408" />
+    </group>
+</vector>
