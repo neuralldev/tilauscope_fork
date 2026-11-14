@@ -26,7 +26,7 @@
 ######
 # packages that are required on all platforms
 #
-setuptools==84.0.0
+setuptools==84.2.1
 wheel==0.48.0
 pyserial==3.5
 pymodbus==3.15.0
@@ -55,11 +55,11 @@ prettytable==3.18.0
 lxml==6.1.1
 matplotlib==3.11.1
 jinja2==3.1.6
-aiohttp==3.14.3
+aiohttp==3.14.5
 aiohttp_jinja2==1.6
 python-bidi==0.6.11
 arabic-reshaper==3.0.1
-pillow==12.3.0
+pillow==13.0.0
 pydantic==2.13.4
 babel==2.18.0
 bleak==3.0.2

@@ -33,6 +33,7 @@ var RoastsTab = (function () {
 
   function tag(r) {
     if (r.simulated) return '<span class="tag sim">simulated · not used by plans</span>';
+    if (r.origin === "shared") return '<span class="tag pc">shared</span>'; // outside learning by default: its origin is the news
     if (r.excluded) return '<span class="tag exc">excluded from learning</span>';
     return r.origin === "computer" ? '<span class="tag pc">from the computer</span>' : '<span class="tag">this tablet</span>';
   }
@@ -340,6 +341,8 @@ var RoastsTab = (function () {
   function closeFull() { if (box) { box.remove(); box = null; } }
 
   return {
+    curve: curve, // the same picture for a roast of the library (library.js)
+    tiles: tiles,
     init: function (openCoffee) {
       onOpenCoffee = openCoffee;
       try { sort = localStorage.getItem("roastSort") || "recent"; } catch (e) { sort = "recent"; }

@@ -1,4 +1,9 @@
 ## [4.3] 2026-09-13
+build 59
+* ⚡ [feat(beancave)] : the BeanCave gains a Library tab: roasts other TilauScope roasters published, newest first and ten at a time, searched in the library itself, each shown with its full roast card, their tasting and the machine it was roasted on, and imported in one click; any roast of your BeanCave, starred or not, is published from Roasts › Export › Publish to the library… and can be withdrawn later
+* ⚡ [feat(beancave)] : double-clicking a .tilaucoffee file opens it in TilauScope, on macOS and Windows
+* ⚡ [feat(android)] : the Android prototype's BeanCave gains the Library: roasts other roasters published, ten at a time and searched in the library, each drawn as the Roasts tab draws a roast, with their tasting, and imported in one touch; a .tilaucoffee file opened from another app is imported the same way
+* 🐛 [fix(beancave)] : a shared roast leaves and arrives without alarms or external programs, the altitude and every folder path are removed from it, an oversized coffee package is refused before it is opened, and the imported roast's file name keeps only plain characters
 build 58
 * 🐛 [fix(detection)] : automatic DROP is placed where the beans left on every roaster: 2 s before bean temperature's peak by default, as the probe on most roasters stops rising almost at once (the Skywalker V2 keeps its 6 s, the Cormorant CR600e declares 0 s)
 build 57

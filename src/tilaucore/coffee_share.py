@@ -26,6 +26,7 @@ from typing import Any, Final
 
 from tilaucore.archive import ArchiveError, member_path, version_key
 from tilaucore.beans import BrewSample, GreenBean, RoastTasting, from_dict
+from tilaucore.coffee_library import Card, card_from_json, card_to_json
 
 EXTENSION: Final[str] = ".tilaucoffee"
 FORMAT: Final[int] = 1
@@ -36,7 +37,15 @@ MANIFEST_NAME: Final[str] = "manifest.json"
 BEAN_NAME: Final[str] = "bean.json"
 TASTINGS_NAME: Final[str] = "tastings.json"
 BREWLOG_NAME: Final[str] = "brewlog.json"
+CARD_NAME: Final[str] = "card.json"
 ROASTS_DIR: Final[str] = "roasts/"
+
+#: A coffee is small: a record, a few dozen roasts of well under a megabyte each.
+#: A package from elsewhere that claims more is refused before it is unpacked.
+MAX_PACKAGE_BYTES: Final[int] = 64 << 20     # the file itself
+MAX_MEMBER_BYTES: Final[int] = 8 << 20       # one file in it, unpacked
+MAX_TOTAL_BYTES: Final[int] = 128 << 20      # all of them, unpacked
+MAX_MEMBERS: Final[int] = 2000
 
 #: The sender's own business, never shared: stock, bags, price, how it is kept,
 #: and what the roast list adds up. The ★ too: on the other side a shared roast
@@ -44,9 +53,15 @@ ROASTS_DIR: Final[str] = "roasts/"
 SHARE_DROPPED_BEAN_FIELDS: Final[tuple[str, ...]] = (
     "weight_left", "sacks", "price_per_kg", "conditioning", "count", "weight", "reference_roast_uuid")
 
-#: Emptied in a shared roast: who roasted it, and the room it was roasted in.
+#: Emptied in a shared roast: who roasted it, the room and the altitude it was
+#: roasted at, and where the sender keeps files and programs. A path is emptied
+#: by its key: written relative, no text rule can tell it from a word.
 SHARE_EMPTIED_ALOG_KEYS: Final[dict[str, Any]] = {
-    "operator": "", "organization": "", "ambientTemp": 0.0, "ambient_humidity": 0.0, "ambient_pressure": 0.0}
+    "operator": "", "organization": "", "ambientTemp": 0.0, "ambient_humidity": 0.0, "ambient_pressure": 0.0,
+    "elevation": 0, "backgroundpath": "", "backgroundUUID": "", "externalprogram": "", "externaloutprogram": ""}
+
+#: Removed from a shared roast: the sender's artisan.plus account and schedule.
+SHARE_DROPPED_ALOG_PREFIXES: Final[tuple[str, ...]] = ("plus_", "schedule")
 
 Clean = Callable[[str], str]
 
@@ -58,6 +73,7 @@ class Package:
     roasts: dict[str, dict[str, Any]]          # roastUUID → the roast file's dictionary
     tastings: dict[str, RoastTasting] = field(default_factory=dict)
     brews: list[BrewSample] = field(default_factory=list)
+    card: Card | None = None                   # the library card, None when absent or invalid
 
     @property
     def mode(self) -> str:
@@ -92,9 +108,26 @@ def _clean_strings(value: Any, clean: Clean) -> Any:
     return value
 
 
+def disarm(roast: Mapping[str, Any]) -> dict[str, Any]:
+    """A roast without what commands a machine: its alarm table and the programs it calls.
+
+    Loaded as background with Artisan's "Load alarms from background" on, a
+    roast's alarms move the sliders and run programs at the Expert level. A
+    shared roast is a curve to follow and events to replay, so it leaves
+    without them, and loses them again on arrival: a package can be written
+    by anything.
+    """
+    out = {key: value for key, value in roast.items() if not str(key).startswith("alarm")}
+    for key in ("externalprogram", "externaloutprogram"):
+        if key in out:
+            out[key] = ""
+    return out
+
+
 def scrub_alog(roast: Mapping[str, Any], clean: Clean) -> dict[str, Any]:
-    """The roast as it may leave: who and where emptied, every text cleaned at any depth."""
-    out = {key: _clean_strings(value, clean) for key, value in roast.items()}
+    """The roast as it may leave: who and where emptied, disarmed, every text cleaned at any depth."""
+    out = {key: _clean_strings(value, clean) for key, value in disarm(roast).items()
+           if not str(key).startswith(SHARE_DROPPED_ALOG_PREFIXES)}
     for key, empty in SHARE_EMPTIED_ALOG_KEYS.items():
         if key in out:
             out[key] = empty
@@ -105,8 +138,11 @@ def scrub_alog(roast: Mapping[str, Any], clean: Clean) -> dict[str, Any]:
 
 def write_package(target: Path, *, mode: str, bean: GreenBean, roasts: Sequence[Path],
                   tastings: Mapping[str, RoastTasting], brews: Sequence[BrewSample] = (),
-                  version: str, build: int, clean: Clean | None = None) -> dict[str, Any]:
-    """Write the package; returns its manifest. ``clean`` is required in share mode."""
+                  version: str, build: int, clean: Clean | None = None,
+                  card: Card | None = None) -> dict[str, Any]:
+    """Write the package; returns its manifest. ``clean`` is required in share mode.
+
+    ``card`` (library card.json) is written in share mode only."""
     if mode not in (SHARE, MOVE):
         raise ValueError(mode)
     if mode == SHARE and clean is None:
@@ -131,6 +167,8 @@ def write_package(target: Path, *, mode: str, bean: GreenBean, roasts: Sequence[
         carried = _clean_strings(carried, clean)
     files[BEAN_NAME] = json.dumps(record).encode("utf-8")
     files[TASTINGS_NAME] = json.dumps(carried).encode("utf-8")
+    if mode == SHARE and card is not None:
+        files[CARD_NAME] = json.dumps(_clean_strings(card_to_json(card), clean)).encode("utf-8")
     if mode == MOVE:
         files[BREWLOG_NAME] = json.dumps([asdict(b) for b in brews]).encode("utf-8")
 
@@ -155,7 +193,19 @@ def write_package(target: Path, *, mode: str, bean: GreenBean, roasts: Sequence[
 
 
 def _safe(name: str) -> str:
-    return "".join(c for c in name if c.isalnum() or c in "-_") or "roast"
+    return "".join(c for c in name if c.isascii() and (c.isalnum() or c in "-_")) or "roast"
+
+
+def roast_file_name(coffee: str, roast: Mapping[str, Any], uuid: str, shared: bool) -> str:
+    """The name an imported roast is saved under, on the desktop and on the tablet.
+
+    The date and the id come from the package: only what a date and an id are
+    made of names a file, so it lands in the roast folder whatever they say.
+    """
+    name = "".join(c if c.isalnum() or c in " -_" else "_" for c in coffee).strip() or "coffee"
+    day = "".join(c for c in str(roast.get("roastisodate") or "")[:10] if c.isdigit() or c == "-")
+    ident = "".join(c for c in uuid.replace("-", "").lower() if c.isalnum())[:8]
+    return f"{name}{' - shared' if shared else ''}{' ' + day if day else ''} {ident}.alog"
 
 
 def _digest(data: bytes) -> str:
@@ -167,7 +217,12 @@ def _digest(data: bytes) -> str:
 def read_package(path: Path, *, version: str, build: int) -> Package:
     """The package, checked file by file; ArchiveError when damaged or written by a newer TilauScope."""
     try:
+        if path.stat().st_size > MAX_PACKAGE_BYTES:
+            raise ArchiveError(ArchiveError.DAMAGED, "too large")
         with zipfile.ZipFile(path) as archive:
+            sizes = [info.file_size for info in archive.infolist()]
+            if len(sizes) > MAX_MEMBERS or max(sizes, default=0) > MAX_MEMBER_BYTES or sum(sizes) > MAX_TOTAL_BYTES:
+                raise ArchiveError(ArchiveError.DAMAGED, "too large")
             manifest = json.loads(archive.read(MANIFEST_NAME).decode("utf-8"))
             if manifest["format"] > FORMAT or version_key(manifest["version"], manifest["build"]) > version_key(version, build):
                 raise ArchiveError(ArchiveError.NEWER, str(manifest["version"]))
@@ -190,8 +245,14 @@ def read_package(path: Path, *, version: str, build: int) -> Package:
                     roasts[roast_uuid(roast) or Path(name).stem] = roast
             tastings = {k: from_dict(RoastTasting, v) for k, v in json.loads(data[TASTINGS_NAME]).items()}
             brews = [from_dict(BrewSample, b) for b in json.loads(data.get(BREWLOG_NAME, b"[]"))]
+            card = None
+            if CARD_NAME in data:      # the list's own business: a bad card never refuses the coffee
+                try:
+                    card = card_from_json(json.loads(data[CARD_NAME]))
+                except ValueError:
+                    card = None
     except ArchiveError:
         raise
     except Exception as e:  # noqa: BLE001 — a file from elsewhere: whatever fails in it, it is damaged
         raise ArchiveError(ArchiveError.DAMAGED, str(e)) from e
-    return Package(manifest=manifest, bean=bean, roasts=roasts, tastings=tastings, brews=brews)
+    return Package(manifest=manifest, bean=bean, roasts=roasts, tastings=tastings, brews=brews, card=card)

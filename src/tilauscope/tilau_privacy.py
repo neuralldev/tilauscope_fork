@@ -118,6 +118,23 @@ _PATH_RULES: Final[tuple[Rule, ...]] = (
      re.compile(r"\\\\[^\\\s]+\\[^\\\s]+(?:\\[^\r\n\"'<>]*)?"),
      '[REDACTED_PATH]'),
 )
+#: Only for a roast given to someone else. A log keeps its system paths, which
+#: say where the program runs and nothing about its user; a shared roast keeps
+#: no path at all: a drive written with slashes, a system or network folder, a
+#: path relative to where the sender stood.
+_SHARED_PATH_RULES: Final[tuple[Rule, ...]] = (
+    ('path',
+     re.compile(r"(?i)(?<!\w)[A-Z]:/[^\r\n\"'<>]+"),
+     '[REDACTED_PATH]'),
+    ('path',
+     re.compile(
+         r"(?<![\w:])/(?:opt|srv|root|run|var|usr|etc|data|export|net|Library|Applications|System)"
+         r"/[^\s\"'<>]*"),
+     '[REDACTED_PATH]'),
+    ('path',
+     re.compile(r"(?<![\w.])\.\.?[\\/][^\s\"'<>]+"),
+     '[REDACTED_PATH]'),
+)
 _NETWORK_RULES: Final[tuple[Rule, ...]] = (
     ('ip',
      re.compile(
@@ -481,7 +498,8 @@ def runtime_sensitive_values() -> tuple[str, ...]:
 def _rules_for(profile: Profile) -> tuple[Rule, ...]:
     if profile is Profile.SHARED_ROAST:
         # Notes typed by hand travel with a shared roast, as they do in a prompt.
-        return (_AUTH, _SECRET, *_PATH_RULES, *_NETWORK_RULES, _PERSONAL_KEEP_SUPPLIER, *_FREE_TEXT_RULES)
+        return (_AUTH, _SECRET, *_PATH_RULES, *_SHARED_PATH_RULES, *_NETWORK_RULES, _PERSONAL_KEEP_SUPPLIER,
+                *_FREE_TEXT_RULES)
     common = (_AUTH, _SECRET, *_PATH_RULES, *_NETWORK_RULES, _PERSONAL)
     if profile is Profile.AI_OUTBOUND:
         return (*common, *_FREE_TEXT_RULES)

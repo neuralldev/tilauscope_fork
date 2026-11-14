@@ -764,6 +764,16 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 bc.setProperty('_tilau_close_hooked', True)
             bc.show()
 
+    def open_coffee_package(self, path: str) -> None:
+        """A coffee package opened from the system (double-click, share): BeanCave opens on its import."""
+        try:
+            bc = getattr(self.aw, 'beancaveWindow', None)
+            if not (live_beancave(bc) and bc.isVisible()):
+                self.toggle_beancave()
+            self.aw.beancaveWindow.on_import_coffee(False, path)
+        except Exception:  # pylint: disable=broad-except
+            _log.exception('opening a coffee package failed')
+
     def _on_beancave_closed(self): # fix 2026/04/25: this is needed to uncheck the button if Beancave is closed by other means than the button (e.g. by Artisan or by the user with the window close button)
         """Called when BeancaveDlg is closed to unmark the button."""
         # Through the helper: monitoring may have been switched on while the

@@ -160,6 +160,38 @@
 .facts{display:flex;flex-wrap:wrap;gap:6px}.facts span{background:var(--overlay);border-radius:8px;padding:3px 8px;font-size:13px}.facts b{font-family:ui-monospace,monospace}
 .last{font-size:16px;font-weight:600}.eb{font-size:11px;letter-spacing:.1em;color:var(--sub);font-weight:700}
 .zh a,.zh .lnk{margin-left:auto;color:var(--blue);letter-spacing:0;font-size:13px;font-weight:600}
+/* Library tab, and the coffee sheet (library.js) */
+.ico{display:inline-flex;align-items:center;gap:10px}
+.go.ico{justify-content:center}
+.curve{display:block;width:100%;border-radius:12px;background:var(--surface)}
+.zone .curve{background:var(--bg)}
+.mach{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--sub)}.mach.other{color:var(--yellow)}
+#libview{flex:1;min-height:0;display:flex;padding:0 16px 16px}
+#lb-browse{flex:1;min-height:0;display:flex;gap:16px}
+#lb-state{flex:1;min-height:0;display:flex}
+.lb-main{width:330px;flex:none;display:flex;flex-direction:column;gap:12px;min-height:0}
+.lb-filters{display:flex;align-items:center;gap:8px}
+#lb-search{flex:none;height:44px;border-radius:12px;border:1px solid var(--line);background:transparent;padding:0 14px;font:inherit;font-size:15px;color:var(--text);outline:none;-webkit-user-select:text;user-select:text}
+#lb-search:focus{border-color:var(--blue)}
+.lb-chip{height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);font-size:14px;color:var(--sub);display:inline-flex;align-items:center;gap:8px}
+.lb-chip.on{border-color:var(--blue);color:var(--bg);background:var(--blue);font-weight:600}
+.lb-chip:disabled{opacity:.5}
+.lb-count{margin-left:auto;font-size:13px;color:var(--muted)}
+#lb-rows{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.lb-row{flex:none;border-radius:14px;background:var(--surface);border:1px solid var(--overlay);padding:10px 14px;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
+.lb-row.sel{border:2px solid var(--blue);background:rgba(137,180,250,.10);padding:9px 13px}
+.lb-row .l1{display:flex;align-items:baseline;gap:8px;min-width:0}
+.lb-row b{flex:1;min-width:0;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-row .d{font-size:12px;color:var(--sub);white-space:nowrap}
+.lb-row .l2,.lb-row .l3{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lb-row .l3{color:var(--muted);font-style:italic}
+.lb-side{flex:1;min-width:0;background:var(--surface);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.lb-side h3{margin:0;font-size:20px;font-weight:600}
+.lb-side .mini{flex:1;min-height:280px}.lb-side .tile{background:var(--bg)}.lb-side .tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
+.lb-msg{display:flex;align-items:center;justify-content:center;padding:30px 40px;text-align:center;color:var(--sub);font-size:15px;line-height:1.5}
+.lb-bar{display:flex;align-items:center;gap:16px;flex:none}.lb-said{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.lb-verdict{font-size:15px}.lb-verdict.not{color:var(--muted)}
+.lb-more{flex:none;padding:12px 14px;text-align:center;font-size:13px;color:var(--muted)}
+.nm .gl{margin-left:auto}
 </style>
 </head>
 <body>
@@ -170,12 +202,13 @@
 <script src="label-metrics.js"></script>
 <script src="label.js"></script>
 <script src="roasts.js"></script>
+<script src="library.js"></script>
 <script src="energy-sheet.js"></script>
 <div id="app">
  <header>
   <button id="back"><svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 4L6 9l5 5" fill="none" stroke="#A6ADC8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Roast</button>
   <span class="brand">BeanCave</span>
-  <span class="tabs" id="tabs"><button data-t="coffees" class="on">Coffees</button><button data-t="roasts">Roasts</button></span>
+  <span class="tabs" id="tabs"><button data-t="coffees" class="on">Coffees</button><button data-t="roasts">Roasts</button><button data-t="library">Library</button></span>
   <span style="flex:1"></span>
   <span class="gl on" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 512 512"><g transform="rotate(-28 256 256)"><path fill="currentColor" d="M 256,51 C 338.8,51 406,142.8 406,256 C 406,369.2 338.8,461 256,461 C 173.2,461 106,369.2 106,256 C 106,142.8 173.2,51 256,51 Z"/></g></svg></span>
   <button class="gl" id="gear" aria-label="Settings"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-2.9-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00-1.2-2.9H3a2 2 0 110-4h.1a1.7 1.7 0 001.2-2.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 002.9-1.2V3a2 2 0 114 0v.1a1.7 1.7 0 002.9 1.2l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 001.2 2.9H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" fill="none" stroke="#A6ADC8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -188,6 +221,15 @@
    <div id="list"></div>
   </div>
   <div class="sheet" id="sheet"></div>
+ </div>
+ <div id="libview" class="hidden">
+  <div id="lb-state" class="hidden"></div>
+  <div id="lb-browse" class="hidden">
+   <div class="lb-main"><input id="lb-search" type="search" placeholder="Search a coffee, a country, a process…" autocomplete="off">
+    <div class="lb-filters"><button class="lb-chip on" id="lb-mine" aria-pressed="true">My machine</button><span class="lb-count num" id="lb-count"></span></div>
+    <div id="lb-rows"></div></div>
+   <div class="lb-side" id="lb-side"></div>
+  </div>
  </div>
  <div id="roastsview" class="hidden">
   <div class="rl"><div class="rbar" id="rfilter"></div><input id="rsearch" type="search" placeholder="Search a coffee, a title…" autocomplete="off">
@@ -225,7 +267,23 @@ window.onSnapshot = function (method, d) {
   }
   if (method === "get_roast_energy") { if (d && d.reply) EnergySheet.show(d.reply); else toast("This roast has no energy"); return; }
   if (method === "save_tasting") { if (d && d.reply) { RoastsTab.roast(d.reply); send("get_roasts"); } else toast("The tasting could not be saved"); return; }
-  if (method === "get_setup") { if (d && d.reply) { CaveEdit.setDevices(d.reply.config.devices); RoastsTab.setPrinter(d.reply.config.devices.printer); } return; }
+  if (method === "library_page" || method === "library_get" || method === "library_card") { LibraryTab.reply(method, d && d.reply); return; }
+  if (method === "coffee_preview") { LibraryTab.sheet(d && d.reply); return; }
+  if (method === "coffee_theirs") { LibraryTab.theirsArrived(d && d.reply); if (cave && $("theirs")) render(); return; }
+  if (method === "coffee_send") { if (!d || !d.reply) toast("This coffee could not be prepared to send"); return; }
+  if (method === "coffee_import") { // the coffee arrives without stock: the list shows All and selects it
+    LibraryTab.closeSheet(false);
+    if (!d || !d.reply) { toast("This coffee could not be imported"); return; }
+    var name = d.reply.name;
+    LibraryTab.forgetTheirs();
+    cave = d.reply; CaveEdit.setCave(cave); selected = cave.imported; filter = "all"; $("search").value = "";
+    showTab("coffees"); render();
+    var row = document.querySelector('#list .it[data-u="' + selected + '"]');
+    if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
+    toast("Coffee imported: " + name);
+    return;
+  }
+  if (method === "get_setup") { if (d && d.reply) { CaveEdit.setDevices(d.reply.config.devices); LibraryTab.setColours(d.reply.catalogue.colours); RoastsTab.setPrinter(d.reply.config.devices.printer); } return; }
   if (method === "roast_label") { RoastsTab.label(d && d.reply); return; }
   // The roast screen opens on the replay; refused while a roast is on screen
   if (method === "set_follow") { // START offers to follow it, on the roast screen
@@ -258,7 +316,7 @@ window.onSnapshot = function (method, d) {
     return;
   }
   if (!d) return;
-  if (!asked) { asked = true; send("get_coffees"); send("get_setup"); }
+  if (!asked) { asked = true; send("get_coffees"); send("get_setup"); if (location.hash === "#coffee") coffeeStaged(); }
   if (recording !== (d.state === "recording")) { recording = d.state === "recording"; if (cave) render(); }
 };
 
@@ -283,7 +341,7 @@ function render() {
     var aw = c.aw.value != null, col = !inStock(c) ? "var(--muted)" : LEVEL[c.aw.level] || "var(--green)";
     var sub = [c.country, (c.process || "").split(" / ")[0], c.crop || ""].filter(Boolean).join(" · ");
     return '<button class="it' + (c.uuid === selected ? " sel" : "") + (inStock(c) ? "" : " out") + '" data-u="' + esc(c.uuid) + '">' +
-      '<span class="ld" style="background:' + col + '"></span><span class="n"><b>' + esc(c.name || "—") + "</b><small>" + esc(sub) + "</small></span>" +
+      '<span class="ld" style="background:' + col + '"></span><span class="n"><b>' + esc(c.name || "—") + (c.shared ? ' <span class="blendtag">SHARED</span>' : "") + "</b><small>" + esc(sub) + "</small></span>" +
       '<span class="s num">' + grams(c.stock_g) + (aw ? '<small style="color:' + (LEVEL[c.aw.level] || "var(--green)") + '">aw ' + c.aw.value.toFixed(2) + "</small>" : "") + "</span></button>";
   }).join("") : '<div class="none">No coffee matches</div>';
   $("list").querySelectorAll(".it").forEach(function (b) { b.onclick = function () { selected = b.dataset.u; render(); }; });
@@ -316,7 +374,9 @@ function renderSheet(c) {
   var memo = c.memo ? c.memo.split("\n")[0] : "";
   if (memo && (memo.length > 90 || memo !== c.memo)) memo = memo.slice(0, 88).trim() + "…";
   var essentials = '<div class="zone"' + tap("essentials") + '><div class="zh">ESSENTIALS' + cue() + '</div><span class="nm">' + esc(c.name || "—") +
-    (c.is_blend ? '<span class="blendtag">BLEND</span>' : "") + '</span><span class="sb">' +
+    (c.is_blend ? '<span class="blendtag">BLEND</span>' : "") +
+    (c.shared ? '<span class="blendtag">SHARED' + LibraryTab.theirsDay(c) + "</span>" : "") +
+    '<button class="gl" id="sendcoffee" aria-label="Send this coffee and its roasts to the computer">' + LibraryTab.ICON.send + "</button></span><span class=\"sb\">" +
     esc([c.country, c.process, c.supplier].filter(Boolean).join(" · ") || "—") + "</span>" +
     '<div class="tl" style="grid-template-columns:repeat(4,minmax(0,1fr))">' +
     tile(Math.round(c.stock_g) + " g", "Stock", c.stock_g > 0 ? "var(--green)" : "var(--muted)") +
@@ -325,7 +385,7 @@ function renderSheet(c) {
     (c.flavours.length ? '<div class="chips"' + tap("sensory") + ">" + c.flavours.map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("") + "</div>"
       : '<span class="dim"' + tap("sensory") + ">No flavour notes yet</span>") +
     (memo ? '<span class="sb">' + esc(memo) + "</span>" : "") + "</div>";
-  var memory = memoryZone(c);
+  var memory = (c.shared ? LibraryTab.theirsZone(c) : "") + memoryZone(c);
   var chips = [c.process || c.category].filter(Boolean).map(function (w) { return '<span class="f">' + esc(w) + "</span>"; })
     .concat([c.species, c.varieties, c.screen_size].filter(Boolean).map(function (w) { return "<span>" + esc(w) + "</span>"; }));
   var characteristics = '<div class="zone"' + tap("characteristics") + '><div class="zh">CHARACTERISTICS' + cue() + "</div>" +
@@ -346,6 +406,7 @@ function renderSheet(c) {
     (recording ? "A roast is recording: choose the next coffee once it is over" :
       c.uuid === cave.chosen ? "Already the coffee of the next roast" : "Its name and link go with the next roast") + "</small></div>";
   $("roastit").onclick = function () { send("choose_coffee", c.uuid); };
+  $("sendcoffee").onclick = function (e) { e.stopPropagation(); send("coffee_send", c.uuid); }; // the zone itself opens the editor
   // A tap on a zone opens its editor; the flavour notes open their own, inside Essentials.
   $("sheet").querySelectorAll("[data-z]").forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); CaveEdit.open(b.dataset.z, c); }; });
   if ($("allroasts")) $("allroasts").onclick = function () { showTab("roasts", { uuid: c.uuid, name: c.name }); };
@@ -355,7 +416,9 @@ function showTab(t, coffee) {
   document.querySelectorAll("#tabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.t === t); });
   document.querySelector(".cave").classList.toggle("hidden", t !== "coffees");
   $("roastsview").classList.toggle("hidden", t !== "roasts");
+  $("libview").classList.toggle("hidden", t !== "library");
   if (t === "roasts") RoastsTab.show(coffee); else RoastsTab.hide();
+  if (t === "library") LibraryTab.show();
 }
 
 // The desktop's Roast memory zone: the last real roast of the coffee, and All N roasts →
@@ -396,6 +459,9 @@ RoastsTab.init(function (uuid, onlyAsk) { // open a coffee from a roast; onlyAsk
   if (onlyAsk) return !!c;
   selected = uuid; filter = "all"; showTab("coffees"); render();
 });
+LibraryTab.init();
+// A coffee file the app staged (opened from another app, or downloaded) shows on its preview sheet.
+window.coffeeStaged = function () { send("coffee_opened"); };
 $("add").onclick = function () { CaveEdit.open("all", null); };
 $("gear").onclick = function () { go("settings.html#cave"); };
 </script>

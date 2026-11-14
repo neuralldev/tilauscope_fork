@@ -11,7 +11,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { createInterface } from "node:readline";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { JSDOM, VirtualConsole } from "jsdom";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -34,7 +34,7 @@ function plainRoutes() {
 const PLAIN = plainRoutes();
 
 // The cases that read their argument, as MainActivity.command does.
-function route(method, arg, folder) {
+function route(method, arg, folder, page) {
   const pair = () => arg.split(":");
   switch (method) {
     case "start": return ["start", [arg || "hand"]];
@@ -45,6 +45,14 @@ function route(method, arg, folder) {
     case "set_speed": return /^-?\d+$/.test(arg) ? ["set_speed", [parseInt(arg, 10)]] : null;
     case "save": return ["export_alog", [join(folder, "roasts")]];
     case "alarm_share": return ["alarm_list_file", [arg]];
+    // A coffee in one file: the app keeps the file it staged (`page.staged`), the page only names the step.
+    case "coffee_opened": return page.staged ? ["coffee_preview", [page.staged]] : null;
+    case "coffee_import": return page.staged ? ["coffee_import", [page.staged]] : null;
+    case "coffee_dismiss": page.staged = null; return null;
+    case "coffee_send": return ["coffee_send", [arg, join(folder, "cache", "coffee-share")]];
+    case "library_page": return ["library_page", [arg]];
+    case "library_get": return ["library_get", [arg, join(folder, "cache", "coffee-library")]];
+    case "library_card": return ["library_card", [arg, join(folder, "cache", "coffee-library-cards")]];
   }
   const plain = PLAIN[method];
   return plain ? [plain.to, plain.arg ? [arg] : []] : null; // null: a device, a picker, a share sheet
@@ -52,13 +60,14 @@ function route(method, arg, folder) {
 
 /** Opens `name` (roast.html…) on a fresh session. `config`: settings over the app's defaults (Settings saved);
  *  `beans`: the BeanCave's green coffees; `prepare`: session calls made before the page opens ([method, ...args]). */
-export async function openPage(name, { config = null, beans = null, prepare = [], before = null } = {}) {
+export async function openPage(name, { config = null, beans = null, prepare = [], before = null, relay = null, staged = null, hash = "" } = {}) {
   const folder = mkdtempSync(join(tmpdir(), "tilau-pages-"));
   if (config) writeFileSync(join(folder, "overrides.json"), JSON.stringify(config));
   if (beans) {
     mkdirSync(join(folder, "beancave"));
     writeFileSync(join(folder, "beancave", "beancave.json"), JSON.stringify({ green_beans: beans }));
   }
+  if (relay) writeFileSync(join(folder, "relay.json"), JSON.stringify(relay)); // the community library, answered by session_server
   const python = spawn(PYTHON, [join(HERE, "session_server.py"), folder], { stdio: ["pipe", "pipe", "pipe"] });
   const stderr = [];
   python.stderr.on("data", (d) => stderr.push(String(d)));
@@ -67,7 +76,9 @@ export async function openPage(name, { config = null, beans = null, prepare = []
   const ask = (method, args) => new Promise((resolve) => { answers.push(resolve); python.stdin.write(JSON.stringify({ method, args }) + "\n"); });
 
   for (const [method, ...args] of prepare) await ask(method, args);
-  const page = { calls: [], went: [], errors: [], stderr, folder, commands: [], refused: new Set() };
+  const page = { calls: [], went: [], errors: [], stderr, folder, commands: [], refused: new Set(), staged }; // staged: the coffee file the app holds for the preview sheet
+  /** The fake relay, read at each call: {index: [cards], packages: {id: file}, error: "offline"}. */
+  page.relay = (state) => writeFileSync(join(folder, "relay.json"), JSON.stringify(state));
   let pending = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", (e) => page.errors.push(String(e.stack || e)));
@@ -77,19 +88,26 @@ export async function openPage(name, { config = null, beans = null, prepare = []
     catch (e) { page.errors.push(String(e.stack || e)); }
   };
   const dom = await JSDOM.fromFile(join(ASSETS, name), {
+    url: pathToFileURL(join(ASSETS, name)).href + hash, // the page as the app opens it: beancave.html#coffee
     runScripts: "dangerously", resources: "usable", pretendToBeVisual: true, virtualConsole,
     beforeParse(window) {
       window.TilauBridge = {
         call(method, arg) {
           page.calls.push([method, arg]);
-          const r = route(method, arg, folder);
+          const r = route(method, arg, folder, page);
           if (!r) return;
           if (page.refused.delete(r[0])) { // the session's call fails: the service hands null
             pending.push(Promise.resolve().then(() => deliver(r[0], null)));
             return;
           }
           // Answered later, as the WebView gets it from the service.
-          pending.push(ask(r[0], r[1]).then((a) => { page.commands.push(...a.commands); if (a.result !== "quiet") deliver(r[0], a.result); }));
+          pending.push(ask(r[0], r[1]).then((a) => {
+            page.commands.push(...a.commands);
+            // MainActivity.deliver: a download is staged, an import consumes what was staged
+            if (r[0] === "library_get") page.staged = (a.result && a.result.reply && a.result.reply.path) || null;
+            if (r[0] === "coffee_import" && a.result) page.staged = null;
+            if (a.result !== "quiet") deliver(r[0], a.result);
+          }));
         },
         currency: () => "EUR",
         logInfo: () => '{"bytes":0,"since":""}',

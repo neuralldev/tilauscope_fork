@@ -65,7 +65,7 @@ from tilauscope import auto_marks
 from tilaucore.milestones import CHARGE_MIN_BT, DROP_FALL_C, DROP_MIN_BT
 from tilauscope.roasters import roast_context_for
 from tilauscope.config_controls_tab import ControlsTab
-from tilauscope.widgets.drop_door_status import DropDoorStatus
+from tilauscope.drop_door_status import DropDoorStatus
 from tilauscope.energy_model import HEATER_FROM_ARTISAN, HEATER_FROM_CONFIG, ROASTER, SOURCE_CURVE, SOURCE_RATED
 from tilauscope.energy_tap import (SETTING_EXTRACTOR_ON_ROASTER_METER, heater_estimate, resolve_sensors,
                                    set_heater_power)

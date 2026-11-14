@@ -189,7 +189,8 @@ rise — see [Configuration](configuration.md#artisan-settings-tilauscope-keeps-
 **Background** loads it as a comparison curve behind whatever is roasting or being reviewed next.
 **Export** holds the roast's label — as a PDF, or printed on the paired label printer, whose state
 shows at the foot of the menu — the roast card and an image of the curve; see
-[Sharing a roast](#sharing-a-roast). The **⋯** menu holds the rest: **Record result…**,
+[Sharing a roast](#sharing-a-roast). **Publish to the library…** puts the roast in the
+[Library](beancave.md#the-library) for other roasters. The **⋯** menu holds the rest: **Record result…**,
 **Taste…** (see [Tasting](#tasting)), **Planning**, **Dial-in**, **Data** and **Refresh list**.
 
 !!! note

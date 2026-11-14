@@ -25,6 +25,7 @@ from typing import Any
 from tilaucore import coffee_share as core
 from tilaucore.alog_index import AlogMetadata
 from tilaucore.beans import BrewSample, GreenBean, RoastTasting
+from tilaucore.coffee_library import Card
 from tilaucore.coffee_share import Clean
 from tilauscope.tilau_privacy import Profile, runtime_sensitive_values, sanitize_text
 
@@ -78,8 +79,11 @@ def gather(bean: GreenBean, records: Iterable[AlogMetadata], cave_directory: str
                        brews=list(brew_log.load(cave_directory).entries.get(bean.uuid, [])))
 
 
-def save(target: Path, mode: str, source: ShareSource) -> dict[str, Any]:
-    """Write the package for ``mode``; the shared one goes through this machine's cleaner."""
+def save(target: Path, mode: str, source: ShareSource, card: Card | None = None) -> dict[str, Any]:
+    """Write the package for ``mode``; the shared one goes through this machine's cleaner.
+
+    ``card`` is what the library lists for a published coffee; a shared package carries it.
+    """
     from tilauscope.backup import app_version  # noqa: PLC0415
     roasts = [Path(r.filepath_str) for r in source.roasts_for(mode)]
     clean = None
@@ -91,7 +95,7 @@ def save(target: Path, mode: str, source: ShareSource) -> dict[str, Any]:
     return core.write_package(target, mode=mode, bean=source.bean, roasts=roasts,
                               tastings=source.tastings_for(mode),
                               brews=source.brews if mode == core.MOVE else (),
-                              version=version, build=build, clean=clean)
+                              version=version, build=build, clean=clean, card=card)
 
 
 # ── import ──────────────────────────────────────────────────────────────────
@@ -138,10 +142,7 @@ def learn_from(path: Path, on: bool) -> None:
 
 
 def _roast_file(folder: Path, coffee: str, roast: dict[str, Any], uuid: str, shared: bool) -> Path:
-    name = "".join(c if c.isalnum() or c in " -_" else "_" for c in coffee).strip() or "coffee"
-    day = str(roast.get("roastisodate") or "")[:10]
-    stem = f"{name}{' - shared' if shared else ''}{' ' + day if day else ''} {_norm(uuid)[:8]}"
-    return folder / f"{stem}.alog"
+    return folder / core.roast_file_name(coffee, roast, uuid, shared)
 
 
 def apply_import(package: core.Package, *, beans: list[GreenBean], preview: ImportPreview,
@@ -167,6 +168,7 @@ def apply_import(package: core.Package, *, beans: list[GreenBean], preview: Impo
     for uuid in preview.new_roasts:
         roast = dict(package.roasts[uuid])
         if shared:
+            roast = core.disarm(roast)
             roast["tilau_shared"] = {"shared_on": package.manifest.get("created", ""),
                                      "roaster": str(roast.get("roastertype") or "")}
             roast["tilau_exclude_learning"] = True

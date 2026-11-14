@@ -6,4 +6,6 @@
     <string name="app_name">TilauScope Android Lab</string>
     <string name="session_channel">Recording session</string>
     <string name="session_notification">Session in progress</string>
+    <string name="coffee_unreadable">This file cannot be opened as a coffee</string>
+    <string name="coffee_held">The coffee file opens when the roast is over</string>
 </resources>

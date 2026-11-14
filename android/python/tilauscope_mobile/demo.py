@@ -32,7 +32,7 @@ from tilaucore.roast_plan_view import english
 from tilaucore.roast_colour import AGTRON_SCALES
 from tilaucore.roast_label import label_data, lines_30mm
 
-from . import alog, catalogue, config as configuration, machine, mqtt
+from . import alog, catalogue, coffee_share, config as configuration, machine, mqtt
 from .automation import AutoMarks
 from .follow import LEVER_OF, FollowedRoast, live as follow_live
 from .alarms import (ANCHOR_WORDS, ARTISAN_ACTIONS, MARK_INDEX, Act, AlarmLists, TabletAlarms, from_unit, in_unit, rows_in_unit,
@@ -176,6 +176,7 @@ class Demo:
         apply_colour_gap((self.config or {}).get("machine"))
         self.cave = Cave(cave_directory) if cave_directory else None
         self.roasts = Roasts(str(Path(cave_directory).parent)) if cave_directory else None
+        self.library = coffee_share.Browser() # the community library: its calls run on their own thread, never the worker's
         self.coffee: dict | None = None # the chosen coffee, kept from roast to roast
         self.setup: dict | None = None # its Roast Setup, kept from roast to roast
         self.choice_path = str(Path(config_path).with_name(CHOICE_FILE)) if config_path else None
@@ -545,7 +546,8 @@ class Demo:
         state = self.cave.state()
         records = [meta for _, meta in self.roasts.records()] if self.roasts else []
         tastings = tasting_log.load(self.cave.directory).entries
-        coffees = [{**view(bean), "memory": _memory(last_roast(bean.uuid, records, tastings))}
+        shared = {(m.uuid or "").lower() for m in records if m.shared} # coffees that came with another roaster's roast
+        coffees = [{**view(bean), "memory": _memory(last_roast(bean.uuid, records, tastings)), "shared": bean.uuid.lower() in shared}
                    for bean in self.cave.beans()] if state["present"] else []
         config = self.config or configuration.default()
         return json.dumps({"present": state["present"], "coffees": coffees,
@@ -638,6 +640,50 @@ class Demo:
         """Roast files picked on the tablet (copied to a staging folder by the app)."""
         self._planner = None
         return json.dumps(self.roasts.import_files(json.loads(data)))
+
+    def _machine_name(self) -> str:
+        """The configured roaster, as a roast names it ("Skywalker V2"); '' when none is set."""
+        entry = catalogue.MACHINES.get((self.config or {}).get("machine") or "")
+        return f"{entry['manufacturer']} {entry['model']}" if entry else ""
+
+    def coffee_preview(self, path: str) -> str:
+        """What a .tilaucoffee staged by the app would add, before it does (`path` is the app's, never the page's)."""
+        owner = (self.config or configuration.default())["cave_owner"]
+        return json.dumps(coffee_share.preview(path, self.roasts, owner, self._machine_name(), self.cave.beans()))
+
+    def coffee_import(self, path: str) -> str:
+        """Imports the staged package, allowed whoever owns the cave (a computer's owner is not asked: local only)."""
+        done = coffee_share.apply(path, self.cave, self.roasts)
+        self._planner = None
+        self._refresh_coffee()
+        return json.dumps({**json.loads(self.get_coffees()), "imported": done["uuid"], "name": done["name"]})
+
+    def coffee_theirs(self, uuid: str) -> str:
+        """The shared roast a coffee came with, for its sheet (null when it has none)."""
+        return json.dumps(coffee_share.theirs(uuid, self.cave, self.roasts, self._machine_name()))
+
+    def coffee_send(self, uuid: str, directory: str) -> str:
+        """A Move package of a coffee and its roasts, for the share sheet: the file's path."""
+        return coffee_share.pack(uuid, self.cave, self.roasts, directory)
+
+    def library_page(self, data: str) -> str:
+        """One page of the library ({text, mine, cursor, seq}), searched by the relay. Slow: the app calls it on its own
+        thread; it touches only `library`. `seq` comes back as it came, so the page can drop a reply it no longer waits for."""
+        request = json.loads(data)
+        reply = self.library.page(str(request.get("text") or ""), bool(request.get("mine")), self._machine_name(), str(request.get("cursor") or ""))
+        return json.dumps({**reply, "seq": request.get("seq")})
+
+    def library_get(self, coffee_id: str, directory: str) -> str:
+        """Downloads one coffee's package into the app's cache. Slow, as library_page."""
+        return json.dumps(self.library.download(coffee_id, directory))
+
+    def library_card(self, coffee_id: str, directory: str) -> str:
+        """The roast a library card was published with, drawn as the Roasts tab draws a roast. Slow, as library_page;
+        `directory`: the app's cache, where its package stays only while it is read."""
+        reply = self.library.roast(coffee_id, directory, (self.config or {}).get("unit", "C"))
+        if "detail" in reply:
+            reply["detail"]["colours"] = catalogue.export()["colours"]
+        return json.dumps(reply)
 
     def save_coffee(self, data: str) -> str:
         """A zone of a coffee ({uuid, zone, values}), or a new coffee (no uuid); tablet owner only."""

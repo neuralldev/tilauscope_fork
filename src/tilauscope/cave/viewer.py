@@ -186,6 +186,10 @@ class ViewerMixin:
         self.curve_image_action = export_menu.addAction(
             QApplication.translate("tilauscope_beancave", "Curve image (PNG)"))
         export_menu.addSeparator()
+        self.publish_roast_action = export_menu.addAction(
+            QApplication.translate("tilauscope_beancave", "Publish to the library…"))
+        self.publish_roast_action.triggered.connect(self.on_publish_roast)
+        export_menu.addSeparator()
         self.niimbot_overlay = NiimbotStatusOverlay()
         printer_state = QWidgetAction(export_menu)
         printer_state.setDefaultWidget(self.niimbot_overlay)
@@ -218,7 +222,7 @@ class ViewerMixin:
             for action in menu.actions():
                 action.setMenuRole(QAction.MenuRole.NoRole)   # macOS moves look-alikes of Quit or About
         for action in (self.print_pdf_label_action, self.print_label_action, self.roast_card_action,
-                       self.curve_image_action, self.roast_finished_action, self.planning_action,
+                       self.curve_image_action, self.publish_roast_action, self.roast_finished_action, self.planning_action,
                        self.dial_in_action, self.data_action):
             action.setEnabled(False)
         self._sync_print_label_text()
@@ -2229,7 +2233,7 @@ class ViewerMixin:
             button.setEnabled(mono)
         for action in (self.roast_finished_action, self.print_pdf_label_action, self.planning_action,
                        self.dial_in_action, self.curve_image_action, self.roast_card_action,
-                       self.data_action):
+                       self.publish_roast_action, self.data_action):
             action.setEnabled(mono)
         # The printed label also needs the printer ready (heartbeat answered).
         self.print_label_action.setEnabled(mono and getattr(self, "_niimbot_connected", False))
@@ -2384,6 +2388,16 @@ class ViewerMixin:
 
     @pyqtSlot()
     # Export the selected roast as a high-resolution portrait PNG
+    def on_publish_roast(self, _checked: bool = False) -> None:
+        """Export › Publish to the library: the roast on screen; the Library tab then shows it being sent."""
+        try:
+            profile = self.displayed_profile()
+            bean = self.bean_from_profile(profile) if profile else None
+            if self.library_tab_widget.publish_roast(bean, self.displayed_profile_path()):
+                self.tab_widget.setCurrentWidget(self.library_tab)
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("publishing a roast failed")
+
     def on_export_roast_card(self) -> None:
         # In comparison mode `lastprofiledata` holds a roast that is not on screen.
         if getattr(self, "_multi_mode", False):

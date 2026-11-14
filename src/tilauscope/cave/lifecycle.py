@@ -1161,10 +1161,12 @@ class LifecycleMixin:
         self.main_tab = QWidget()
         self.roast_viewer_tab = QWidget()
         self.storage_tab = QWidget()  # conservation / water-activity dashboard
+        self.library_tab = QWidget()  # the community coffee library
 
         self.tab_widget.addTab(self.main_tab, QApplication.translate("tilauscope_beancave","Green Beans"))
         self.tab_widget.addTab(self.roast_viewer_tab, QApplication.translate("tilauscope_beancave","Roasts"))
         self.tab_widget.addTab(self.storage_tab, QApplication.translate("tilauscope_beancave","Storage"))
+        self.tab_widget.addTab(self.library_tab, QApplication.translate("tilauscope_beancave","Library"))
         # One line: the title and the tabs on the left, scan and close on the right.
         # The tabs live in the header row, mirrored both ways with the tab widget,
         # whose own bar is hidden — a corner widget is clipped to the bar's height.
@@ -1185,6 +1187,7 @@ class LifecycleMixin:
         self.setup_main_tab_ui()
         self.setup_roast_viewer_tab_ui()
         self.setup_storage_tab_ui()
+        self.setup_library_tab_ui()
         self.layout.addWidget(self.tab_widget)
 
         footer_layout = QHBoxLayout()
@@ -1362,6 +1365,19 @@ class LifecycleMixin:
         if st is not None:
             st.on_hidden()
 
+    def setup_library_tab_ui(self) -> None:
+        from tilauscope.library_tab import LibraryTab  # noqa: PLC0415
+        layout = QVBoxLayout(self.library_tab)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.library_tab_widget = LibraryTab(self)
+        layout.addWidget(self.library_tab_widget)
+
+    def _close_step_library(self) -> None:
+        # a relay call still running finishes unheard: this window is never shown again
+        tab = getattr(self, 'library_tab_widget', None)
+        if tab is not None:
+            tab.shutdown()
+
     def _close_step_table_signals(self) -> None:
         # itemSelectionChanged is what the bean tab actually connects; asking the
         # selection model for selectionChanged raised TypeError every time and
@@ -1480,6 +1496,7 @@ class LifecycleMixin:
                      self._close_step_density_window,
                      self._close_step_data_reader,
                      self._close_step_storage,
+                     self._close_step_library,
                      self._close_step_table_signals,
                      self._close_step_geometry,
                      self._close_step_persist,

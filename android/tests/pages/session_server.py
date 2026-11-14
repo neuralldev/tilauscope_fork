@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 import sys
 import traceback
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 SERVICE = ROOT / "app/src/main/java/org/tilauscope/android/prototype/SessionService.kt"
@@ -37,6 +38,31 @@ def main(folder):
     if overrides.exists():
         configuration.save(str(base / "config.json"), {**configuration.default(), **json.loads(overrides.read_text())})
     demo = Demo(str(base / "session.journal"), str(base / "config.json"), str(base / "beancave"))
+    relay = base / "relay.json" # the community library, as the page bench plays it: read at each call
+    from tilaucore.coffee_library import LibraryError, machine_key, search_key
+    from tilauscope_mobile.coffee_share import Browser
+
+    def search(state, query):
+        """GET /v1/coffees as the relay answers it: every word of q, the machine, newest roast day first, paged."""
+        ask = {k: v[0] for k, v in parse_qs(query).items()}
+        words, machine = search_key(ask.get("q", "")).split(), ask.get("machine", "")
+        found = [c for c in state.get("index", []) if (not machine or machine_key(c.get("roaster", "")) == machine)
+                 and all(w in search_key(" ".join([c["name"], c["country"], c["process"], *c["flavours"]])) for w in words)]
+        found.sort(key=lambda c: c.get("roasted") or "", reverse=True)
+        start, limit = int(ask.get("cursor") or 0), int(ask.get("limit") or 10)
+        rest = start + limit < len(found)
+        return {"v": 1, "coffees": found[start:start + limit], "next": str(start + limit) if rest else "", "total": len(found)}
+
+    def fetch(_method, url, _headers, _body):
+        state = json.loads(relay.read_text()) if relay.exists() else {"error": "offline"}
+        if state.get("error"):
+            raise LibraryError(state["error"])
+        where = urlsplit(url)
+        if where.path == "/v1/coffees":
+            return 200, {}, json.dumps(search(state, where.query)).encode()
+        package = state.get("packages", {}).get(where.path.rsplit("/", 1)[1])
+        return (200, {}, Path(package).read_bytes()) if package else (404, {}, b"{}")
+    demo.library = Browser("https://relay.test", fetch)
     clock = [1000.0]
     demo.clock = demo.real_clock = lambda: clock[0]
     since = 0

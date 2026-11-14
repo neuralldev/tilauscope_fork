@@ -18,20 +18,21 @@ import java.io.FileNotFoundException
  * Hands roasts to the app the operator shares them with, read only, for that share
  * alone (granted per intent). Only files of the tablet's roasts folder, of the
  * computer's (path "computer/<name>"), the BeanCave files (path "cave/<name>"), the diagnostic log (path "log/<name>"), or an
- * alarm list as shared, in the unit shown (path "alarms/<name>").
+ * alarm list as shared, in the unit shown (path "alarms/<name>"), or the coffee package prepared to send (path "coffee/<name>", in the cache).
  */
 class RoastFiles : ContentProvider() {
     override fun onCreate() = true
 
     private fun file(uri: Uri): File {
         val sub = if (uri.pathSegments.size == 2) uri.pathSegments[0] else ""
-        val folder = File(context!!.filesDir, when (sub) {
+        val folder = (if (sub == "coffee") File(context!!.cacheDir, COFFEE_FOLDER) else File(context!!.filesDir, when (sub) {
             "computer" -> COMPUTER_FOLDER
+            "shared" -> SHARED_FOLDER
             "cave" -> SessionService.CAVE_FOLDER
             "alarms" -> ALARMS_FOLDER
             "log" -> LOG_FOLDER
             else -> FOLDER
-        }).canonicalFile
+        })).canonicalFile
         val target = File(folder, uri.lastPathSegment ?: "").canonicalFile
         if (target.parentFile != folder || !target.isFile) throw FileNotFoundException(uri.toString())
         return target
@@ -57,13 +58,16 @@ class RoastFiles : ContentProvider() {
     companion object {
         const val FOLDER = "roasts"
         const val COMPUTER_FOLDER = "roasts-computer" // imported from the computer, never sent back as tablet roasts
+        const val SHARED_FOLDER = "roasts-shared" // roasts another roaster shared, opened from a .tilaucoffee: not the tablet's own (path "shared/<name>")
         const val MIME = "application/octet-stream" // an .alog has no registered type
         const val ALARMS_FOLDER = "alarms-shared" // an alarm list's copy in the unit shown, for the share sheet
         const val LOG_FOLDER = "log-shared" // the diagnostic log as one file, for the share sheet
-        fun uri(packageName: String, file: File, computer: Boolean = false): Uri =
-            Uri.parse("content://$packageName.roasts/${if (computer) "computer/" else ""}${Uri.encode(file.name)}")
+        const val COFFEE_FOLDER = "coffee-share" // in the cache: the .tilaucoffee prepared for the share sheet
+        fun uri(packageName: String, file: File, sub: String = ""): Uri =
+            Uri.parse("content://$packageName.roasts/${if (sub.isEmpty()) "" else "$sub/"}${Uri.encode(file.name)}")
         fun caveUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/cave/${Uri.encode(file.name)}")
         fun alarmsUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/alarms/${Uri.encode(file.name)}")
+        fun coffeeUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/coffee/${Uri.encode(file.name)}")
         fun logUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/log/${Uri.encode(file.name)}")
     }
 }

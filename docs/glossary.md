@@ -485,6 +485,12 @@ One file, ending in `.tilaucoffee`, that carries one coffee from one TilauScope 
 cleaned of anything personal for another roaster, whole for your own other computer. See
 [BeanCave](beancave.md#sharing-a-coffee).
 
+#### Library
+
+The roasts TilauScope roasters publish for each other, browsed and imported from the BeanCave's
+**Library** tab. Each one is a [shared roast](#shared-roast) with its coffee and its roaster's
+tasting. See [BeanCave](beancave.md#the-library).
+
 #### Safety copy
 
 The [backup](#backup) TilauScope makes of the current state just before a restore replaces it.

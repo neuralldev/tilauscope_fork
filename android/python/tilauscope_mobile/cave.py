@@ -189,6 +189,32 @@ class Cave:
         self._write(FILE, to_json(container))
         return bean.uuid
 
+    def add_bean(self, bean: GreenBean) -> bool:
+        """A coffee of a package, when the cave does not hold it (same uuid, case ignored); nothing is replaced."""
+        if not self.path.exists():
+            self.replace(EMPTY, "")
+        container = from_dict(BeanCaveContainer, json.loads(self.path.read_text(encoding="utf-8").lstrip("\ufeff")))
+        if any(b.uuid.lower() == bean.uuid.lower() for b in container.green_beans):
+            return False
+        container.green_beans.append(bean)
+        self._write(FILE, to_json(container))
+        return True
+
+    def brews(self, bean_uuid: str) -> list:
+        """The brew settings kept for a coffee in brewlog.json."""
+        path = self.directory / "brewlog.json"
+        return from_json(BrewLog, path.read_text(encoding="utf-8").lstrip("\ufeff")).entries.get(bean_uuid, []) if path.is_file() else []
+
+    def add_brews(self, bean_uuid: str, samples: list) -> None:
+        """The samples of a package this cave lacks, appended to the coffee's brew settings."""
+        path = self.directory / "brewlog.json"
+        log = from_json(BrewLog, path.read_text(encoding="utf-8").lstrip("\ufeff")) if path.is_file() else BrewLog()
+        here = log.entries.setdefault(bean_uuid, [])
+        fresh = [s for s in samples if s not in here]
+        if fresh:
+            here.extend(fresh)
+            self._write("brewlog.json", to_json(log))
+
     def decrease(self, bean_uuid: str, grams: float) -> float:
         """Takes a roast's green weight off a coffee's stock, floored at 0, as Roast Setup does; returns the stock left."""
         container = from_dict(BeanCaveContainer, json.loads(self.path.read_text(encoding="utf-8").lstrip("\ufeff")))

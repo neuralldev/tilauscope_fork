@@ -14,19 +14,20 @@ first time it opens it runs the
 [first-time setup wizard](getting-started.md#first-time-setup).
 
 <!-- CAPTURE 3.1 [scene:cave_beans] — the BeanCave window on the Green Beans tab, with several beans in the list and
-the three tabs (Green Beans, Roasts, Storage) visible; Roast and Plan on the bean record. -->
+the four tabs (Green Beans, Roasts, Storage, Library) visible; Roast and Plan on the bean record. -->
 
 ![The BeanCave window on the Green Beans tab, with several beans in the list](assets/beancave-3.1.png)
 
 ---
 
-## The three tabs
+## The four tabs
 
 | Tab | What it is for |
 |---|---|
 | **Green Beans** | The catalogue and the bean records. This chapter. |
 | **Roasts** | Every roast, grouped by day and searchable, and reading one back — curve, statistics, tasting. See [After the roast](after-the-roast.md#the-roasts-tab). |
 | **Storage** | How your coffee is keeping: [water activity](glossary.md#aw--water-activity), conditioning, sack labels — see [Sacks, stock and conservation](sacks-and-storage.md). |
+| **Library** | Roasts other TilauScope roasters published, to read and import, and your own. See [The Library](#the-library). |
 
 ---
 
@@ -298,8 +299,10 @@ brewing settings. Without a reference roast the package carries the record and t
 settings only: mark the roast you would roast again with a ★ to include it — see
 [Marking the reference roast](after-the-roast.md#marking-the-reference-roast). The roast is
 cleaned before it leaves: your name and organisation, the room's temperature, humidity and
-pressure, and every folder path, computer name or identifier written into the file are removed,
-including from your notes. The coffee's supplier stays.
+pressure, the altitude, and every folder path, computer name or identifier written into the file
+are removed, including from your notes. So are its alarms and the programs it would run: a shared
+roast never moves a lever or starts anything on the roaster that opens it. The coffee's supplier
+stays.
 
 **To another of my computers** packs the coffee as it is here: the record with stock, bags and
 price, every roast of it, their tastings, the brewing settings and the brewing journal. Nothing is
@@ -319,6 +322,8 @@ note on what is left out of the roast. -->
 **+ New bean ▾ › Import a coffee…** opens a `.tilaucoffee` file and shows what it brings before
 anything changes: who it comes from, the date and the TilauScope version it was made with, then
 **WHAT YOU GET**. On an empty BeanCave the **New bean** button sits under the empty-cellar message.
+Double-clicking a `.tilaucoffee` file in the Finder or the Explorer opens the same window in
+TilauScope.
 
 - **The coffee is new here** — its record joins the catalogue.
 - **The coffee is already here** — from another roaster, your record stays as it is and their
@@ -331,7 +336,9 @@ anything changes: who it comes from, the date and the TilauScope version it was 
 - **Roasted on another machine** — a warning names that machine: the curve is one to read, not
   to copy.
 
-A file made by a newer TilauScope, or a damaged one, is refused and nothing changes.
+A file made by a newer TilauScope, a damaged one, or one far larger than any coffee package is
+refused and nothing changes. A roast from another roaster arrives without alarms or programs,
+even if the file still held some.
 
 <!-- CAPTURE 3.12 [scene:coffee_import] — the Import coffee window for a coffee shared by another roaster: the origin
 line, WHAT YOU GET with their reference roast, their tasting and their brewing settings, and the caption on shared
@@ -373,6 +380,60 @@ Skywalker V1. Replay it on your roaster: the roast you make will teach your plan
 your own machine; the roast you make is yours, and that one teaches the plan.
 
 Roasts brought from your own other computer are not shared roasts: they count as yours.
+
+---
+
+## The Library
+
+The [Library](glossary.md#library) is where TilauScope roasters publish roasts for each other:
+good ones to follow, bad ones so that others avoid the same mistake. It needs an internet
+connection and no account. Your own coffees and roasts never depend on it.
+
+<!-- CAPTURE 3.14 [scene:cave_library] — the Library tab: the list of roasts on the left with My machine off, a
+roast selected, its roast card on the right, THEIR TASTING with flavours and Import this coffee below. -->
+
+### Browsing
+
+The list on the left shows every published roast, newest roast first: the coffee, the day it was
+roasted, its origin and process, and the machine it was roasted on. It arrives ten roasts at a
+time: scroll down for the next ones. Search by coffee, country, process or flavour; the search
+runs in the library itself, so it finds roasts not yet shown. **My machine**, off by default,
+keeps only the roasts made on the same roaster as yours; it fills in blue while it filters.
+**Mine** shows the roasts you published. Nothing is downloaded until you open the tab.
+
+Selecting a roast downloads it and shows its full roast card, the same as
+[Export → Roast card](after-the-roast.md#sharing-a-roast): key figures, the curve with its rate of
+rise, the phases, the settings played and the key moments. The rate of rise is recalculated by
+your TilauScope, so it can differ slightly from what its roaster saw. Below the card: their
+tasting (or *Not tasted*) with its flavours, and the machine it was roasted on — on another
+machine, the curve is one to read, not to copy.
+
+**Import this coffee** brings the coffee and that roast into your BeanCave through the usual
+[import window](#importing-a-coffee); it arrives as a [shared roast](#what-a-shared-roast-is).
+
+### Publishing a roast
+
+Any roast of a coffee in your BeanCave can be published, with or without a ★, successful or not.
+Open it in **Roasts**, then **Export → Publish to the library…**. The window lists what goes to the
+library — the coffee's origin, process and flavours, this roast and its curve, your tasting, your
+brewing settings — and what stays on this computer: your name and organisation, stock, sacks and
+price, the room's conditions and altitude, file locations and alarms. The roast is cleaned as for
+[another roaster](#sharing-a-coffee). Publishing means agreeing that any roaster may use this
+coffee and adapt it. It appears in the library at once.
+
+A roast cannot be published when:
+
+- it came from another roaster — it is theirs to publish;
+- its coffee is not in your BeanCave;
+- CHARGE or DROP is not marked;
+- the system keychain does not answer: TilauScope signs what it publishes with a key kept there.
+
+The library takes a limited number of roasts from each computer per day.
+
+### Withdrawing a roast
+
+Under **Mine**, a roast you published shows **Withdraw from the library**. It leaves the library
+at once; roasters who already imported it keep their copy.
 
 ---
 

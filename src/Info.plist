@@ -11,6 +11,20 @@
 		<dict>
 			<key>CFBundleTypeExtensions</key>
 			<array>
+				<string>tilaucoffee</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>TilauScope Coffee</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSTypeIsPackage</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
 				<string>alog</string>
 			</array>
 			<key>CFBundleTypeIconFile</key>

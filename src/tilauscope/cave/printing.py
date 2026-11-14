@@ -1015,17 +1015,20 @@ class PrintingMixin:
         except Exception:  # pylint: disable=broad-except
             _logd.exception("share coffee failed")
 
-    def on_import_coffee(self, _checked: bool = False) -> None:
-        """+ New bean › Import a coffee: a package shared by another roaster, or moved from another computer."""
+    def on_import_coffee(self, _checked: bool = False, path: str = "") -> None:
+        """+ New bean › Import a coffee: a package shared by another roaster, or moved from another computer.
+
+        ``path`` is the package the system handed over (double-click, share); without it the operator picks one.
+        """
         try:
-            self._import_coffee()
+            self._import_coffee(path)
         except Exception as e:  # pylint: disable=broad-except
             _logd.exception("import coffee failed")
             self._show_message(self, QApplication.translate("tilauscope_beancave", "Import coffee"),
                                QApplication.translate("tilauscope_common", "An unexpected error occurred") + f": {e}",
                                QMessageBox.Icon.Warning)
 
-    def _import_coffee(self) -> None:
+    def _import_coffee(self, chosen: str = "") -> None:
         from PyQt6.QtWidgets import QFileDialog  # noqa: PLC0415
         from tilaucore import coffee_share as core  # noqa: PLC0415
         from tilaucore.archive import ArchiveError  # noqa: PLC0415
@@ -1036,11 +1039,12 @@ class PrintingMixin:
         if not self.is_directory_defined:
             self._show_message(self, title, QApplication.translate("tilauscope_beancave", "Set the BeanCave and roast folders first, in Configuration › BEANCAVE."), QMessageBox.Icon.Warning)
             return
-        folder = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation) or str(Path.home())
-        chosen, _ = QFileDialog.getOpenFileName(
-            self, title, folder, QApplication.translate("tilauscope_beancave", "TilauScope coffee") + f" (*{core.EXTENSION})")
         if not chosen:
-            return
+            folder = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation) or str(Path.home())
+            chosen, _ = QFileDialog.getOpenFileName(
+                self, title, folder, QApplication.translate("tilauscope_beancave", "TilauScope coffee") + f" (*{core.EXTENSION})")
+            if not chosen:
+                return
         version, build = app_version()
         try:
             package = core.read_package(Path(chosen), version=version, build=build)

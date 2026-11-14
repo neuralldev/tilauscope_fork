@@ -28,6 +28,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -47,6 +48,9 @@ class MainActivity : Activity() {
     private var pendingImport: String? = null // a roast folder's preview asked before the service was bound again
     private var pendingAlarms: Pair<String, String>? = null // an alarm list picked before the service was bound again: its copy and name
     private var stagedImport: String? = null // the staged roast files of the folder shown in the preview
+    private var staged: File? = null // the coffee file on the preview sheet (opened from another app, or downloaded), until imported or dismissed
+    private var coffeeWaiting = false // a coffee was opened while a roast is on: its sheet waits for the roast's end
+    private var coffeeHeldTold = false
     private lateinit var web: WebView
 
     private val connection = object : ServiceConnection {
@@ -79,6 +83,7 @@ class MainActivity : Activity() {
                 }
                 pendingImport?.let { request -> pendingImport = null; it.execute("roasts_preview", request) }
                 pendingAlarms?.let { (path, name) -> pendingAlarms = null; it.execute("import_alarms", path, name) }
+                openCoffee(it) // `session` is assigned once this block ends
             }
         }
 
@@ -169,6 +174,73 @@ class MainActivity : Activity() {
             }
         }
         setContentView(root)
+        if (savedInstanceState == null) acceptCoffee(intent) // opened from another app; a recreated screen has its page already
+    }
+
+    /** The app was already running when another app opened a coffee file (the activity is singleTask). */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        acceptCoffee(intent)
+    }
+
+    /** A .tilaucoffee offered by an intent is copied into the cache, then shown on the preview sheet. */
+    private fun acceptCoffee(offer: Intent) {
+        val uri = CoffeeFiles.uriOf(offer) ?: return
+        offer.action = null // handled once, not again when the screen is recreated
+        offer.data = null
+        offer.removeExtra(Intent.EXTRA_STREAM)
+        Thread {
+            val file = CoffeeFiles.copy(this, uri)
+            runOnUiThread {
+                if (file == null) {
+                    Toast.makeText(this, R.string.coffee_unreadable, Toast.LENGTH_LONG).show()
+                } else {
+                    staged = file
+                    coffeeWaiting = true
+                    openCoffee()
+                }
+            }
+        }.start()
+    }
+
+    /** Shows the staged coffee on BeanCave's preview sheet. Never over a roast: it waits for the roast's end. */
+    private fun openCoffee(bound: SessionService? = session) {
+        if (!coffeeWaiting) return
+        val service = bound ?: return // asked again once the service is bound
+        if (service.running) {
+            if (!coffeeHeldTold) {
+                coffeeHeldTold = true
+                Toast.makeText(this, R.string.coffee_held, Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+        coffeeWaiting = false
+        coffeeHeldTold = false
+        if (pageLoaded && web.url?.contains("beancave.html") == true) web.evaluateJavascript("window.coffeeStaged && coffeeStaged()", null)
+        else web.loadUrl("file:///android_asset/beancave.html#coffee")
+    }
+
+    private fun dropStaged() {
+        staged = null
+        File(cacheDir, CoffeeFiles.FOLDER).deleteRecursively()
+        File(cacheDir, LIBRARY_FOLDER).deleteRecursively()
+    }
+
+    /** The staged file itself, to the computer: the share sheet, from a copy under the provider's folder. */
+    private fun sendStagedCoffee() {
+        val file = staged ?: return
+        Thread {
+            val folder = File(cacheDir, RoastFiles.COFFEE_FOLDER).apply { deleteRecursively(); mkdirs() }
+            val copy = File(folder, "coffee${CoffeeFiles.EXTENSION}")
+            if (runCatching { file.copyTo(copy, overwrite = true) }.isSuccess) runOnUiThread { shareCoffee(copy) }
+        }.start()
+    }
+
+    private fun shareCoffee(file: File) {
+        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(RoastFiles.MIME)
+            .putExtra(Intent.EXTRA_STREAM, RoastFiles.coffeeUri(packageName, file))
+            .putExtra(Intent.EXTRA_TITLE, file.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), file.name))
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -250,11 +322,25 @@ class MainActivity : Activity() {
             "roasts_import_confirm" -> stagedImport?.let { service.execute("import_roasts", it) }
             "roasts_import_cancel" -> { stagedImport = null; File(cacheDir, "roast-import").deleteRecursively() }
             "roasts_send" -> sendRoasts()
+            // A coffee in one file: the staged package, the library and the coffee sent to the computer.
+            "coffee_opened" -> staged?.let { service.execute("coffee_preview", it.absolutePath) }
+            "coffee_import" -> staged?.let { service.execute("coffee_import", it.absolutePath) }
+            "coffee_dismiss" -> dropStaged()
+            "coffee_file_send" -> sendStagedCoffee()
+            "coffee_theirs" -> service.execute(method, argument)
+            "coffee_send" -> service.execute(method, argument, File(cacheDir, RoastFiles.COFFEE_FOLDER).absolutePath)
+            "library_page" -> service.executeSlow(method, argument) // the network: never on the thread that ticks the roast
+            "library_get" -> service.executeSlow(method, argument, File(cacheDir, LIBRARY_FOLDER).absolutePath)
+            "library_card" -> service.executeSlow(method, argument, File(cacheDir, LIBRARY_CARD_FOLDER).absolutePath)
             "roast_share" -> {
                 val parts = argument.split("/", limit = 2)
                 val name = parts.getOrNull(1) ?: return
-                val computer = parts[0] == "computer"
-                share(File(File(filesDir, if (computer) RoastFiles.COMPUTER_FOLDER else RoastFiles.FOLDER), name).absolutePath, computer)
+                val (folder, sub) = when (parts[0]) {
+                    "computer" -> RoastFiles.COMPUTER_FOLDER to "computer"
+                    "shared" -> RoastFiles.SHARED_FOLDER to "shared"
+                    else -> RoastFiles.FOLDER to ""
+                }
+                share(File(File(filesDir, folder), name).absolutePath, sub)
             }
             "scan_start" -> {
                 val missing = scanPermissions().filter {
@@ -409,11 +495,11 @@ class MainActivity : Activity() {
             .putExtra(Intent.EXTRA_TITLE, file.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), file.name))
     }
 
-    private fun share(path: String, computer: Boolean = false) {
+    private fun share(path: String, sub: String = "") {
         val file = File(path)
         val send = Intent(Intent.ACTION_SEND)
             .setType(RoastFiles.MIME)
-            .putExtra(Intent.EXTRA_STREAM, RoastFiles.uri(packageName, file, computer))
+            .putExtra(Intent.EXTRA_STREAM, RoastFiles.uri(packageName, file, sub))
             .putExtra(Intent.EXTRA_TITLE, file.name)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         startActivity(Intent.createChooser(send, file.name))
@@ -535,6 +621,10 @@ class MainActivity : Activity() {
     }
 
     private fun deliver(method: String, result: JSONObject?) {
+        if (method == "library_get") staged = result?.optJSONObject("reply")?.optString("path")?.takeIf { it.isNotEmpty() }?.let { File(it) }
+        if (method == "coffee_import" && result != null) dropStaged()
+        if (method == "coffee_send") result?.optString("reply")?.takeIf { it.isNotEmpty() }?.let { shareCoffee(File(it)) }
+        if (coffeeWaiting && result != null && result.has("state")) openCoffee() // the roast may have ended
         if (method == "cave_import" && result != null) { pickedCave = null; File(cacheDir, "cave-import").deleteRecursively() }
         if (method == "import_roasts") { stagedImport = null; File(cacheDir, "roast-import").deleteRecursively() }
         if ((method == "stop" || method == "exit_simulation") && result != null) session?.release()
@@ -566,6 +656,8 @@ class MainActivity : Activity() {
         const val PICK_CAVE = 3
         const val PICK_ROASTS = 5
         const val PICK_ALARMS = 6
+        const val LIBRARY_FOLDER = "coffee-library" // in the cache: the package last downloaded from the library
+        const val LIBRARY_CARD_FOLDER = "coffee-library-cards" // in the cache: a selected roast's package, only while it is read
         val CAVE_FILES = listOf("beancave.json", "tastings.json", "brewlog.json") // as tilauscope_mobile.cave.FILES
     }
 }

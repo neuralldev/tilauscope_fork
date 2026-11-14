@@ -73,6 +73,9 @@ class AmbientMixin:
                 st.on_shown()
             else:
                 st.on_hidden()
+        library = getattr(self, 'library_tab_widget', None)
+        if library is not None and current is getattr(self, 'library_tab', None):
+            library.on_shown()   # the library is fetched once, on its first showing
 
     # ── Density measurement window ─────────────────────────────────────────
     @pyqtSlot()

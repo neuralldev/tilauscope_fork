@@ -423,6 +423,11 @@ class Artisan(QtSingleApplication):
                         aw.loadBackgroundSignal.emit(filename, True)
                     else:
                         aw.loadFileSignal.emit(filename)
+                ## TILAU ## a coffee package opens on BeanCave's import. Queued: at
+                ## launch the file arrives before tilauscopeCall has built the window.
+                elif file_suffix == 'tilaucoffee' and not aw.app.artisanviewerMode:
+                    QTimer.singleShot(0, lambda: aw.tilauscope_main.open_coffee_package(filename)
+                                      if aw.tilauscope_main is not None else None)
                 elif file_suffix == 'alrm' and not aw.app.artisanviewerMode:
                     # load Artisan alarms on double-click on *.alrm file
                     aw.loadAlarmsSignal.emit(filename)
@@ -29333,6 +29338,9 @@ def main() -> None:
             if file_suffix == 'alog':
                 # load Artisan profile on double-click on *.alog file
                 appWindow.loadFile(argv_file)
+            ## TILAU ## a coffee package given at launch takes the same road as one opened later
+            elif file_suffix == 'tilaucoffee':
+                app.open_url(QUrl.fromLocalFile(argv_file))
             elif file_suffix == 'alrm':
                 # load Artisan alarms on double-click on *.alrm file
                 appWindow.loadAlarms(argv_file)

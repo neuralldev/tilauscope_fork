@@ -270,6 +270,9 @@ Section -Post
   !insertmacro APP_ASSOCIATE "alog" "Artisan.Profile" "Artisan Roast Profile" \
      "$INSTDIR\artisanProfile.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
+  !insertmacro APP_ASSOCIATE "tilaucoffee" "TilauScope.Coffee" "TilauScope Coffee" \
+     "$INSTDIR\TilauScope.exe,0" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
+
   !insertmacro APP_ASSOCIATE "alrm" "Artisan.Alarms" "Artisan Alarms" \
      "$INSTDIR\artisanAlarms.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
@@ -358,6 +361,7 @@ Section Uninstall
 
   ; Désassociation complète via les macros définies au début du script
   !insertmacro APP_UNASSOCIATE "alog" "Artisan.Profile"
+  !insertmacro APP_UNASSOCIATE "tilaucoffee" "TilauScope.Coffee"
   !insertmacro APP_UNASSOCIATE "alrm" "Artisan.Alarms"
   !insertmacro APP_UNASSOCIATE "apal" "Artisan.Palettes"
   !insertmacro APP_UNASSOCIATE "athm" "Artisan.Theme"

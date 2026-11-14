@@ -67,8 +67,12 @@ class SessionService : Service() {
 
     private val binder = LocalBinder()
     private val worker = Executors.newSingleThreadScheduledExecutor()
+    private val network = Executors.newSingleThreadExecutor() // the community library: a call can wait seconds, the worker's tick never does
     private val main = Handler(Looper.getMainLooper())
-    private var engine: PyObject? = null // accessed only by worker
+    @Volatile private var engine: PyObject? = null // created and used by the worker; the network thread only calls what touches nothing of the roast
+    /** A roast is on (preheat included) and live: a file opened meanwhile waits for its end. */
+    @Volatile var running = false
+        private set
     private var since = 0 // samples already delivered to the listener; worker only
     private val scanner by lazy { BleScanner(this) { batch -> execute("classify_scan", batch.toString()) } }
     val bluetoothEnabled get() = scanner.enabled
@@ -128,6 +132,26 @@ class SessionService : Service() {
         } catch (gone: RejectedExecutionException) {
             AppLog.i("TilauScopeAndroid", "Dropped after the service ended: $method")
         }
+    }
+
+    /** A call that waits for the network (the library): its own thread, so the roast's tick is never held back. */
+    fun executeSlow(method: String, vararg args: Any) {
+        try {
+            network.execute { runSlow(method, *args) }
+        } catch (gone: RejectedExecutionException) {
+            AppLog.i("TilauScopeAndroid", "Dropped after the service ended: $method")
+        }
+    }
+
+    private fun runSlow(method: String, vararg args: Any) {
+        val result = try {
+            val demo = engine ?: throw IllegalStateException("The session is not started")
+            JSONObject().put("reply", JSONTokener(demo.callAttr(method, *args).toString()).nextValue())
+        } catch (error: Exception) {
+            AppLog.e("TilauScopeAndroid", "Library operation failed: $method", error)
+            null
+        }
+        main.post { listener?.invoke(method, result) }
     }
 
     /** Sends the whole curve again, for a newly attached screen. */
@@ -383,7 +407,10 @@ class SessionService : Service() {
             AppLog.e("TilauScopeAndroid", "Session operation failed: $method", error)
             null
         }
-        if (result != null && result.has("state")) holdAwake(result.optString("state") == "recording" && !result.optBoolean("interrupted"))
+        if (result != null && result.has("state")) {
+            running = result.optString("state") == "recording" && !result.optBoolean("interrupted")
+            holdAwake(running)
+        }
         main.post { listener?.invoke(method ?: "snapshot", result) }
     }
 
@@ -412,6 +439,7 @@ class SessionService : Service() {
         printer?.release()
         mqtt?.disconnect()
         worker.shutdown() // finish an in-flight atomic save or journal write
+        network.shutdown()
         if (awake.isHeld) awake.release() // a tick still in flight renews it for 60 s at most
         super.onDestroy()
     }
@@ -423,8 +451,9 @@ class SessionService : Service() {
     "get_cave", "cave_preview", "cave_import", "cave_start_empty", "get_coffees", "save_coffee", "get_plan", "set_plan_choice", "save_tasting",
     "get_roasts", "get_roast", "import_roasts", "roasts_preview", "roast_label", "get_alarms", "set_alarm_list", "import_alarms",
     "get_alarm_list", "edit_alarm", "add_alarm", "delete_alarm", "undo_alarm", "move_alarm", "new_alarm_list", "delete_alarm_list",
-    "simulate", "set_auto_mark", "set_follow", "mqtt_check", "get_energy", "get_roast_energy", "delete_roast")
-        private val TEXT_REPLY_METHODS = setOf("export_alog", "alarm_list_file")
+    "simulate", "set_auto_mark", "set_follow", "mqtt_check", "get_energy", "get_roast_energy", "delete_roast",
+    "coffee_preview", "coffee_import", "coffee_theirs", "library_page", "library_get", "library_card")
+        private val TEXT_REPLY_METHODS = setOf("export_alog", "alarm_list_file", "coffee_send")
         private val UNLOGGED_METHODS = setOf("tick", "classify_scan") // once a second, or each scan batch
         private val QUIET_METHODS = setOf("ambient_reading", "crack_count", "door_frame", "extra_readings", "link_reading", "mqtt_message")
         private val AMBIENT_KEYS = listOf("temperature_c", "humidity_pct", "pressure_hpa")
