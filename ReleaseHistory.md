@@ -1,4 +1,5 @@
 ## [4.3] 2026-09-13
+build 60
 build 59
 * ⚡ [feat(beancave)] : the BeanCave gains a Library tab: roasts other TilauScope roasters published, newest first and ten at a time, searched in the library itself, each shown with its full roast card, their tasting and the machine it was roasted on, and imported in one click; any roast of your BeanCave, starred or not, is published from Roasts › Export › Publish to the library… and can be withdrawn later
 * ⚡ [feat(beancave)] : double-clicking a .tilaucoffee file opens it in TilauScope, on macOS and Windows

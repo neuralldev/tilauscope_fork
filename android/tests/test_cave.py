@@ -82,7 +82,8 @@ class CaveTests(unittest.TestCase):
     def test_an_empty_cave_is_the_desktop_empty_container(self):
         cave = Cave(str(self.dir))
         cave.start_empty()
-        self.assertEqual(cave.path.read_text(encoding="utf-8"), '{"green_beans": [], "reference_profiles": []}')
+        self.assertEqual(cave.path.read_text(encoding="utf-8"),
+                         '{"green_beans": [], "reference_profiles": [], "stock_taken_roasts": null, "stock_awaiting_link": []}')
         self.assertEqual(parse(EMPTY), [])
         with self.assertRaises(ValueError):
             cave.start_empty() # never over an existing cave

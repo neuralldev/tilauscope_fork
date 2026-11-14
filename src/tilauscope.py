@@ -22,6 +22,9 @@ if getattr(sys, 'frozen', False):
     target = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
     os.makedirs(target, exist_ok=True)
     os.chdir(target)
+    # The bundled OpenSSL finds no certificate authorities of its own: give it certifi's.
+    from tilauscope.frozen_certificates import use_bundled_certificates
+    use_bundled_certificates()
 
 warnings.simplefilter('ignore', DeprecationWarning)
 
