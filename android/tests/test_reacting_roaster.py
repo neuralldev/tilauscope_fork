@@ -57,6 +57,20 @@ class ReactingRoasterTests(unittest.TestCase):
         self.demo.unmark() # CHARGE undone: no turning point any more
         self.assertIsNone(json.loads(self.demo.snapshot())["tp"])
 
+    def test_a_turn_confirmed_past_two_minutes_is_still_drawn(self):
+        # BT's low at 108 s, a degree above it only past 2:00: the clock anchors the alarms first, the TP is still drawn
+        from types import SimpleNamespace
+        from tilaucore.alarms import TurningPoint
+        curve = [200.0 - k for k in range(109)] + [92.0 + 0.06 * k for k in range(1, 100)]
+        session = SimpleNamespace(milestones={"charge": 0}, samples=[], state="recording")
+        fake = SimpleNamespace(_tp=TurningPoint(), session=session, interrupted=False)
+        fake._marks = lambda: Demo._marks(fake)
+        for t, bt in enumerate(curve):
+            session.samples.append(SimpleNamespace(elapsed_s=float(t), bt_c=bt))
+            Demo._tp_step(fake)
+        self.assertEqual(fake._tp.index, 121) # the alarms' anchor, placed by the clock, stays
+        self.assertTrue(100 < Demo._tp_view(fake)["s"] < 120)
+
     def test_nothing_reacts_before_charge(self):
         self.demo.start()
         self.demo.set_lever("burner", 0)

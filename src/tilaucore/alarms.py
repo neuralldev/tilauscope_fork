@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Final
 
-from tilaucore.milestones import turning_point
+from tilaucore.milestones import TP_UNTIL_S, turning_point
 
 # alarmtime codes (canvas.py: menuidx2alarmtime)
 START: Final[int] = -1
@@ -241,19 +241,43 @@ def _is_rate(value: float | None) -> bool:
     return value is not None
 
 
-class TurningPoint:
-    """The TP the alarms anchor on, found live (tilaucore.milestones.turning_point, °C).
+TP_MAX_S: Final[float] = 120.0  # past this after CHARGE without a TP, the anchor is placed by the clock (both apps)
 
-    Searched before the next milestone marked after CHARGE; once BT has turned it is kept.
+
+class TurningPoint:
+    """The TP the alarms, Dry End and Roast Replay anchor on, in both apps (the desktop's TPalarmtimeindex).
+
+    `found`: the turning point, found live (tilaucore.milestones.turning_point, °C) before the next
+    milestone marked after CHARGE; once BT has turned it is kept. It is looked for until that milestone
+    (looked for again if it is undone) or until TP_UNTIL_S has passed, the window the roast file's TP is
+    read in (alog.find_tp): a low confirmed only past TP_MAX_S is still found. `index`, the anchor: that
+    one, else, past TP_MAX_S after CHARGE without one (a BT that never dips, or not yet risen a degree),
+    the sample then, which is not drawn; once placed it stays, since alarms may have fired on it.
     """
 
     def __init__(self) -> None:
         self.index: int | None = None
+        self.found: int | None = None
+        self.searching = True # False once `found` is known or its window has closed; a milestone marked only pauses it
+        self._end: int | None = None # the milestone the last search stopped at
 
     def update(self, times: Sequence[float], bt: Sequence[float], marks: Sequence[int]) -> int | None:
-        if self.index is None and marks[0] >= 0 and times:
-            end = min((m for m in marks[1:] if m > marks[0]), default=None)
-            self.index = turning_point(times, bt, marks[0], end)
+        charge = marks[0]
+        if charge < 0 or not times:
+            return self.index
+        if self.searching:
+            end = min((m for m in marks[1:] if m > charge), default=None)
+            if end is None or end != self._end: # a window a milestone closes holds until that milestone is undone
+                self.found = turning_point(times, bt, charge, end)
+            self._end = end
+            # the window's last reading has its two neighbours after it (the median of 5): nothing can change
+            closed = len(times) >= 3 and times[-3] - times[charge] > TP_UNTIL_S
+            self.searching = self.found is None and (end is not None or not closed)
+        if self.index is None:
+            if self.found is not None:
+                self.index = self.found
+            elif times[-1] - times[charge] > TP_MAX_S:
+                self.index = len(times) - 1
         return self.index
 
 

@@ -127,9 +127,9 @@ except Exception: # pylint: disable=broad-except
 
 ## TILAU ##
 from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTSensorConfig, TilauMqttPorts
-from tilaucore.alarms import AlarmRun, PROFILE_KEYS, read_profile_alarms, Readings as AlarmReadings ## TILAU ##
+from tilaucore.alarms import AlarmRun, PROFILE_KEYS, TP_MAX_S, read_profile_alarms, Readings as AlarmReadings ## TILAU ##
 from tilaucore.playback import Foreground, Playback ## TILAU ## Roast Replay shared with the Android prototype
-from tilaucore.milestones import CHARGE_MIN_BT, CHARGE_WINDOW_S, DROP_MIN_BT, DROP_MIN_S ## TILAU ## auto CHARGE/DROP gates shared with the Android prototype
+from tilaucore.milestones import CHARGE_MIN_BT, CHARGE_WINDOW_S, drop_looked_for ## TILAU ## auto CHARGE/DROP gates shared with the Android prototype
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -477,6 +477,7 @@ class tgraphcanvas(QObject):
 
         self.playbackdrop_min_roasttime:int = 4*60 # in seconds; DROP is not replayed before this time after CHARGE
 
+        ## TILAU ## unused: the TP placed by the clock reads tilaucore.alarms.TP_MAX_S; kept for upstream merges
         self.TP_max_roasttime:int = 2*60 # in seconds; time after CHARGE TP is automatically registered if not registered before (NOTE: event replay by-temp falls back to replay by-time until TP is registered)
 
 
@@ -5117,9 +5118,9 @@ class tgraphcanvas(QObject):
                                 self.autoChargeIdx = length_of_qmc_timex - b
                                 self.markChargeSignal.emit(False) # this queues an event which forces a realignment/redraw by resetting the cache ax_background and fires the CHARGE action
 
-                        elif self.TPalarmtimeindex is None and self.timeindex[0] > -1 and len(sample_timex)>0 and ((sample_timex[-1] - sample_timex[self.timeindex[0]]) > self.TP_max_roasttime):
+                        elif self.TPalarmtimeindex is None and self.timeindex[0] > -1 and len(sample_timex)>0 and ((sample_timex[-1] - sample_timex[self.timeindex[0]]) > TP_MAX_S): ## TILAU ## the shared value, never the attribute
                             try:
-                                # if 2:00min (self.TP_max_roasttime) into the roast and TPalarmtimeindex alarmindex not yet set,
+                                # if 2:00min (TP_MAX_S) into the roast and TPalarmtimeindex alarmindex not yet set, ## TILAU ##
                                 # we place the TPalarmtimeindex at the current index to enable in airoasters without TP the autoDRY and autoFCs functions and activate the TP Phases LCDs
                                 self.TPalarmtimeindex = length_of_qmc_timex - 1
                             except Exception as e: # pylint: disable=broad-except
@@ -5139,9 +5140,10 @@ class tgraphcanvas(QObject):
 
                         # autodetect DROP event
                         # only if 7min into roast and BT>160C/320F
+                        ## TILAU ## and only once FC is marked: without it no DROP makes sense (tilaucore.milestones.drop_looked_for)
                         if self.autoDropIdx == 0 and self.autoDropFlag and self.autoDROPenabled and self.timeindex[0] > -1 and self.timeindex[6] == 0 and \
-                            length_of_qmc_timex >= 5 and sample_temp2[-1] > DROP_MIN_BT['F' if self.mode == 'F' else 'C'] and\
-                            ((sample_timex[-1] - sample_timex[self.timeindex[0]]) > DROP_MIN_S): ## TILAU ## the shared thresholds
+                            length_of_qmc_timex >= 5 and drop_looked_for(self.timeindex, sample_timex[-1] - sample_timex[self.timeindex[0]], ## TILAU ##
+                                                                         sample_temp2[-1], 'F' if self.mode == 'F' else 'C'): ## TILAU ##
                             b = self.aw.BTbreak(length_of_qmc_timex - 1,event='DROP') # call BTbreak with last index
                             if b > 0:
                                 # we found a BT break at the current index minus b
@@ -6421,8 +6423,8 @@ class tgraphcanvas(QObject):
             # to catch also background events scheduled for around 00:00 we relax the condition to mark
             # events before now where time has already passed by 2 (or 3 with autoCHARGE) samples
             short_after_CHARGE:bool = False
-            after_CHARGE = additional_samples*sample_interval
-            if self.autoChargeFlag:
+            after_CHARGE = additional_samples*sample_interval ## TILAU ##
+            if self.autoChargeFlag: ## TILAU ##
                 after_CHARGE += CHARGE_WINDOW_S ## TILAU ## our auto CHARGE is known up to this long after its place: the recorded moves of those seconds are still to play
             if self.timeindex[0] != -1 and now - start < after_CHARGE: ## TILAU ##
                 now -= after_CHARGE ## TILAU ##
@@ -6458,11 +6460,12 @@ class tgraphcanvas(QObject):
                     replay_type=self.replayType, playback=self.specialeventplayback, ramp=self.specialeventplaybackramp,
                     lookahead_s=self.aw.qmc.ramp_lookahead, moves=self.backgroundPlaybackEvents,
                     aid=self.specialeventplaybackaid if self.backgroundReproduce else (False,) * 4,
-                    aid_window_s=self.detectBackgroundEventTime)
+                    aid_window_s=self.detectBackgroundEventTime, ## TILAU ##
+                    tp_s=self.TP_time_B_loaded) ## TILAU ## the moves before the background's TP stay on time
                 playback.replayed = self.replayedBackgroundEvents # never replay one event twice
                 slider_events, ramps = playback.step(self.timeclock.elapsedMilli(), Foreground(
                     self.timex, self.temp1, self.temp2, self.ctemp1, self.ctemp2, self.TPalarmtimeindex,
-                    self.specialevents, self.specialeventstype, self.specialeventsvalue,
+                    self.specialevents, self.specialeventstype, self.specialeventsvalue, ## TILAU ##
                     dropped=self.timeindex[6] > 0)) ## TILAU ## nothing replayed after the live DROP
 
                 # in the background's order: the playback aid announcing an event (its value, the time

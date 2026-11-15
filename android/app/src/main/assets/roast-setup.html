@@ -76,7 +76,7 @@
   <div class="colL"><div id="left" style="display:contents"></div>
    <div class="card" style="gap:8px"><div class="eb">PREHEAT · TILAUPID<span class="st"><span class="seg" style="padding:3px" id="phon"><button data-on="0" style="height:34px;padding:0 14px">Off</button><button data-on="1" style="height:34px;padding:0 14px">On</button></span></span></div>
     <div class="f" style="min-height:46px"><label style="width:70px">Target</label><input class="in short" id="phtarget" inputmode="decimal" placeholder="—" style="width:90px"><span class="u deg">°C</span><span class="sb" id="phnote"></span></div>
-    <div class="f" style="min-height:46px"><label style="width:70px">Input</label><span class="seg" style="padding:3px" id="phinput"><button data-in="BT" style="height:34px;padding:0 16px">BT</button><button data-in="ET" style="height:34px;padding:0 16px">ET</button></span></div>
+    <div class="f" id="phinputrow" style="min-height:46px"><label style="width:70px">Input</label><span class="seg" style="padding:3px" id="phinput"><button data-in="BT" style="height:34px;padding:0 16px">BT</button><button data-in="ET" style="height:34px;padding:0 16px">ET</button></span></div>
    </div>
   </div>
   <div class="colM">
@@ -118,6 +118,8 @@ window.onSnapshot = function (method, d) {
   if (method === "get_setup") {
     if (!d || !d.reply) return;
     preheat.on = !!d.reply.config.preheat_on; preheat.input = d.reply.config.preheat_input || "BT";
+    // A roaster with no environment probe (Skywalker V1): the preheat reads BT, no ET offered.
+    if (d.reply.has_et === false) { preheat.input = "BT"; $("phinputrow").style.display = "none"; }
     renderPreheat();
     var s = d.reply.config.devices.scale;
     devices.scale = s && s.enabled ? s : null;

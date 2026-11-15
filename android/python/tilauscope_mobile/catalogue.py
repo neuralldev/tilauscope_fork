@@ -22,7 +22,8 @@ MACHINES = {
                      "cool": ["CLDN,ON"], "lever_commands": {"burner": "OT1", "air": "OT2", "drum": "OT3"}},
     "skywalker-v1": {"manufacturer": "Skywalker", "model": "V1", "link": "Bluetooth · Skycommand",
                      "prefixes": ["ESP32_Skycommand_BLE"], "levers": ["burner", "air"],
-                     "stop": [], "cool": [], "lever_commands": {}}, # its stop and cooling are not known yet
+                     # SkyCommand firmware (SkiBean): OFF zeroes heat, air, drum and cooling; COOL runs the cooling.
+                     "stop": ["OFF"], "cool": ["COOL,100"], "lever_commands": {"burner": "OT1", "air": "OT2"}},
 }
 
 # Shown greyed in the machine step, with the reason.

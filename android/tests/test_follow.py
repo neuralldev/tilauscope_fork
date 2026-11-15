@@ -138,3 +138,14 @@ class FollowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_the_followed_roast_s_moves_before_its_turning_point_stay_on_time():
+    from tilaucore.ror import RoRSettings
+    from tilauscope_mobile.follow import FollowedRoast
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "followed.alog"
+        path.write_text(repr({**FOLLOWED, "computed": {"TP_time": 75.0}}), encoding="utf-8")
+        assert FollowedRoast(path, RoRSettings()).playback().tp_s == 75.0 # the desktop's TP_time_B_loaded
+        path.write_text(repr(FOLLOWED), encoding="utf-8")
+        assert FollowedRoast(path, RoRSettings()).playback().tp_s is None

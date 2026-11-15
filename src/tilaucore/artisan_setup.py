@@ -10,8 +10,9 @@ buttons, the command and range of each lever (the sliders), and the extra event
 buttons an alarm can press (android/ALARM-SPEC.md).
 Artisan keeps the commands by position in parallel lists; here they are named, so
 nothing downstream depends on a position. Only IO commands written
-`skywalker(<command>)` are kept as commands; any other action is listed in
-`unsupported`, never guessed.
+`skywalker(<command>)` (Skywalker V2) or `skycommand(<command>)` (Skywalker V1's
+SkyCommand box) are kept as commands, as `OT1,{}`: the link writes them as its
+bridge reads them. Any other action is listed in `unsupported`, never guessed.
 
 The RoR limits stay Artisan's defaults: the Skywalker presets carry none, and a
 preset does not say in which unit they would be written.
@@ -33,7 +34,7 @@ XEXTRA_BUTTONS = ("reset", "start")
 LEVERS = ("air", "drum", "extractor", "burner")
 IO_COMMAND = 5  # the action's index in Artisan's button action list ("IO Command")
 EXTRA_IO_COMMAND = 6  # the same action in the extra event buttons' own list
-_SKYWALKER = re.compile(r"^skywalker\((.*)\)$")
+_SKYWALKER = re.compile(r"^(?:skywalker|skycommand)\((.*)\)$")
 
 
 @dataclass(frozen=True)
@@ -65,7 +66,7 @@ class EventButton:
 
     Types 0-3 set a lever (air, drum, extractor, burner) to the value, 5-8 move it by the
     value, 10-13 by that percentage of it; 4 records nothing, 9 an untyped event. `command`
-    is the `skywalker(…)` command inside (with `{}` for the value), None for any other action.
+    is the `skywalker(…)` or `skycommand(…)` command inside (with `{}` for the value), None for any other action.
     """
     kind: int
     value: float

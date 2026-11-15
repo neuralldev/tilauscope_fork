@@ -256,7 +256,7 @@ against an unticked default so its yellow "changed" tag shows. -->
 | Option | What it does |
 |---|---|
 | **Auto Charge** | Marks [CHARGE](glossary.md#charge) on its own. |
-| **Auto Drop** | Marks [DROP](glossary.md#drop) on its own. |
+| **Auto Drop** | Marks [DROP](glossary.md#drop) on its own, once first crack is marked. |
 | **Auto Dry End** | Marks [dry end](glossary.md#de--dry-end) on its own. |
 | **Auto First Crack** | Marks [first crack](glossary.md#fc--first-crack) when bean temperature reaches the first-crack target, sooner if a burst of cracks is heard. |
 

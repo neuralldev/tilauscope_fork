@@ -102,8 +102,11 @@ class FollowedRoast:
     def playback(self) -> Playback:
         """The desktop's engagement: by BT when the roast has a BT trace, else by time."""
         usable = any(v not in (-1, 0) and math.isfinite(v) for v in self.sbt)
+        computed = self.profile.get("computed")
+        tp_s = computed.get("TP_time") if isinstance(computed, dict) else None # its turning point, as the desktop reads it
         return Playback(self.times, self.et, self.bt, self.set, self.sbt, self.events, self.etypes, self.evalues,
-                        self.timeindex[:8], replay_type=BY_BT if usable else BY_TIME)
+                        self.timeindex[:8], replay_type=BY_BT if usable else BY_TIME,
+                        tp_s=float(tp_s) if isinstance(tp_s, (int, float)) else None)
 
 
 def live(session: Session, tp_index: int | None = None) -> Foreground:

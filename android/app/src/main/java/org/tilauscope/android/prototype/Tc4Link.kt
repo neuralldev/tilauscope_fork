@@ -21,8 +21,9 @@ import org.json.JSONObject
 import java.util.UUID
 
 /**
- * TC4-over-BLE link to the Skywalker V2 (bridge TD5325A), same protocol and
- * safety sequence as the desktop transport (`tc4ble`): connecting alone may switch
+ * TC4-over-BLE link to the Skywalker V2 (bridge TD5325A) and to the Skywalker V1's
+ * SkyCommand box (ESP32), told apart by the channels the roaster offers ([TC4_BRIDGES]);
+ * same protocol and safety sequence as the desktop transport (`tc4ble`): connecting alone may switch
  * the burner on, so OT1,0 is asserted and verified on a fresh echo before anything
  * else, at every connection. Connecting also starts the air and the drum; letting go
  * on purpose sends OT1,0 then OFF, which stops the whole machine.
@@ -38,7 +39,7 @@ import java.util.UUID
  * first: the end script given at [connect] (burner 0, cooling, air full, drum 80 %, then
  * a wait until the bean probe is under its threshold) runs on the real readings, then
  * OFF. No valid bean reading never counts as cooled: the roaster is not stopped on a guess.
- * A new roast started while it cools takes the same link: the cooling stops (CLDN,OF),
+ * A new roast started while it cools takes the same link: the cooling stops (its bridge's cooling off),
  * the burner is verified at 0, and the preheat starts from where the roaster is.
  * Everything runs on the link's own thread; [onState] receives each change.
  */
@@ -50,6 +51,7 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
 
     private var gatt: BluetoothGatt? = null
     private var tx: BluetoothGattCharacteristic? = null
+    private var bridge: Tc4Bridge? = null // found with the roaster's channels; it says how commands are written
     private var mtu = 20
     private val queue = ArrayDeque<ByteArray>()
     private var writing = false
@@ -128,8 +130,14 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
             handler.post {
                 if (g !== gatt) return@post
                 val all = g.services.flatMap { it.characteristics }
-                val rx = all.firstOrNull { it.uuid == RX_UUID }
-                tx = all.firstOrNull { it.uuid == TX_UUID }
+                val found = TC4_BRIDGES.firstNotNullOfOrNull { b ->
+                    val r = all.firstOrNull { it.uuid == b.rx }
+                    val t = all.firstOrNull { it.uuid == b.tx }
+                    if (r != null && t != null) Triple(b, r, t) else null
+                }
+                bridge = found?.first
+                val rx = found?.second
+                tx = found?.third
                 val cccd = rx?.getDescriptor(CCCD_UUID)
                 if (tx == null || cccd == null || !g.setCharacteristicNotification(rx, true)) {
                     drop("failed")
@@ -190,7 +198,7 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
             // Back to back: the cooling stops and the next roast takes this link, its burner verified at 0.
             script.clear()
             afterScript = null
-            send(COOLING_OFF)
+            send(bridge?.coolingOff ?: TC4_BRIDGES[0].coolingOff)
             this.roast = true
             this.endScript = endScript
             live = false
@@ -387,7 +395,7 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
 
     private fun send(command: String) {
         if (command != READ) AppLog.i(TAG, "→ $command ($state)") // every order to the roaster, the 1 Hz read excepted
-        val data = (command + "\n").toByteArray(Charsets.US_ASCII)
+        val data = (tc4Wire(command, bridge?.semicolon == true) + "\n").toByteArray(Charsets.US_ASCII)
         for (offset in data.indices step mtu) queue.addLast(data.copyOfRange(offset, minOf(data.size, offset + mtu)))
         drain()
     }
@@ -479,6 +487,7 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
         }
         gatt = null
         tx = null
+        bridge = null
         queue.clear()
         writing = false
     }
@@ -508,15 +517,12 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
 
     private companion object {
         const val TAG = "TilauScopeTc4"
-        val RX_UUID: UUID = UUID.fromString("0000ff01-0000-1000-8000-00805f9b34fb") // telemetry
-        val TX_UUID: UUID = UUID.fromString("0000ff02-0000-1000-8000-00805f9b34fb") // commands
         val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
         val RECONNECT = Any() // token of the pending reconnection
         const val UNTIL = "UNTIL_BT_BELOW" // pseudo-command of the end script, never sent
         const val CHAN_INIT = "CHAN;1200"
         const val READ = "READ"
         const val OFF = "OFF" // heater, air, drum and cooling off
-        const val COOLING_OFF = "CLDN,OF" // the cooling stops; air and drum stay as they are
         const val MTU_REQUEST = 185
         const val VERIFY_TRIES = 6
         const val VERIFY_WAIT_MS = 400L
@@ -533,6 +539,23 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
     }
 }
 
+/** The Bluetooth bridge a roaster answers through: its telemetry and command channels, whether it
+ *  reads `OT1;50` rather than `OT1,50`, and the command that stops its cooling (air and drum stay). */
+internal class Tc4Bridge(val rx: UUID, val tx: UUID, val semicolon: Boolean, val coolingOff: String)
+
+internal val TC4_BRIDGES = listOf(
+    // Skywalker V2, bridge TD5325A
+    Tc4Bridge(UUID.fromString("0000ff01-0000-1000-8000-00805f9b34fb"),
+        UUID.fromString("0000ff02-0000-1000-8000-00805f9b34fb"), semicolon = false, coolingOff = "CLDN,OF"),
+    // Skywalker V1, SkyCommand box (ESP32, Nordic UART service): commands split on ';'
+    Tc4Bridge(UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e"),
+        UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e"), semicolon = true, coolingOff = "COOL,0"),
+)
+
+/** [command] as the bridge reads it: `OT1,50` stays for the V2 bridge, becomes `OT1;50` for a SkyCommand box. */
+internal fun tc4Wire(command: String, semicolon: Boolean): String =
+    if (semicolon) command.replaceFirst(',', ';') else command
+
 /** A roaster frame after CHAN;1200: ambient, ET, BT, burner echo, air echo (drum probe first, as the desktop reads it). */
 internal class Tc4Frame(val ambient: Double, val et: Double, val bt: Double, val burner: Int?, val air: Int?)
 
@@ -546,15 +569,16 @@ internal fun tc4Frame(line: String): Tc4Frame? {
     return Tc4Frame(ambient, et, bt, number(3)?.toInt(), number(4)?.toInt())
 }
 
-/** Appends [chunk] to [buffer] and takes out its whole lines; a partial line longer than any frame is dropped. */
+/** Appends [chunk] to [buffer] and takes out its whole lines, ended by LF or CRLF (the SkyCommand box sends
+ *  LF alone); a partial line longer than any frame is dropped. */
 internal fun tc4Lines(buffer: StringBuilder, chunk: String): List<String> {
     buffer.append(chunk)
     val lines = mutableListOf<String>()
     while (true) {
-        val end = buffer.indexOf("\r\n")
+        val end = buffer.indexOf("\n")
         if (end < 0) break
-        lines.add(buffer.substring(0, end))
-        buffer.delete(0, end + 2)
+        lines.add(buffer.substring(0, end).removeSuffix("\r"))
+        buffer.delete(0, end + 1)
     }
     if (buffer.length > TC4_MAX_PARTIAL) buffer.clear()
     return lines

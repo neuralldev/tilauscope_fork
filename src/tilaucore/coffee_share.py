@@ -192,6 +192,10 @@ def write_package(target: Path, *, mode: str, bean: GreenBean, roasts: Sequence[
     return manifest
 
 
+#: The coffee's part of an imported roast's file name, in UTF-8 bytes; the rest takes at most 34.
+NAME_BYTES: Final[int] = 120
+
+
 def _safe(name: str) -> str:
     return "".join(c for c in name if c.isascii() and (c.isalnum() or c in "-_")) or "roast"
 
@@ -202,7 +206,9 @@ def roast_file_name(coffee: str, roast: Mapping[str, Any], uuid: str, shared: bo
     The date and the id come from the package: only what a date and an id are
     made of names a file, so it lands in the roast folder whatever they say.
     """
-    name = "".join(c if c.isalnum() or c in " -_" else "_" for c in coffee).strip() or "coffee"
+    name = "".join(c if c.isalnum() or c in " -_" else "_" for c in coffee)
+    # A file name holds 255 bytes: the coffee's part keeps the first NAME_BYTES, cut between two characters.
+    name = name.encode("utf-8")[:NAME_BYTES].decode("utf-8", "ignore").strip() or "coffee"
     day = "".join(c for c in str(roast.get("roastisodate") or "")[:10] if c.isdigit() or c == "-")
     ident = "".join(c for c in uuid.replace("-", "").lower() if c.isalnum())[:8]
     return f"{name}{' - shared' if shared else ''}{' ' + day if day else ''} {ident}.alog"

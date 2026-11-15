@@ -98,8 +98,8 @@ svValues=100, 185, 0, 0, 0, 0, 0, 0
 sv_filter=0
 
 [DefaultButtons]
-buttonactions=5, 0, 0, 0, 0, 0, 5, 5
-buttonactionstrings="skycommand(EVT,1)", , , , , , "skycommand(EVT,8)", "skycommand(EVT,9)"
+buttonactions=0, 0, 0, 0, 0, 0, 0, 0
+buttonactionstrings=, , , , , , , 
 buttons_undo=true
 buttonvisibility=true, false, false, false, false, false, true, true
 extrabuttonactions=0, 0, 0
@@ -238,7 +238,7 @@ eventbuttontablecolumnwidths=@Invalid()
 extraeventbuttoncolor=#ff2600, #ff2600, #4d9eed, #4d9eed, #ffffff, #ffffff, #4d9eed, #ff2600
 extraeventbuttontextcolor=#000000, #000000, #000000, #000000, #000000, #262626, #262626, #262626
 extraeventsactions=6, 6, 6, 6, 6, 6, 6, 6
-extraeventsactionstrings="skycommand(OT1,{})", "skycommand(OT1,{})", "skycommand(OT2,{})", "skycommand(OT2,{})", "skycommand(CLDN,ON)", "skycommand(CLDN,OF)", "skycommand(OT2,{})", "skycommand(OT1,{})"
+extraeventsactionstrings="skycommand(OT1,{})", "skycommand(OT1,{})", "skycommand(OT2,{})", "skycommand(OT2,{})", "skycommand(COOL,100)", "skycommand(COOL,0)", "skycommand(OT2,{})", "skycommand(OT1,{})"
 extraeventsbuttonsflags=1, 0, 0
 extraeventsdescriptions=Baisser le bruleur de 5%, Monter le brûleur de 5%, Baisser le ventilateur de 5%, Monter le ventilateur de 5%, Refroidir en fin de torréfaction, Stop cooling, , 
 extraeventslabels=-5%\n\\t, +5%\n\\t, -5%\n\\t, +5%\n\\t, \\1\nCOOLING, \\0\nCOOLING, \\0\n\\t, \\0\n\\t

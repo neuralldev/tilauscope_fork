@@ -35,8 +35,8 @@ from tilaucore.roast_label import label_data, lines_30mm
 from . import alog, catalogue, coffee_share, config as configuration, machine, mqtt
 from .automation import AutoMarks
 from .follow import LEVER_OF, FollowedRoast, live as follow_live
-from .alarms import (ANCHOR_WORDS, ARTISAN_ACTIONS, MARK_INDEX, Act, AlarmLists, TabletAlarms, from_unit, in_unit, rows_in_unit,
-                     threshold_kind)
+from .alarms import (ANCHOR_WORDS, ARTISAN_ACTIONS, Act, AlarmLists, TabletAlarms, from_unit, in_unit, rows_in_unit,
+                     threshold_kind, timeindex)
 from tilaucore.alarms import (ANCHORS, NEW_ALARM, Alarm, TurningPoint, append_row, move_row, read_alrm, remove_row,
                               write_alrm)
 from tilaucore.artisan_compat import events_internal_to_external_value
@@ -201,8 +201,7 @@ class Demo:
         self._followed: tuple[tuple, FollowedRoast] | None = None # the roast read, kept while it is the one
         self.playback = None # this roast's playback, from CHARGE until a hand takes the levers back
         self._follow_paused = False # the link dropped: the playback waits for the operator to resume it
-        self._follow_tp = TurningPoint()
-        self._tp = TurningPoint() # the roast's turning point, found live, drawn on the curve
+        self._tp = TurningPoint() # the roast's turning point, found live, drawn on the curve; the alarms, AUTO and the playback read it
         self._follow_extractor: deque = deque() # the speeds the playback sent and the AirWave has not confirmed yet
         self._auto_event = {"seq": 0, "kind": None, "milestone": None} # the latest, for the screen's toast
         self._plan_targets: dict | None = None # Dry end and FC this roast follows; None by hand
@@ -217,6 +216,7 @@ class Demo:
         self._door_opened: float | None = None # the roast time the door opened, its DROP not yet marked
         self._door_seq = -1
         self._door_heard: float | None = None # clock() of the last door frame
+        self._door_pending = False # CHARGE came before any frame that could take its reference
         self._crack_sent: dict[str, float] | None = None # this roast's sequence: step -> when it was sent; None when off
         self._started_s = 0.0
         self._devices_out: list[dict] = [] # accessory commands (the extractor), for the service to send
@@ -495,6 +495,7 @@ class Demo:
                            "catalogue": catalogue.export(),
                            # What the roast link runs when it is let go hot: cool first, then stop.
                            "end_roast": machine.end_roast(machine_key) if machine_key else [],
+                           "has_et": machine.has_et(machine_key), # no environment probe: no ET shown or offered
                            "simulation": self.replay is not None}) # no device is connected while replaying
 
     def save_setup(self, data: str) -> str:
@@ -839,6 +840,13 @@ class Demo:
         return None if index is None else self.session.samples[index].elapsed_s
 
     def _reading(self) -> Reading | None:
+        """The roaster's reading now; its ET left out when the machine has no environment probe."""
+        reading = self._source_reading()
+        if reading is not None and reading.et_c is not None and not machine.has_et(self._machine()):
+            return Reading(reading.bt_c, None)
+        return reading
+
+    def _source_reading(self) -> Reading | None:
         if self.link is not None: # the roaster's last reading, or none when it is too old
             fresh = self._live is not None and self.clock() - self._live[0] < Session.STALE_AFTER_S
             return self._live[1] if fresh else None
@@ -988,7 +996,7 @@ class Demo:
         if self.preheat is not None and (self.link is None or self.session.samples):
             self.preheat.tick(self._preheat_reading()) # from the roaster's first reading (2-3 s after connecting)
         if self.alarms is not None and self.session.state == "recording":
-            for act in self.alarms.step(self.session, self.now):
+            for act in self.alarms.step(self.session, self.now, self._tp.index):
                 self._run_alarm(act)
         if self.energy is not None and self.session.state == "recording":
             m = self.session.milestones
@@ -1155,7 +1163,8 @@ class Demo:
         config = self.config or {}
         if not ((self._real() or self.replay is not None) and config.get("preheat_on")):
             return None
-        return self._machine(), config.get("preheat_input") or "BT"
+        probe = config.get("preheat_input") or "BT"
+        return self._machine(), probe if machine.has_et(self._machine()) else "BT" # no ET probe: it reads BT
 
     def _warm_preheat(self) -> None:
         """Between roasts: the preheat built now loads its history in the background."""
@@ -1286,6 +1295,8 @@ class Demo:
         reading = json.loads(data)
         try:
             et = reading.get("et")
+            if not machine.has_et(self._machine()):
+                et = None # the bean temperature again, from a roaster with no environment probe
             self._live = (self.clock(), Reading(float(reading["bt"]), None if et is None or et <= 0 else float(et)))
         except (KeyError, TypeError, ValueError): # no bean probe reading (-1): not a sample
             return
@@ -1357,8 +1368,10 @@ class Demo:
         """A milestone, touched or found (then at the sample it was found on): the same effects."""
         self.session.mark(milestone, self.now, index)
         if milestone == "charge":
-            self._door.charge() # the openings from now on are this roast's
+            # the openings from now on are this roast's; no closed frame yet: the next frames take the reference
+            self._door_pending = not self._door.charge()
         if milestone == "drop":
+            self._door_pending = False
             self._door.stop()
         if milestone == "charge":
             self._end_preheat("charge") # the roast takes over; the preheat is learned from
@@ -1619,26 +1632,19 @@ class Demo:
         phase = "dev" if "first_crack" in marks else "mai" if "dry_end" in marks else "dry"
         self.response.step(self.now, {lever: self.levers.get(lever, 0) for lever in ("burner", "air")}, phase)
 
-    def _marks(self) -> list[int]:
-        """The milestones as Artisan's timeindex: CHARGE -1 when unmarked, the others 0."""
-        marks = [-1, 0, 0, 0, 0, 0, 0, 0]
-        for key, index in self.session.milestones.items():
-            marks[MARK_INDEX[key]] = index
-        return marks
-
     def _tp_step(self) -> None:
-        if self._tp.index is None and "charge" in self.session.milestones:
+        if (self._tp.index is None or self._tp.searching) and "charge" in self.session.milestones: # a low confirmed past the clock's anchor is still drawn
             samples = self.session.samples
-            self._tp.update([s.elapsed_s for s in samples], [s.bt_c for s in samples], self._marks())
+            self._tp.update([s.elapsed_s for s in samples], [s.bt_c for s in samples], timeindex(self.session.milestones))
 
     def _tp_view(self) -> dict | None:
         """The turning point for the curve: live while recording, else the lowest BT as the roast file has it."""
         samples = self.session.samples
         if "charge" not in self.session.milestones or not samples:
             return None
-        index = self._tp.index
+        index = self._tp.found # the one BT turned at: the anchor placed by the clock is not drawn, as on the desktop
         if index is None and (self.session.state != "recording" or self.interrupted):
-            index = alog.find_tp(self._marks(), [s.elapsed_s for s in samples], [s.bt_c for s in samples]) or None
+            index = alog.find_tp(timeindex(self.session.milestones), [s.elapsed_s for s in samples], [s.bt_c for s in samples]) or None
         if index is None or index <= self.session.milestones["charge"]:
             return None
         return {"s": samples[index].elapsed_s, "c": round(samples[index].bt_c, 1)}
@@ -1694,9 +1700,19 @@ class Demo:
         self._door_heard = self.clock()
         if seq == self._door_seq:
             return
+        first = self._door_seq == -1 # no frame before: nothing the app saw open can arm by surprise
         self._door_seq = seq
         clock = self.now if self._origin is None else self.real_clock() - self._origin
-        opened = self._door.read(frame, clock - age_ms / 1000.0)
+        read_at = clock - age_ms / 1000.0
+        marks, samples = self.session.milestones, self.session.samples
+        if self._door_pending and (self.session.state != "recording" or "drop" in marks
+                                   or "charge" not in marks):
+            self._door_pending = False # the roast ended first
+        if self._door_pending: # CHARGE came before any closed frame: the frames after it take the reference
+            opened, self._door_pending = self._door.read_after_charge(frame, read_at, samples[marks["charge"]].elapsed_s,
+                                                                      first)
+        else:
+            opened = self._door.read(frame, read_at)
         if opened is not None:
             self._door_opened = opened
 
@@ -1724,7 +1740,7 @@ class Demo:
         if self.session.stale(self.now): # a detector fires once: never on a sample the session refuses to mark
             return
         cracks = self._cracks[1] if self._cracks and self.clock() - self._cracks[0] <= ROOM_MAX_AGE_S else None
-        found = self.auto.step(self.session, cracks)
+        found = self.auto.step(self.session, cracks, self._tp.index)
         if found is not None and self.session.state == "recording":
             self._mark(*found)
             self._auto_toast("marked", found[0])
@@ -1980,7 +1996,6 @@ class Demo:
         self.playback = roast.playback()
         self._follow_paused = False
         self._plan_targets = roast.targets() # a roast followed is a plan followed: no alarms (decision 9)
-        self._follow_tp = TurningPoint()
 
     def _roaster_name(self) -> str:
         entry = catalogue.MACHINES[self._machine()]
@@ -1997,7 +2012,7 @@ class Demo:
         if "charge" not in self.session.milestones or self.session.state != "recording":
             return
         live = follow_live(self.session)
-        live.tp_index = self._follow_tp.update(live.timex, live.temp2, [self.session.milestones["charge"], 0, 0, 0, 0, 0, 0, 0])
+        live.tp_index = self._tp.index
         jumps, _ = self.playback.step(live.timex[-1], live)
         for kind, value in jumps.items(): # a move of the followed roast: recorded as the hand's would be
             self._follow_move(LEVER_OF[kind], value)
@@ -2076,6 +2091,7 @@ class Demo:
             since = 0
         data.update({
             "interrupted": self.interrupted, "signal": self.signal,
+            "has_et": machine.has_et(self._machine()), # no environment probe (Skywalker V1): no ET line
             "readonly": self.readonly, "configured": self.config is not None,
             "levers": {k: {"value": v, "echo": self.echo[k], "pending": k in self.pending,
                            "step": self.lever_setup[k]["step"], "name": self.lever_setup[k]["name"]}

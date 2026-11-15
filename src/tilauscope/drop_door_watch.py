@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 from artisanlib.util import stringfromseconds
 from tilaucore.drop_door import DoorState, DropDoor
+from tilaucore.roast_analysis import marked
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow  # pylint: disable=unused-import
@@ -51,6 +52,7 @@ class DropDoorWatch:
         self._door = DropDoor()
         self._last_read_at: float | None = None
         self._charged = False
+        self._charge_pending = False   # CHARGE came before any frame that could take its reference
         self.dropped_at: str | None = None   # roast time of the DROP the door marked this session
 
     def status(self, aw: ApplicationWindow) -> DoorStatus:
@@ -70,26 +72,35 @@ class DropDoorWatch:
             return
         if link is not self._link:
             self._link, self._door, self._last_read_at, self._charged = link, DropDoor(), None, False
+            self._charge_pending = False
             self.dropped_at = None
         qmc = aw.qmc
-        charged = bool(qmc.flagstart) and qmc.timeindex[0] > -1
-        dropped = qmc.timeindex[6] > 0
+        charged = bool(qmc.flagstart) and marked(qmc.timeindex, 0)
+        dropped = marked(qmc.timeindex, 6)
         if charged and not self._charged:
-            self._door.charge()
+            self._charge_pending = not self._door.charge()
             self.dropped_at = None
         self._charged = charged
+        if dropped or not charged:
+            self._charge_pending = False
         if dropped:
             self._door.stop()   # marked by hand or from the curve first: the door has nothing left to mark
         reading = link.door_reading()
         if reading is None or reading[0] == self._last_read_at:
             return
+        first = self._last_read_at is None   # no frame before on this link
         self._last_read_at = reading[0]
-        opened_at = self._door.read(reading[1], reading[0])
+        # roast clock → monotonic clock (the roast clock's base runs faster under the simulator)
+        now = qmc.timeclock.elapsedMilli()
+        scale = qmc.timeclock.getBase() / 1000.0
+        if self._charge_pending and qmc.timex:
+            charge_at = time.monotonic() - (now - qmc.timex[qmc.timeindex[0]]) / scale
+            opened_at, self._charge_pending = self._door.read_after_charge(reading[1], reading[0], charge_at, first)
+        else:
+            opened_at = self._door.read(reading[1], reading[0])
         if opened_at is None or not charged or dropped:
             return
-        # the opening on the roast clock (its base runs faster under the simulator)
-        now = qmc.timeclock.elapsedMilli()
-        at = now - (time.monotonic() - opened_at) * qmc.timeclock.getBase() / 1000.0
+        at = now - (time.monotonic() - opened_at) * scale
         timex = qmc.timex
         if not timex:
             return

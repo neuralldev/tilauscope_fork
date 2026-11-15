@@ -162,5 +162,33 @@ class AutoMarksTests(unittest.TestCase):
         self.assertEqual(json.loads(self.demo.take_device_commands()), []) # a replay sends nothing to a probe
 
 
+class AutoDropGateTests(unittest.TestCase):
+    """The tablet's auto DROP asks the desktop's gate (tilaucore.milestones.drop_looked_for)."""
+
+    def fall_after_first_crack(self, peak_s, peak_c):
+        """A roast whose BT falls 3 °C under its peak at `peak_s` after CHARGE, First Crack marked a minute before."""
+        from types import SimpleNamespace
+        bt = [peak_c - 60 + 60 * k / peak_s for k in range(peak_s + 1)] + [peak_c - 0.6 * k for k in range(1, 10)]
+        session = SimpleNamespace(milestones={"charge": 0, "dry_end": peak_s - 120, "first_crack": peak_s - 60},
+                                  samples=[SimpleNamespace(elapsed_s=float(t), bt_c=v) for t, v in enumerate(bt)],
+                                  ror_series=[0.0] * len(bt))
+        return session
+
+    def first_drop(self, session):
+        from tilauscope_mobile.automation import AutoMarks
+        auto, samples = AutoMarks({"drop"}, None, None), session.samples
+        for n in range(1, len(samples) + 1):
+            session.samples = samples[:n]
+            found = auto.step(session, None, None)
+            if found is not None:
+                return found
+        return None
+
+    def test_no_auto_drop_before_seven_minutes_nor_under_160_c_as_on_the_desktop(self):
+        self.assertIsNone(self.first_drop(self.fall_after_first_crack(360, 200.0))) # 6 min: too soon
+        self.assertIsNone(self.first_drop(self.fall_after_first_crack(480, 158.0))) # BT under 160 °C
+        self.assertEqual(self.first_drop(self.fall_after_first_crack(480, 200.0))[0], "drop")
+
+
 if __name__ == "__main__":
     unittest.main()

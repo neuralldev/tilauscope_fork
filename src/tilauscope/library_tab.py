@@ -40,7 +40,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout, QLabe
 
 from tilaucore import coffee_share as core
 from tilaucore.beans import GreenBean
-from tilaucore.coffee_library import LIBRARY_URL, Card, Library, LibraryError, Page, Sign, card_from
+from tilaucore.coffee_library import LIBRARY_URL, Card, CardError, Library, LibraryError, Page, Sign, card_from
 from tilaucore.roasters import canonical_roaster_name
 from tilaucore.ror import RoRSettings, rate_of_rise
 from tilauscope import library_identity
@@ -184,6 +184,23 @@ def failure_sentence(task: str, kind: str) -> str:
     if task in ("publish", "withdraw"):
         return QApplication.translate("tilauscope_beancave", "The library did not accept the request. Check that this computer's date and time are correct, then try again.")
     return QApplication.translate("tilauscope_beancave", "The library sent an answer TilauScope cannot read. Try again later, or update TilauScope.")
+
+
+def card_refusal(reason: str) -> str:
+    """Why this roast cannot be published and what to correct, for a CardError reason."""
+    if reason == "unmarked":
+        return QApplication.translate("tilauscope_beancave", "This roast has no CHARGE or no DROP marked, so the library cannot show its curve.")
+    if reason == "crop":
+        return QApplication.translate("tilauscope_beancave", "The library takes a crop year between 1990 and 2100. Correct the crop year in the coffee's BeanCave record, or leave it empty, then publish again.")
+    if reason == "batch_g":
+        return QApplication.translate("tilauscope_beancave", "The library takes batches up to 5 kg. Correct the batch weight in this roast's properties, then publish again.")
+    if reason == "total_s":
+        return QApplication.translate("tilauscope_beancave", "From CHARGE to DROP, this roast lasts less than a minute or more than an hour. Check where CHARGE and DROP are marked, then publish again.")
+    if reason == "after_fc_s":
+        return QApplication.translate("tilauscope_beancave", "First crack is marked after DROP, or more than 30 minutes before it. Check where first crack is marked, then publish again.")
+    if reason == "drop_c":
+        return QApplication.translate("tilauscope_beancave", "The bean temperature at DROP must be between 100 and 300 °C for the library. Check where DROP is marked, then publish again.")
+    return QApplication.translate("tilauscope_beancave", "This roast holds a value the library does not accept, so it cannot be published.")
 
 
 def _roast_day(day: str) -> str:
@@ -1143,8 +1160,12 @@ class LibraryTab(QWidget):
         tasting = next(iter(source.tastings_for(core.SHARE).values()), None)
         try:
             card = card_from(bean, roast, tasting)
-        except ValueError:
-            self._say(QApplication.translate("tilauscope_beancave", "This roast has no CHARGE or no DROP marked, so the library cannot show its curve."))
+        except CardError as e:
+            self._say(card_refusal(e.reason))
+            return False
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("library card not built")       # card_from turns bad input into CardError; this is the rest
+            self._say(card_refusal("other"))
             return False
         if not ask_publish(self.window(), bean.name, tasting is not None, bool(bean.dial_ins)):
             return False

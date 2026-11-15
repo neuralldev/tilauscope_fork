@@ -42,6 +42,22 @@ class Tc4FrameTest {
     }
 
     @Test
+    fun lfEndedLinesReadAsCrlfOnes() { // the SkyCommand box (Skywalker V1) ends its frames with LF alone
+        val buffer = StringBuilder()
+        assertEquals(listOf("0,201.5,201.5,40,60", "0,202.0,202.0,40,60"),
+            tc4Lines(buffer, "0,201.5,201.5,40,60\n0,202.0,202.0,40,60\r\n0,2"))
+        assertEquals("0,2", buffer.toString())
+    }
+
+    @Test
+    fun commandsAreWrittenAsTheBridgeReadsThem() {
+        assertEquals("OT1,50", tc4Wire("OT1,50", semicolon = false))
+        assertEquals("OT1;50", tc4Wire("OT1,50", semicolon = true))
+        assertEquals("COOL;100", tc4Wire("COOL,100", semicolon = true))
+        for (unchanged in listOf("READ", "OFF", "CHAN;1200")) assertEquals(unchanged, tc4Wire(unchanged, semicolon = true))
+    }
+
+    @Test
     fun aRunawayLineIsDroppedAndTheNextFrameReads() {
         val buffer = StringBuilder()
         assertEquals(emptyList<String>(), tc4Lines(buffer, "x".repeat(300)))

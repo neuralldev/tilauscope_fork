@@ -16,6 +16,8 @@ from collections import deque
 from collections.abc import Sequence
 from typing import Final, NamedTuple
 
+from tilaucore.roast_analysis import marked
+
 # ── CHARGE: BT plunges when the beans go in ──────────────────────────────────
 CHARGE_MIN_BT: Final[dict[str, float]] = {"C": 77.0, "F": 170.0}  # a hotter drum than this before the plunge
 CHARGE_FALL_C: Final[float] = 4.0       # BT lost at least this much…
@@ -110,6 +112,8 @@ def drop_index(bt: Sequence[float], unit: str = "C", delay_ms: int = 1000,
                fall_c: float | None = None, probe_lag_s: float | None = None) -> int | None:
     """The sample DROP goes on, found at this sample (after First Crack, DROP not marked), else None.
 
+    Looked for only once First Crack is marked: without it no DROP makes sense (the desktop: drop_looked_for).
+
     Found when BT is `fall_c` under its peak of the last DROP_PEAK_S and the last two readings
     both stay low (one glitch is not a fall). DROP is placed `probe_lag_s` before the peak.
     Both default to the selected roaster's (set_drop_roaster). Known about 16 s after the beans
@@ -131,6 +135,12 @@ def drop_index(bt: Sequence[float], unit: str = "C", delay_ms: int = 1000,
     return max(0, top - round(probe_lag_s / dt))
 
 
+def drop_looked_for(marks: Sequence[int], elapsed_s: float, bt_now: float, unit: str = "C") -> bool:
+    """Whether the desktop looks for the auto DROP at this sample: First Crack marked, DROP_MIN_S after
+    CHARGE, BT over DROP_MIN_BT. `marks` is the roast's timeindex."""
+    return marked(marks, 2) and elapsed_s > DROP_MIN_S and bt_now > DROP_MIN_BT[unit]
+
+
 def check_top(d: float, offset: float, dpre_dpost_diff: float, p0: float, p1: float, p2: float,  # noqa: ARG001
               p3: float, p4: float, p5: float, unit: str = "C", twice: bool = False) -> bool:  # noqa: ARG001
     """The desktop's checkTop, which nothing reads any more: CHARGE and DROP come from bt_break."""
@@ -146,7 +156,7 @@ def bt_break(bt: Sequence[float], i: int, event: str, delay_ms: int = 1000, char
     if not 0 <= i < len(bt):
         return 0
     found = drop_index if event == "DROP" else charge_index
-    k = found(bt[:i + 1], unit, delay_ms)
+    k = found(bt if i == len(bt) - 1 else bt[:i + 1], unit, delay_ms)  # the desktop's last sample: BT read in place
     return 0 if k is None else i - k + 1
 
 

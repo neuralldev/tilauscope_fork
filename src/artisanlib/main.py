@@ -423,11 +423,11 @@ class Artisan(QtSingleApplication):
                         aw.loadBackgroundSignal.emit(filename, True)
                     else:
                         aw.loadFileSignal.emit(filename)
-                ## TILAU ## a coffee package opens on BeanCave's import. Queued: at
-                ## launch the file arrives before tilauscopeCall has built the window.
+                ## TILAU ## a coffee package opens on BeanCave's import. At launch the file can
+                ## arrive before tilauscopeCall has built the window: it then waits for it.
                 elif file_suffix == 'tilaucoffee' and not aw.app.artisanviewerMode:
-                    QTimer.singleShot(0, lambda: aw.tilauscope_main.open_coffee_package(filename)
-                                      if aw.tilauscope_main is not None else None)
+                    from tilauscope.coffee_share import open_coffee_when_ready  ## TILAU ##
+                    QTimer.singleShot(0, lambda: open_coffee_when_ready(aw, filename))  ## TILAU ##
                 elif file_suffix == 'alrm' and not aw.app.artisanviewerMode:
                     # load Artisan alarms on double-click on *.alrm file
                     aw.loadAlarmsSignal.emit(filename)
@@ -25404,6 +25404,9 @@ class ApplicationWindow(QMainWindow):
             self.tilauscope_main.show()
             self.tilauscope_main.raise_() # Bring to front without locking
             self.tilauscope_main.activateWindow()
+            ## TILAU ## the coffee packages the system opened before this window existed
+            from tilauscope.coffee_share import deliver_waiting_coffees
+            QTimer.singleShot(0, lambda: deliver_waiting_coffees(self.tilauscope_main))
 
     @pyqtSlot(int)
     def _tilau_reshow_after_beancave(self, _result:int = 0) -> None:

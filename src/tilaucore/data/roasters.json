@@ -156,8 +156,10 @@
         ],
         "artisan_compatible": true,
         "artisan_setups": [
-            {"link": "usb", "preset": "Skywalker/skywalkerv1-usb.aset"},
-            {"link": "bluetooth", "preset": "Skywalker/skywalkerv1-skycommand.aset", "ble_prefix": "ESP32_Skycommand_BLE"}
+            {"link": "bluetooth", "preset": "Skywalker/skywalkerv1-skycommand.aset", "ble_prefix": "ESP32_Skycommand_BLE",
+             "label": "SkyCommand Bluetooth", "hint": "ESP32 box on the roaster. No cable to this computer."},
+            {"link": "usb", "preset": "Skywalker/skywalkerv1-usb.aset",
+             "label": "SkyCommand USB", "hint": "Arduino or ESP32 box plugged into this computer by USB."}
         ],
         "bean_temperature_offset_c": [
             -13.0,

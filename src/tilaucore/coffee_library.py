@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import tempfile
@@ -42,6 +43,10 @@ CARD_VERSION: Final[int] = 1
 MAX_TEXT: Final[int] = 80
 MAX_FLAVOURS: Final[int] = 8
 MAX_POINTS: Final[int] = 48
+#: How far, in seconds of roast time, a probe dropout may be bridged by a real reading. Artisan samples every
+#: 1-3 s, so this covers a dropout of a few samples; near DROP (RoR about 5-10 °C/min) a reading 10 s away is
+#: within 1-2 °C, where one minutes away would publish a different roast.
+DROPOUT_REACH_S: Final[int] = 10
 VERDICTS: Final[tuple[str, ...]] = ("yes", "almost", "no", "")
 _TIMEOUT_S: Final[int] = 15
 _ID = re.compile(r"[0-9a-f]{32}")
@@ -82,6 +87,17 @@ class Page:
     total: int        # the roasts matching the filters, on every page
 
 
+class CardError(ValueError):
+    """Why a roast cannot be published: ``reason`` is "unmarked" (CHARGE or DROP), "crop", "batch_g", "total_s",
+    "after_fc_s", "drop_c" or "other". The application words each one."""
+
+    REASONS: Final[tuple[str, ...]] = ("unmarked", "crop", "batch_g", "total_s", "after_fc_s", "drop_c")
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason if reason in self.REASONS else "other"
+
+
 class LibraryError(Exception):
     """``kind``: offline, refused, rate, too_large or unknown. The application words each one; never the raw code."""
 
@@ -97,32 +113,73 @@ def _text(value: Any) -> str:
 
 
 def card_from(bean: GreenBean, roast: Mapping[str, Any], tasting: RoastTasting | None) -> Card:
-    """The card of a roast of ``bean``; ValueError when it cannot be published (CHARGE or DROP unmarked, out of bounds)."""
-    index = roast.get("timeindex") or []
-    charge = index[0] if len(index) > 0 else -1
-    drop = index[6] if len(index) > 6 else 0
-    first_crack = index[2] if len(index) > 2 else 0
-    timex, temps = roast.get("timex") or [], roast.get("temp2") or []
-    if charge < 0 or drop <= charge or drop >= min(len(timex), len(temps)):
-        raise ValueError("CHARGE and DROP must be marked")
+    """The card of a roast of ``bean``; CardError (a ValueError) naming why it cannot be published.
+
+    A probe dropout (a reading at or below 0 in the roast's unit, not finite, or above 350 °C) is replaced by the
+    nearest real reading between CHARGE and DROP within DROPOUT_REACH_S of roast time; farther than that, a curve
+    point is left out and a DROP is refused ("drop_c"). Every bad input, whatever its type, ends as a CardError."""
+    try:
+        index = list(roast.get("timeindex") or [])
+        charge = int(index[0]) if len(index) > 0 else -1
+        drop = int(index[6]) if len(index) > 6 else 0
+        first_crack = int(index[2]) if len(index) > 2 else 0
+        timex, temps = list(roast.get("timex") or []), list(roast.get("temp2") or [])
+        unmarked = charge < 0 or drop <= charge or drop >= min(len(timex), len(temps))
+    except (TypeError, ValueError, OverflowError) as e:
+        raise CardError("unmarked") from e
+    if unmarked:
+        raise CardError("unmarked")
     fahrenheit = str(roast.get("mode") or "C").upper() == "F"
 
     def celsius(i: int) -> float:
-        return round(c_from_f(float(temps[i])) if fahrenheit else float(temps[i]), 1)
+        """The reading at ``i`` in °C; -1 for a dropout: at or below 0 in the roast's unit, not finite, or above 350 °C."""
+        try:
+            raw = float(temps[i])
+        except (TypeError, ValueError):
+            return -1.0
+        value = round(c_from_f(raw) if fahrenheit else raw, 1)
+        return value if math.isfinite(raw) and raw > 0 and 0 < value <= 350 else -1.0
+
+    def sane(i: int) -> int | None:
+        """``i``, or the nearest index between CHARGE and DROP within DROPOUT_REACH_S whose reading is a real one;
+        None when none is."""
+        for step in range(drop - charge + 1):
+            near = [j for j in (i - step, i + step) if charge <= j <= drop and (j == i or abs(timex[j] - timex[i]) <= DROPOUT_REACH_S)]
+            if not near:
+                return None
+            for j in near:
+                if celsius(j) > 0:
+                    return j
+        return None
 
     def seconds(i: int) -> int:
         return int(round(timex[i] - timex[charge]))
 
-    points = min(MAX_POINTS, drop - charge + 1)
-    picks = [charge + round(n * (drop - charge) / (points - 1)) for n in range(points)]
-    flavours = [_text(f) for f in str(bean.flavour_notes or "").split(",")]
-    card = Card(name=_text(bean.name), country=_text(bean.country), process=_text(bean.process), crop=int(bean.crop or 0),
-                roaster=_text(roast.get("roastertype")), batch_g=int(round(_to_grams(roast.get("weight"), 0))),
-                total_s=seconds(drop), after_fc_s=seconds(drop) - seconds(first_crack) if first_crack > 0 else 0,
-                drop_c=int(round(celsius(drop))), flavours=tuple(f for f in flavours if f)[:MAX_FLAVOURS],
-                verdict=tasting.verdict if tasting else "", curve=tuple((seconds(i), celsius(i)) for i in picks),
-                roasted=_day(roast.get("roastisodate")))
-    return card_from_json(card_to_json(card))
+    try:
+        try:
+            crop = int(bean.crop or 0)
+        except (TypeError, ValueError, OverflowError) as e:
+            raise CardError("crop") from e
+        batch = _to_grams(roast.get("weight"), 0)
+        if not math.isfinite(batch):
+            raise CardError("batch_g")
+        end = sane(drop)
+        if end is None:
+            raise CardError("drop_c")
+        points = min(MAX_POINTS, drop - charge + 1)
+        picks = sorted({j for n in range(points) if (j := sane(charge + round(n * (drop - charge) / (points - 1)))) is not None})
+        flavours = [_text(f) for f in str(bean.flavour_notes or "").split(",")]
+        card = Card(name=_text(bean.name), country=_text(bean.country), process=_text(bean.process), crop=crop,
+                    roaster=_text(roast.get("roastertype")), batch_g=int(round(batch)),
+                    total_s=seconds(drop), after_fc_s=seconds(drop) - seconds(first_crack) if first_crack > 0 else 0,
+                    drop_c=int(round(celsius(end))), flavours=tuple(f for f in flavours if f)[:MAX_FLAVOURS],
+                    verdict=tasting.verdict if tasting else "", curve=tuple((seconds(i), celsius(i)) for i in picks),
+                    roasted=_day(roast.get("roastisodate")))
+        return card_from_json(card_to_json(card))
+    except CardError:
+        raise
+    except (TypeError, ValueError, OverflowError, IndexError) as e:
+        raise CardError(str(e) if isinstance(e, ValueError) else "other") from e
 
 
 def _day(value: Any) -> str:
@@ -256,7 +313,7 @@ class Library:
         if not self._base:
             raise LibraryError("offline")
         status, received, data = self._fetch(method, self._base + path, headers or {}, body)
-        if status >= 400 or not 200 <= status < 300:
+        if not 200 <= status < 300:
             raise LibraryError({429: "rate", 413: "too_large", 404: "unknown"}.get(status, "refused"))
         return received, data
 

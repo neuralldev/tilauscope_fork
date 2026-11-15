@@ -174,7 +174,9 @@ your machine and your microphone.
 turn on the automatic CHARGE and DROP. Charge is marked when bean temperature plunges as the
 beans go in (from above 77 °C / 170 °F), and placed one reading before the plunge; a gentle slope
 before it, a burner easing off, is not taken for it. Drop is marked once bean temperature has
-fallen 3 °C from its peak, no earlier than 7 minutes into the roast and above 160 °C / 320 °F.
+fallen 3 °C from its peak, once [first crack](glossary.md#fc--first-crack) is marked, no earlier than
+7 minutes into the roast and above 160 °C / 320 °F. Without first crack marked, no DROP is marked
+automatically: mark it by hand, or let the [drop door contact](hardware.md#drop-door-contact) mark it.
 The probe keeps reading the hot drum for a moment after the beans leave — a couple of seconds on
 most roasters, about 6 on the Skywalker V2 — so the mark comes within about 15 seconds after the
 beans come out and is placed back where they left. A

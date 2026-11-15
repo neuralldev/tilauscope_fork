@@ -47,6 +47,19 @@ def bt_offsets(machine: str) -> tuple[float, ...]:
 
 
 @lru_cache(maxsize=4)
+def has_et(machine: str | None) -> bool:
+    """Whether the roaster has an environment probe (roasters.json has_et_probe); none declared: it has one.
+
+    A roaster without one (the Skywalker V1) sends its bean temperature in the ET field too: it is not an ET.
+    """
+    if machine not in MACHINES:
+        return True
+    entry = MACHINES[machine]
+    roaster = RoasterManager().get_by_name(entry["manufacturer"], entry["model"])
+    return roaster is None or roaster.has_et_probe is not False
+
+
+@lru_cache(maxsize=4)
 def drop_detection(machine: str) -> tuple[float | None, float | None]:
     """The roaster's auto DROP values (roasters.json drop_fall_c, drop_probe_lag_s); None: the shared default."""
     entry = MACHINES[machine]

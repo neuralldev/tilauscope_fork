@@ -4,42 +4,42 @@
     <context>
     <name>About</name>
     <message>
-        <location filename="../artisanlib/main.py" line="25483" />
+        <location filename="../artisanlib/main.py" line="25486" />
         <source>There was a problem retrieving the latest version information.  Please check your Internet connection, try again later, or check manually.</source>
         <translation>הייתה בעיה באחזור המידע הגרסא העדכני ביותר. אנא בדוק את חיבור האינטרנט שלך, נסה שוב מאוחר יותר, או בדוק באופן ידני.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25495" />
+        <location filename="../artisanlib/main.py" line="25498" />
         <source>A new release is available.</source>
         <translation>מהדורה חדשה זמינה.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25497" />
+        <location filename="../artisanlib/main.py" line="25500" />
         <source>Show Change list</source>
         <translation>הצג רשימת שינויים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25499" />
+        <location filename="../artisanlib/main.py" line="25502" />
         <source>Download Release</source>
         <translation>הורד מהדורה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25501" />
+        <location filename="../artisanlib/main.py" line="25504" />
         <source>You are using the latest release.</source>
         <translation>אתה משתמש במהדורה האחרונה.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25503" />
+        <location filename="../artisanlib/main.py" line="25506" />
         <source>You are using a beta continuous build.</source>
         <translation>אתה משתמש בבניית רציף בטא.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25504" />
+        <location filename="../artisanlib/main.py" line="25507" />
         <source>You will see a notice here once a new official release is available.</source>
         <translation>תראה כאן הודעה לאחר שתהיה זמינה מהדורה רשמית חדשה.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25519" />
+        <location filename="../artisanlib/main.py" line="25522" />
         <source>Update status</source>
         <translation>עדכן מצב</translation>
     </message>
@@ -62,13 +62,13 @@
 </context><context>
     <name>AddlInfo</name>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11588" />
+        <location filename="../artisanlib/canvas.py" line="11591" />
         <location filename="../artisanlib/statistics.py" line="201" />
         <source>Roast of the Day</source>
         <translation>צלי היום</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11665" />
+        <location filename="../artisanlib/canvas.py" line="11668" />
         <location filename="../artisanlib/statistics.py" line="206" />
         <source>Screen Size</source>
         <translation>גודל מסך</translation>
@@ -84,85 +84,85 @@
         <translation>ירוק לחות</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11683" />
+        <location filename="../artisanlib/canvas.py" line="11686" />
         <location filename="../artisanlib/statistics.py" line="209" />
         <source>Batch Size</source>
         <translation>גודל אצווה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11691" />
+        <location filename="../artisanlib/canvas.py" line="11694" />
         <location filename="../artisanlib/statistics.py" line="210" />
         <source>Density Roasted</source>
         <translation>צפיפות קלויה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11695" />
+        <location filename="../artisanlib/canvas.py" line="11698" />
         <location filename="../artisanlib/statistics.py" line="211" />
         <source>Moisture Roasted</source>
         <translation>לחות קלויה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11699" />
+        <location filename="../artisanlib/canvas.py" line="11702" />
         <location filename="../artisanlib/statistics.py" line="212" />
         <source>Ground Color</source>
         <translation>צבע קרקע</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11703" />
+        <location filename="../artisanlib/canvas.py" line="11706" />
         <location filename="../artisanlib/statistics.py" line="213" />
         <source>Energy</source>
         <translation>אֵנֶרְגִיָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11709" />
+        <location filename="../artisanlib/canvas.py" line="11712" />
         <location filename="../artisanlib/statistics.py" line="214" />
         <source>CO2</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11741" />
+        <location filename="../artisanlib/canvas.py" line="11744" />
         <location filename="../artisanlib/statistics.py" line="220" />
         <source>Weight Roasted</source>
         <translation>משקל צלוי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11745" />
+        <location filename="../artisanlib/canvas.py" line="11748" />
         <location filename="../artisanlib/statistics.py" line="221" />
         <source>Weight Loss</source>
         <translation>ירידה במשקל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11628" />
+        <location filename="../artisanlib/canvas.py" line="11631" />
         <source>From</source>
         <translation>מ</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11629" />
+        <location filename="../artisanlib/canvas.py" line="11632" />
         <source>Bottom</source>
         <translation>תַחתִית</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11714" />
+        <location filename="../artisanlib/canvas.py" line="11717" />
         <source>AUC</source>
         <translation type="unfinished">ערך כניסה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11802" />
+        <location filename="../artisanlib/canvas.py" line="11805" />
         <source>Defects Weight</source>
         <translation type="unfinished">פגמים משקל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11807" />
+        <location filename="../artisanlib/canvas.py" line="11810" />
         <source>Defects Loss</source>
         <translation type="unfinished">אובדן פגמים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11812" />
+        <location filename="../artisanlib/canvas.py" line="11815" />
         <source>Yield</source>
         <translation type="unfinished">תְשׁוּאָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11818" />
+        <location filename="../artisanlib/canvas.py" line="11821" />
         <source>Total Loss</source>
         <translation type="unfinished">הפסד מוחלט</translation>
     </message>
@@ -206,21 +206,21 @@
 </context><context>
     <name>Button</name>
     <message>
-        <location filename="../tilauscope/visualalarm.py" line="141" />
-        <source>Generate explanation (AI)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="169" />
-        <source>Auto-center timeline</source>
-        <translation type="unfinished" />
+        <location filename="../artisanlib/dialogs.py" line="632" />
+        <location filename="../artisanlib/dialogs.py" line="93" />
+        <location filename="../artisanlib/comm.py" line="230" />
+        <location filename="../artisanlib/pid_dialogs.py" line="2845" />
+        <location filename="../artisanlib/pid_dialogs.py" line="1974" />
+        <location filename="../artisanlib/pid_dialogs.py" line="949" />
+        <location filename="../plus/login.py" line="79" />
+        <source>OK</source>
+        <translation>אישור</translation>
     </message>
     <message>
         <location filename="../artisanlib/dialogs.py" line="633" />
         <location filename="../artisanlib/dialogs.py" line="94" />
         <location filename="../artisanlib/comm.py" line="231" />
         <location filename="../artisanlib/pid_dialogs.py" line="3133" />
-        <location filename="../plus/login.py" line="84" />
         <location filename="../tilauscope/device_setup/dialog.py" line="905" />
         <location filename="../tilauscope/device_setup/dialog.py" line="847" />
         <location filename="../tilauscope/device_setup/dialog.py" line="681" />
@@ -260,10 +260,21 @@
         <location filename="../tilauscope/custom_buttons.py" line="399" />
         <location filename="../tilauscope/ai_support.py" line="579" />
         <location filename="../tilauscope/beancave_storage_tab.py" line="1170" />
-        <location filename="../tilauscope/library_tab.py" line="1187" />
-        <location filename="../tilauscope/library_tab.py" line="426" />
+        <location filename="../tilauscope/library_tab.py" line="1208" />
+        <location filename="../tilauscope/library_tab.py" line="443" />
+        <location filename="../plus/login.py" line="84" />
         <source>Cancel</source>
         <translation>ביטול</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="141" />
+        <source>Generate explanation (AI)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="169" />
+        <source>Auto-center timeline</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../artisanlib/transposer.py" line="141" />
@@ -330,8 +341,8 @@
         <translation type="unfinished">סגירה</translation>
     </message>
     <message>
-        <location filename="../tilaucore/roast_plan.py" line="4963" />
         <location filename="../artisanlib/main.py" line="3094" />
+        <location filename="../tilaucore/roast_plan.py" line="4963" />
         <location filename="../tilauscope/window/build.py" line="1067" />
         <location filename="../tilauscope/config_controls_tab.py" line="234" />
         <location filename="../tilauscope/roast_plan_model.py" line="772" />
@@ -367,8 +378,8 @@
         <translation type="unfinished">ת.פ.1</translation>
     </message>
     <message>
-        <location filename="../tilaucore/roast_plan.py" line="4968" />
         <location filename="../artisanlib/main.py" line="3116" />
+        <location filename="../tilaucore/roast_plan.py" line="4968" />
         <location filename="../tilauscope/window/build.py" line="1073" />
         <location filename="../tilauscope/config_controls_tab.py" line="240" />
         <location filename="../tilauscope/roast_plan_model.py" line="772" />
@@ -418,9 +429,9 @@
         <translation type="unfinished">תפסיק</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14515" />
-        <location filename="../artisanlib/canvas.py" line="11627" />
-        <location filename="../artisanlib/canvas.py" line="7912" />
+        <location filename="../artisanlib/canvas.py" line="14518" />
+        <location filename="../artisanlib/canvas.py" line="11630" />
+        <location filename="../artisanlib/canvas.py" line="7915" />
         <location filename="../artisanlib/main.py" line="3056" />
         <location filename="../tilauscope/window/build.py" line="576" />
         <location filename="../tilauscope/config_controls_tab.py" line="307" />
@@ -481,16 +492,16 @@
         <translation>איפוס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13695" />
-        <location filename="../artisanlib/canvas.py" line="7901" />
+        <location filename="../artisanlib/canvas.py" line="13698" />
+        <location filename="../artisanlib/canvas.py" line="7904" />
         <location filename="../artisanlib/main.py" line="3045" />
         <location filename="../tilauscope/config_controls_tab.py" line="267" />
         <source>ON</source>
         <translation>הפעל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14401" />
-        <location filename="../artisanlib/canvas.py" line="13480" />
+        <location filename="../artisanlib/canvas.py" line="14404" />
+        <location filename="../artisanlib/canvas.py" line="13483" />
         <location filename="../tilauscope/config_controls_tab.py" line="269" />
         <source>OFF</source>
         <translation>סיים</translation>
@@ -506,7 +517,7 @@
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="160" />
-        <location filename="../artisanlib/canvas.py" line="11786" />
+        <location filename="../artisanlib/canvas.py" line="11789" />
         <location filename="../tilauscope/window/build.py" line="832" />
         <location filename="../tilauscope/graph/annotation_text.py" line="129" />
         <source>Drying Phase</source>
@@ -525,7 +536,7 @@
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="170" />
-        <location filename="../artisanlib/canvas.py" line="11771" />
+        <location filename="../artisanlib/canvas.py" line="11774" />
         <location filename="../tilauscope/window/build.py" line="834" />
         <source>Finishing Phase</source>
         <translation>שלב גימור</translation>
@@ -544,17 +555,6 @@
         <location filename="../tilauscope/widgets/dialogs.py" line="158" />
         <source>Continue as is</source>
         <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/dialogs.py" line="632" />
-        <location filename="../artisanlib/dialogs.py" line="93" />
-        <location filename="../artisanlib/comm.py" line="230" />
-        <location filename="../artisanlib/pid_dialogs.py" line="2845" />
-        <location filename="../artisanlib/pid_dialogs.py" line="1974" />
-        <location filename="../artisanlib/pid_dialogs.py" line="949" />
-        <location filename="../plus/login.py" line="79" />
-        <source>OK</source>
-        <translation>אישור</translation>
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="577" />
@@ -1207,7 +1207,7 @@ END</source>
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="165" />
-        <location filename="../artisanlib/canvas.py" line="11779" />
+        <location filename="../artisanlib/canvas.py" line="11782" />
         <source>Maillard Phase</source>
         <translation type="unfinished">שלב המילארד</translation>
     </message>
@@ -1356,6 +1356,17 @@ END</source>
 </context><context>
     <name>CheckBox</name>
     <message>
+        <location filename="../artisanlib/curves.py" line="1044" />
+        <location filename="../artisanlib/curves.py" line="955" />
+        <location filename="../artisanlib/curves.py" line="949" />
+        <location filename="../artisanlib/curves.py" line="942" />
+        <location filename="../artisanlib/curves.py" line="924" />
+        <location filename="../artisanlib/background.py" line="72" />
+        <location filename="../plus/schedule.py" line="1584" />
+        <source>Show</source>
+        <translation type="unfinished">הצג</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/statistics.py" line="70" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="243" />
         <location filename="../tilauscope/beancave_social_card.py" line="186" />
@@ -1391,17 +1402,6 @@ END</source>
         <location filename="../tilauscope/window/lifecycle.py" line="893" />
         <source>Playback DROP</source>
         <translation>השמעה DROP</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/curves.py" line="1044" />
-        <location filename="../artisanlib/curves.py" line="955" />
-        <location filename="../artisanlib/curves.py" line="949" />
-        <location filename="../artisanlib/curves.py" line="942" />
-        <location filename="../artisanlib/curves.py" line="924" />
-        <location filename="../artisanlib/background.py" line="72" />
-        <location filename="../plus/schedule.py" line="1584" />
-        <source>Show</source>
-        <translation type="unfinished">הצג</translation>
     </message>
     <message>
         <location filename="../artisanlib/axis.py" line="170" />
@@ -1955,7 +1955,7 @@ END</source>
         <translation type="unfinished">הקלט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18959" />
+        <location filename="../artisanlib/canvas.py" line="18962" />
         <location filename="../artisanlib/alarms.py" line="940" />
         <location filename="../artisanlib/alarms.py" line="884" />
         <location filename="../artisanlib/curves.py" line="2149" />
@@ -2070,10 +2070,10 @@ END</source>
         <translation type="unfinished">נק' סיבוב</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1482" />
-        <location filename="../artisanlib/canvas.py" line="1475" />
-        <location filename="../artisanlib/canvas.py" line="1468" />
-        <location filename="../artisanlib/canvas.py" line="1224" />
+        <location filename="../artisanlib/canvas.py" line="1483" />
+        <location filename="../artisanlib/canvas.py" line="1476" />
+        <location filename="../artisanlib/canvas.py" line="1469" />
+        <location filename="../artisanlib/canvas.py" line="1225" />
         <location filename="../tilauscope/cave/standalone.py" line="160" />
         <location filename="../tilauscope/hibean.py" line="650" />
         <location filename="../tilauscope/hibean.py" line="649" />
@@ -2081,13 +2081,13 @@ END</source>
         <translation>תוֹף</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1484" />
+        <location filename="../artisanlib/canvas.py" line="1485" />
         <location filename="../tilauscope/hibean.py" line="652" />
         <source>Heater</source>
         <translation>מְחַמֵם</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1481" />
+        <location filename="../artisanlib/canvas.py" line="1482" />
         <location filename="../tilauscope/roast_plan_model.py" line="1006" />
         <source>Fan</source>
         <translation>מאוורר</translation>
@@ -2277,18 +2277,18 @@ END</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1477" />
-        <location filename="../artisanlib/canvas.py" line="1470" />
-        <location filename="../artisanlib/canvas.py" line="1226" />
+        <location filename="../artisanlib/canvas.py" line="1478" />
+        <location filename="../artisanlib/canvas.py" line="1471" />
+        <location filename="../artisanlib/canvas.py" line="1227" />
         <location filename="../tilauscope/cave/standalone.py" line="162" />
         <location filename="../tilauscope/roast_asssistant.py" line="1952" />
         <source>Burner</source>
         <translation>מַבעֵר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1474" />
-        <location filename="../artisanlib/canvas.py" line="1467" />
-        <location filename="../artisanlib/canvas.py" line="1223" />
+        <location filename="../artisanlib/canvas.py" line="1475" />
+        <location filename="../artisanlib/canvas.py" line="1468" />
+        <location filename="../artisanlib/canvas.py" line="1224" />
         <location filename="../tilauscope/graph/curve.py" line="2640" />
         <location filename="../tilauscope/graph/curve.py" line="451" />
         <location filename="../tilauscope/cave/standalone.py" line="159" />
@@ -2296,9 +2296,9 @@ END</source>
         <translation>אוויר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1476" />
-        <location filename="../artisanlib/canvas.py" line="1469" />
-        <location filename="../artisanlib/canvas.py" line="1225" />
+        <location filename="../artisanlib/canvas.py" line="1477" />
+        <location filename="../artisanlib/canvas.py" line="1470" />
+        <location filename="../artisanlib/canvas.py" line="1226" />
         <location filename="../tilauscope/cave/standalone.py" line="161" />
         <source>Damper</source>
         <translation>פדל</translation>
@@ -2669,27 +2669,27 @@ END</source>
         <translation>נִבדָל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1253" />
+        <location filename="../artisanlib/canvas.py" line="1254" />
         <source>Propane Gas (LPG)</source>
         <translation>גז פרופאן (גפ'מ)</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1254" />
+        <location filename="../artisanlib/canvas.py" line="1255" />
         <source>Natural Gas (NG)</source>
         <translation>גז טבעי (NG)</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1255" />
+        <location filename="../artisanlib/canvas.py" line="1256" />
         <source>Electric</source>
         <translation>חשמלי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1483" />
+        <location filename="../artisanlib/canvas.py" line="1484" />
         <source>Cooling</source>
         <translation type="unfinished">קירור</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2131" />
+        <location filename="../artisanlib/canvas.py" line="2132" />
         <source>Elec</source>
         <translation>אלק</translation>
     </message>
@@ -2767,47 +2767,47 @@ END</source>
         <translation>לְהַסתִיר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18734" />
+        <location filename="../artisanlib/canvas.py" line="18737" />
         <source>Add point</source>
         <translation>הוסף נקודה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18738" />
+        <location filename="../artisanlib/canvas.py" line="18741" />
         <source>Remove point</source>
         <translation>הסר נקודה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18744" />
+        <location filename="../artisanlib/canvas.py" line="18747" />
         <source>Load points</source>
         <translation>נקודות עומס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18748" />
+        <location filename="../artisanlib/canvas.py" line="18751" />
         <source>Save points</source>
         <translation>שמור נקודות</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18754" />
+        <location filename="../artisanlib/canvas.py" line="18757" />
         <source>Reset Designer</source>
         <translation>אפס עיצוב פרופיל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18758" />
+        <location filename="../artisanlib/canvas.py" line="18761" />
         <source>Config...</source>
         <translation>קנפג...</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19535" />
+        <location filename="../artisanlib/canvas.py" line="19538" />
         <source>Add to Cupping Notes</source>
         <translation>הוסף פרופיל טעמים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19539" />
+        <location filename="../artisanlib/canvas.py" line="19542" />
         <source>Add to Roasting Notes</source>
         <translation>הוסף רשמי שלייה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19545" />
+        <location filename="../artisanlib/canvas.py" line="19548" />
         <source>Edit</source>
         <translation>ערוך</translation>
     </message>
@@ -4205,16 +4205,16 @@ END</source>
         <translation>שגיאה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28156" />
-        <location filename="../artisanlib/main.py" line="28119" />
-        <location filename="../artisanlib/main.py" line="27976" />
-        <location filename="../artisanlib/main.py" line="27626" />
-        <location filename="../artisanlib/main.py" line="27556" />
-        <location filename="../artisanlib/main.py" line="27505" />
-        <location filename="../artisanlib/main.py" line="27364" />
-        <location filename="../artisanlib/main.py" line="27208" />
-        <location filename="../artisanlib/main.py" line="26861" />
-        <location filename="../artisanlib/main.py" line="26781" />
+        <location filename="../artisanlib/main.py" line="28159" />
+        <location filename="../artisanlib/main.py" line="28122" />
+        <location filename="../artisanlib/main.py" line="27979" />
+        <location filename="../artisanlib/main.py" line="27629" />
+        <location filename="../artisanlib/main.py" line="27559" />
+        <location filename="../artisanlib/main.py" line="27508" />
+        <location filename="../artisanlib/main.py" line="27367" />
+        <location filename="../artisanlib/main.py" line="27211" />
+        <location filename="../artisanlib/main.py" line="26864" />
+        <location filename="../artisanlib/main.py" line="26784" />
         <location filename="../artisanlib/main.py" line="24884" />
         <location filename="../artisanlib/main.py" line="24309" />
         <location filename="../artisanlib/main.py" line="22931" />
@@ -4226,79 +4226,79 @@ END</source>
         <translation>שגיאה:</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19719" />
-        <location filename="../artisanlib/canvas.py" line="19280" />
-        <location filename="../artisanlib/canvas.py" line="19176" />
-        <location filename="../artisanlib/canvas.py" line="19134" />
-        <location filename="../artisanlib/canvas.py" line="19029" />
-        <location filename="../artisanlib/canvas.py" line="19011" />
-        <location filename="../artisanlib/canvas.py" line="18254" />
-        <location filename="../artisanlib/canvas.py" line="18232" />
-        <location filename="../artisanlib/canvas.py" line="17947" />
-        <location filename="../artisanlib/canvas.py" line="17921" />
-        <location filename="../artisanlib/canvas.py" line="17736" />
-        <location filename="../artisanlib/canvas.py" line="17574" />
-        <location filename="../artisanlib/canvas.py" line="17517" />
-        <location filename="../artisanlib/canvas.py" line="17487" />
-        <location filename="../artisanlib/canvas.py" line="16856" />
-        <location filename="../artisanlib/canvas.py" line="16816" />
-        <location filename="../artisanlib/canvas.py" line="16551" />
-        <location filename="../artisanlib/canvas.py" line="16262" />
-        <location filename="../artisanlib/canvas.py" line="16169" />
-        <location filename="../artisanlib/canvas.py" line="15941" />
-        <location filename="../artisanlib/canvas.py" line="15756" />
-        <location filename="../artisanlib/canvas.py" line="15613" />
-        <location filename="../artisanlib/canvas.py" line="15382" />
-        <location filename="../artisanlib/canvas.py" line="15259" />
-        <location filename="../artisanlib/canvas.py" line="15138" />
-        <location filename="../artisanlib/canvas.py" line="15020" />
-        <location filename="../artisanlib/canvas.py" line="14896" />
-        <location filename="../artisanlib/canvas.py" line="14806" />
-        <location filename="../artisanlib/canvas.py" line="14746" />
-        <location filename="../artisanlib/canvas.py" line="14530" />
-        <location filename="../artisanlib/canvas.py" line="14454" />
-        <location filename="../artisanlib/canvas.py" line="13817" />
-        <location filename="../artisanlib/canvas.py" line="13761" />
-        <location filename="../artisanlib/canvas.py" line="13508" />
-        <location filename="../artisanlib/canvas.py" line="13398" />
-        <location filename="../artisanlib/canvas.py" line="13385" />
-        <location filename="../artisanlib/canvas.py" line="12056" />
-        <location filename="../artisanlib/canvas.py" line="11820" />
-        <location filename="../artisanlib/canvas.py" line="11574" />
-        <location filename="../artisanlib/canvas.py" line="11534" />
-        <location filename="../artisanlib/canvas.py" line="11489" />
-        <location filename="../artisanlib/canvas.py" line="11234" />
-        <location filename="../artisanlib/canvas.py" line="11172" />
-        <location filename="../artisanlib/canvas.py" line="10930" />
-        <location filename="../artisanlib/canvas.py" line="10873" />
-        <location filename="../artisanlib/canvas.py" line="10493" />
-        <location filename="../artisanlib/canvas.py" line="10453" />
-        <location filename="../artisanlib/canvas.py" line="10413" />
-        <location filename="../artisanlib/canvas.py" line="10372" />
-        <location filename="../artisanlib/canvas.py" line="9925" />
-        <location filename="../artisanlib/canvas.py" line="9889" />
-        <location filename="../artisanlib/canvas.py" line="9853" />
-        <location filename="../artisanlib/canvas.py" line="9817" />
-        <location filename="../artisanlib/canvas.py" line="9036" />
-        <location filename="../artisanlib/canvas.py" line="8982" />
-        <location filename="../artisanlib/canvas.py" line="8640" />
-        <location filename="../artisanlib/canvas.py" line="8567" />
-        <location filename="../artisanlib/canvas.py" line="8158" />
-        <location filename="../artisanlib/canvas.py" line="7765" />
-        <location filename="../artisanlib/canvas.py" line="7518" />
-        <location filename="../artisanlib/canvas.py" line="6695" />
-        <location filename="../artisanlib/canvas.py" line="6509" />
-        <location filename="../artisanlib/canvas.py" line="6406" />
-        <location filename="../artisanlib/canvas.py" line="6388" />
-        <location filename="../artisanlib/canvas.py" line="6341" />
-        <location filename="../artisanlib/canvas.py" line="5981" />
-        <location filename="../artisanlib/canvas.py" line="5852" />
-        <location filename="../artisanlib/canvas.py" line="5838" />
-        <location filename="../artisanlib/canvas.py" line="5369" />
-        <location filename="../artisanlib/canvas.py" line="5356" />
-        <location filename="../artisanlib/canvas.py" line="4130" />
-        <location filename="../artisanlib/canvas.py" line="3691" />
-        <location filename="../artisanlib/canvas.py" line="3244" />
+        <location filename="../artisanlib/canvas.py" line="19722" />
+        <location filename="../artisanlib/canvas.py" line="19283" />
+        <location filename="../artisanlib/canvas.py" line="19179" />
+        <location filename="../artisanlib/canvas.py" line="19137" />
+        <location filename="../artisanlib/canvas.py" line="19032" />
+        <location filename="../artisanlib/canvas.py" line="19014" />
+        <location filename="../artisanlib/canvas.py" line="18257" />
+        <location filename="../artisanlib/canvas.py" line="18235" />
+        <location filename="../artisanlib/canvas.py" line="17950" />
+        <location filename="../artisanlib/canvas.py" line="17924" />
+        <location filename="../artisanlib/canvas.py" line="17739" />
+        <location filename="../artisanlib/canvas.py" line="17577" />
+        <location filename="../artisanlib/canvas.py" line="17520" />
+        <location filename="../artisanlib/canvas.py" line="17490" />
+        <location filename="../artisanlib/canvas.py" line="16859" />
+        <location filename="../artisanlib/canvas.py" line="16819" />
+        <location filename="../artisanlib/canvas.py" line="16554" />
+        <location filename="../artisanlib/canvas.py" line="16265" />
+        <location filename="../artisanlib/canvas.py" line="16172" />
+        <location filename="../artisanlib/canvas.py" line="15944" />
+        <location filename="../artisanlib/canvas.py" line="15759" />
+        <location filename="../artisanlib/canvas.py" line="15616" />
+        <location filename="../artisanlib/canvas.py" line="15385" />
+        <location filename="../artisanlib/canvas.py" line="15262" />
+        <location filename="../artisanlib/canvas.py" line="15141" />
+        <location filename="../artisanlib/canvas.py" line="15023" />
+        <location filename="../artisanlib/canvas.py" line="14899" />
+        <location filename="../artisanlib/canvas.py" line="14809" />
+        <location filename="../artisanlib/canvas.py" line="14749" />
+        <location filename="../artisanlib/canvas.py" line="14533" />
+        <location filename="../artisanlib/canvas.py" line="14457" />
+        <location filename="../artisanlib/canvas.py" line="13820" />
+        <location filename="../artisanlib/canvas.py" line="13764" />
+        <location filename="../artisanlib/canvas.py" line="13511" />
+        <location filename="../artisanlib/canvas.py" line="13401" />
+        <location filename="../artisanlib/canvas.py" line="13388" />
+        <location filename="../artisanlib/canvas.py" line="12059" />
+        <location filename="../artisanlib/canvas.py" line="11823" />
+        <location filename="../artisanlib/canvas.py" line="11577" />
+        <location filename="../artisanlib/canvas.py" line="11537" />
+        <location filename="../artisanlib/canvas.py" line="11492" />
+        <location filename="../artisanlib/canvas.py" line="11237" />
+        <location filename="../artisanlib/canvas.py" line="11175" />
+        <location filename="../artisanlib/canvas.py" line="10933" />
+        <location filename="../artisanlib/canvas.py" line="10876" />
+        <location filename="../artisanlib/canvas.py" line="10496" />
+        <location filename="../artisanlib/canvas.py" line="10456" />
+        <location filename="../artisanlib/canvas.py" line="10416" />
+        <location filename="../artisanlib/canvas.py" line="10375" />
+        <location filename="../artisanlib/canvas.py" line="9928" />
+        <location filename="../artisanlib/canvas.py" line="9892" />
+        <location filename="../artisanlib/canvas.py" line="9856" />
+        <location filename="../artisanlib/canvas.py" line="9820" />
+        <location filename="../artisanlib/canvas.py" line="9039" />
+        <location filename="../artisanlib/canvas.py" line="8985" />
+        <location filename="../artisanlib/canvas.py" line="8643" />
+        <location filename="../artisanlib/canvas.py" line="8570" />
+        <location filename="../artisanlib/canvas.py" line="8161" />
+        <location filename="../artisanlib/canvas.py" line="7768" />
+        <location filename="../artisanlib/canvas.py" line="7521" />
+        <location filename="../artisanlib/canvas.py" line="6698" />
+        <location filename="../artisanlib/canvas.py" line="6512" />
+        <location filename="../artisanlib/canvas.py" line="6408" />
+        <location filename="../artisanlib/canvas.py" line="6390" />
+        <location filename="../artisanlib/canvas.py" line="6343" />
+        <location filename="../artisanlib/canvas.py" line="5983" />
+        <location filename="../artisanlib/canvas.py" line="5854" />
+        <location filename="../artisanlib/canvas.py" line="5840" />
+        <location filename="../artisanlib/canvas.py" line="5371" />
+        <location filename="../artisanlib/canvas.py" line="5358" />
+        <location filename="../artisanlib/canvas.py" line="4131" />
+        <location filename="../artisanlib/canvas.py" line="3692" />
+        <location filename="../artisanlib/canvas.py" line="3245" />
         <location filename="../artisanlib/devices.py" line="5114" />
         <location filename="../artisanlib/devices.py" line="3525" />
         <location filename="../artisanlib/devices.py" line="3425" />
@@ -4309,21 +4309,21 @@ END</source>
         <location filename="../artisanlib/devices.py" line="3235" />
         <location filename="../artisanlib/devices.py" line="3220" />
         <location filename="../artisanlib/devices.py" line="3026" />
-        <location filename="../artisanlib/main.py" line="28690" />
-        <location filename="../artisanlib/main.py" line="28584" />
-        <location filename="../artisanlib/main.py" line="28411" />
-        <location filename="../artisanlib/main.py" line="28397" />
-        <location filename="../artisanlib/main.py" line="28161" />
-        <location filename="../artisanlib/main.py" line="28124" />
-        <location filename="../artisanlib/main.py" line="27636" />
-        <location filename="../artisanlib/main.py" line="27370" />
-        <location filename="../artisanlib/main.py" line="27214" />
-        <location filename="../artisanlib/main.py" line="27167" />
-        <location filename="../artisanlib/main.py" line="26867" />
-        <location filename="../artisanlib/main.py" line="26787" />
-        <location filename="../artisanlib/main.py" line="26250" />
-        <location filename="../artisanlib/main.py" line="26036" />
-        <location filename="../artisanlib/main.py" line="25515" />
+        <location filename="../artisanlib/main.py" line="28693" />
+        <location filename="../artisanlib/main.py" line="28587" />
+        <location filename="../artisanlib/main.py" line="28414" />
+        <location filename="../artisanlib/main.py" line="28400" />
+        <location filename="../artisanlib/main.py" line="28164" />
+        <location filename="../artisanlib/main.py" line="28127" />
+        <location filename="../artisanlib/main.py" line="27639" />
+        <location filename="../artisanlib/main.py" line="27373" />
+        <location filename="../artisanlib/main.py" line="27217" />
+        <location filename="../artisanlib/main.py" line="27170" />
+        <location filename="../artisanlib/main.py" line="26870" />
+        <location filename="../artisanlib/main.py" line="26790" />
+        <location filename="../artisanlib/main.py" line="26253" />
+        <location filename="../artisanlib/main.py" line="26039" />
+        <location filename="../artisanlib/main.py" line="25518" />
         <location filename="../artisanlib/main.py" line="25323" />
         <location filename="../artisanlib/main.py" line="24895" />
         <location filename="../artisanlib/main.py" line="24573" />
@@ -4612,16 +4612,16 @@ END</source>
         <translation>Arduino לא הצליח להגדיר מסננים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19713" />
-        <location filename="../artisanlib/canvas.py" line="19274" />
-        <location filename="../artisanlib/canvas.py" line="17942" />
-        <location filename="../artisanlib/canvas.py" line="17916" />
-        <location filename="../artisanlib/canvas.py" line="17730" />
-        <location filename="../artisanlib/main.py" line="27631" />
-        <location filename="../artisanlib/main.py" line="27366" />
-        <location filename="../artisanlib/main.py" line="27210" />
-        <location filename="../artisanlib/main.py" line="26863" />
-        <location filename="../artisanlib/main.py" line="26783" />
+        <location filename="../artisanlib/canvas.py" line="19716" />
+        <location filename="../artisanlib/canvas.py" line="19277" />
+        <location filename="../artisanlib/canvas.py" line="17945" />
+        <location filename="../artisanlib/canvas.py" line="17919" />
+        <location filename="../artisanlib/canvas.py" line="17733" />
+        <location filename="../artisanlib/main.py" line="27634" />
+        <location filename="../artisanlib/main.py" line="27369" />
+        <location filename="../artisanlib/main.py" line="27213" />
+        <location filename="../artisanlib/main.py" line="26866" />
+        <location filename="../artisanlib/main.py" line="26786" />
         <location filename="../artisanlib/main.py" line="14971" />
         <location filename="../artisanlib/main.py" line="14238" />
         <location filename="../artisanlib/comm.py" line="7840" />
@@ -4818,54 +4818,54 @@ END</source>
         <translation>חריג (כנראה בגלל פרופיל ריק):</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28207" />
+        <location filename="../artisanlib/main.py" line="28210" />
         <source>Analyze: CHARGE event required, none found</source>
         <translation>ניתוח: נדרש אירוע CHARGE, לא נמצא</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28211" />
+        <location filename="../artisanlib/main.py" line="28214" />
         <source>Analyze: DROP event required, none found</source>
         <translation>ניתוח: נדרש אירוע DROP, לא נמצא</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28302" />
+        <location filename="../artisanlib/main.py" line="28305" />
         <source>Analyze: no background profile data available</source>
         <translation>ניתוח: אין נתוני פרופיל רקע זמינים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28308" />
+        <location filename="../artisanlib/main.py" line="28311" />
         <source>Analyze: background profile requires CHARGE and DROP events</source>
         <translation>ניתוח: פרופיל הרקע דורש אירועי CHARGE ו-DROP</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11821" />
+        <location filename="../artisanlib/canvas.py" line="11824" />
         <source>Unexpected value for n, got</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12979" />
+        <location filename="../artisanlib/canvas.py" line="12982" />
         <source>Exception: phidgetServer couldn't be added. Verify that the Phidget driver is correctly installed!</source>
         <translation>חריג: לא ניתן היה להוסיף phidgetServer. ודא שמנהל ההתקן של Phidget מותקן כהלכה!</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12987" />
+        <location filename="../artisanlib/canvas.py" line="12990" />
         <source>Exception: PhidgetManager couldn't be started. Verify that the Phidget driver is correctly installed!</source>
         <translation>חריג: לא ניתן היה להפעיל את PhidgetManager. ודא שמנהל ההתקן של Phidget מותקן כהלכה!</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13877" />
-        <location filename="../artisanlib/canvas.py" line="13851" />
+        <location filename="../artisanlib/canvas.py" line="13880" />
+        <location filename="../artisanlib/canvas.py" line="13854" />
         <source>Unstable meter data</source>
         <translation>נתוני מד לא יציבים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17882" />
+        <location filename="../artisanlib/canvas.py" line="17885" />
         <source>Error in lnRegression:</source>
         <translation>שגיאה ב-lnRegression:</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18663" />
-        <location filename="../artisanlib/canvas.py" line="18659" />
+        <location filename="../artisanlib/canvas.py" line="18666" />
+        <location filename="../artisanlib/canvas.py" line="18662" />
         <source>Exception: redrawdesigner() Roast events may be out of order. Resetting Designer.</source>
         <translation>חריג: redrawdesigner() אירועי צלי עלולים להיות לא בסדר. איפוס מעצב.</translation>
     </message>
@@ -5337,15 +5337,15 @@ END</source>
         <translation>השמעה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16483" />
-        <location filename="../artisanlib/canvas.py" line="16421" />
+        <location filename="../artisanlib/canvas.py" line="16486" />
+        <location filename="../artisanlib/canvas.py" line="16424" />
         <location filename="../artisanlib/roast_properties.py" line="2957" />
         <source>Energy</source>
         <translation>אֵנֶרְגִיָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16484" />
-        <location filename="../artisanlib/canvas.py" line="16422" />
+        <location filename="../artisanlib/canvas.py" line="16487" />
+        <location filename="../artisanlib/canvas.py" line="16425" />
         <location filename="../artisanlib/roast_properties.py" line="2958" />
         <source>CO2</source>
         <translation type="unfinished" />
@@ -5622,8 +5622,8 @@ END</source>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="23352" />
-        <location filename="../tilauscope/onboarding.py" line="1033" />
-        <location filename="../tilauscope/onboarding.py" line="456" />
+        <location filename="../tilauscope/onboarding.py" line="1145" />
+        <location filename="../tilauscope/onboarding.py" line="470" />
         <source>Capacity</source>
         <translation>קיבולת</translation>
     </message>
@@ -5647,14 +5647,14 @@ END</source>
         <translation>טמפ' שעועית</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11748" />
+        <location filename="../artisanlib/canvas.py" line="11751" />
         <location filename="../artisanlib/main.py" line="23458" />
         <location filename="../artisanlib/statistics.py" line="222" />
         <source>BBP Total Time</source>
         <translation>BBP זמן כולל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11751" />
+        <location filename="../artisanlib/canvas.py" line="11754" />
         <location filename="../artisanlib/main.py" line="23459" />
         <location filename="../artisanlib/statistics.py" line="223" />
         <source>BBP Bottom Temp</source>
@@ -5671,7 +5671,7 @@ END</source>
         <translation>BBP סיכום קומפקטי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11793" />
+        <location filename="../artisanlib/canvas.py" line="11796" />
         <location filename="../artisanlib/main.py" line="23356" />
         <location filename="../artisanlib/statistics.py" line="230" />
         <source>Whole Color</source>
@@ -6375,7 +6375,7 @@ END</source>
         <translation>אִרגוּן:</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11722" />
+        <location filename="../artisanlib/canvas.py" line="11725" />
         <location filename="../artisanlib/main.py" line="24795" />
         <source>Cupping:</source>
         <translation>פרופיל טעם:</translation>
@@ -6551,6 +6551,31 @@ END</source>
         <location filename="../tilauscope/device_setup/dialog.py" line="209" />
         <source>AMBIENT</source>
         <translation>אווירה</translation>
+    </message>
+    <message>
+        <location filename="../help/symbolic_help.py" line="48" />
+        <location filename="../help/symbolic_help.py" line="47" />
+        <location filename="../help/symbolic_help.py" line="46" />
+        <location filename="../help/symbolic_help.py" line="45" />
+        <location filename="../help/symbolic_help.py" line="33" />
+        <location filename="../help/symbolic_help.py" line="32" />
+        <location filename="../help/symbolic_help.py" line="31" />
+        <location filename="../help/symbolic_help.py" line="30" />
+        <location filename="../help/symbolic_help.py" line="29" />
+        <location filename="../help/symbolic_help.py" line="28" />
+        <location filename="../help/symbolic_help.py" line="27" />
+        <location filename="../help/symbolic_help.py" line="26" />
+        <location filename="../help/symbolic_help.py" line="25" />
+        <location filename="../help/symbolic_help.py" line="24" />
+        <location filename="../help/symbolic_help.py" line="23" />
+        <location filename="../help/symbolic_help.py" line="22" />
+        <location filename="../help/symbolic_help.py" line="21" />
+        <location filename="../help/symbolic_help.py" line="19" />
+        <location filename="../help/symbolic_help.py" line="18" />
+        <location filename="../tilaucore/tasting_log.py" line="109" />
+        <location filename="../tilaucore/tasting_log.py" line="91" />
+        <source>Yes</source>
+        <translation>כן</translation>
     </message>
     <message>
         <location filename="../help/alarms_help.py" line="14" />
@@ -11201,31 +11226,6 @@ From Roast&gt;Properties&gt;Cupping Notes</source>
         <translation>זמן מוחלט (שניות) מתחילת ההקלטה (לא רק הזמן שאחרי CHARGE!)</translation>
     </message>
     <message>
-        <location filename="../tilaucore/tasting_log.py" line="109" />
-        <location filename="../tilaucore/tasting_log.py" line="91" />
-        <location filename="../help/symbolic_help.py" line="48" />
-        <location filename="../help/symbolic_help.py" line="47" />
-        <location filename="../help/symbolic_help.py" line="46" />
-        <location filename="../help/symbolic_help.py" line="45" />
-        <location filename="../help/symbolic_help.py" line="33" />
-        <location filename="../help/symbolic_help.py" line="32" />
-        <location filename="../help/symbolic_help.py" line="31" />
-        <location filename="../help/symbolic_help.py" line="30" />
-        <location filename="../help/symbolic_help.py" line="29" />
-        <location filename="../help/symbolic_help.py" line="28" />
-        <location filename="../help/symbolic_help.py" line="27" />
-        <location filename="../help/symbolic_help.py" line="26" />
-        <location filename="../help/symbolic_help.py" line="25" />
-        <location filename="../help/symbolic_help.py" line="24" />
-        <location filename="../help/symbolic_help.py" line="23" />
-        <location filename="../help/symbolic_help.py" line="22" />
-        <location filename="../help/symbolic_help.py" line="21" />
-        <location filename="../help/symbolic_help.py" line="19" />
-        <location filename="../help/symbolic_help.py" line="18" />
-        <source>Yes</source>
-        <translation>כן</translation>
-    </message>
-    <message>
         <location filename="../help/symbolic_help.py" line="19" />
         <source>Absolute time (seconds) from begin of recording of the background profile</source>
         <translation>זמן מוחלט (שניות) מתחילת ההקלטה של פרופיל הרקע</translation>
@@ -11712,11 +11712,124 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
 </context><context>
     <name>Label</name>
     <message>
+        <location filename="../artisanlib/canvas.py" line="11733" />
+        <location filename="../artisanlib/roast_properties.py" line="926" />
+        <location filename="../artisanlib/roast_properties.py" line="224" />
+        <location filename="../artisanlib/roast_properties.py" line="150" />
+        <location filename="../plus/schedule.py" line="2053" />
+        <location filename="../plus/blend.py" line="157" />
+        <source>Weight</source>
+        <translation type="unfinished">משקל</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/statistics.py" line="205" />
+        <location filename="../artisanlib/roast_properties.py" line="1115" />
+        <location filename="../artisanlib/roast_properties.py" line="917" />
+        <location filename="../tilaucore/roast_label.py" line="135" />
+        <location filename="../plus/blend.py" line="343" />
+        <source>Beans</source>
+        <translation type="unfinished">פולים</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/statistics.py" line="234" />
+        <location filename="../artisanlib/roast_properties.py" line="1761" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3683" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3662" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2332" />
+        <location filename="../plus/schedule.py" line="2075" />
+        <source>Yield</source>
+        <translation>תְשׁוּאָה</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/main.py" line="24785" />
+        <location filename="../artisanlib/roast_properties.py" line="1760" />
+        <location filename="../tilauscope/cave/analysis.py" line="605" />
+        <location filename="../plus/schedule.py" line="2085" />
+        <source>Defects</source>
+        <translation>פגמים</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/canvas.py" line="11677" />
+        <location filename="../artisanlib/roast_properties.py" line="1019" />
+        <location filename="../tilaucore/roast_label.py" line="130" />
+        <location filename="../tilauscope/roast_plan_model.py" line="1500" />
+        <location filename="../tilauscope/beancave_social_card.py" line="81" />
+        <location filename="../tilauscope/beancave_bean_sheet.py" line="618" />
+        <location filename="../tilauscope/roast_insights.py" line="115" />
+        <location filename="../plus/schedule.py" line="2095" />
+        <source>Density</source>
+        <translation type="unfinished">צפיפות</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/roast_properties.py" line="1090" />
+        <location filename="../artisanlib/events.py" line="464" />
+        <location filename="../tilauscope/graph/annotation_text.py" line="86" />
+        <location filename="../plus/schedule.py" line="2105" />
+        <source>Color</source>
+        <translation type="unfinished">צבע</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/canvas.py" line="11682" />
+        <location filename="../artisanlib/roast_properties.py" line="1127" />
+        <location filename="../tilauscope/roast_properties.py" line="3283" />
+        <location filename="../tilauscope/beancave_storage_tab.py" line="519" />
+        <location filename="../tilauscope/roast_insights.py" line="144" />
+        <location filename="../tilauscope/label_printer.py" line="919" />
+        <location filename="../plus/schedule.py" line="2115" />
+        <source>Moisture</source>
+        <translation>לַחוּת</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/statistics.py" line="216" />
+        <location filename="../artisanlib/roast_properties.py" line="1201" />
+        <location filename="../plus/schedule.py" line="2126" />
+        <location filename="../plus/schedule.py" line="2125" />
+        <source>Roasting Notes</source>
+        <translation type="unfinished">רשמי קלייה</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="2130" />
+        <source>Score</source>
+        <translation>ציון</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/statistics.py" line="217" />
+        <location filename="../plus/schedule.py" line="2131" />
+        <source>Cupping Score</source>
+        <translation>ניקוד כוסות רוח</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/statistics.py" line="218" />
+        <location filename="../artisanlib/roast_properties.py" line="1206" />
+        <location filename="../plus/schedule.py" line="2138" />
+        <location filename="../plus/schedule.py" line="2137" />
+        <source>Cupping Notes</source>
+        <translation type="unfinished">רשמי טעם</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/roast_properties.py" line="925" />
+        <location filename="../artisanlib/roast_properties.py" line="283" />
+        <location filename="../plus/schedule.py" line="4074" />
+        <location filename="../plus/schedule.py" line="2226" />
+        <source>Roasted</source>
+        <translation>קָלוּי</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/canvas.py" line="11733" />
+        <location filename="../artisanlib/canvas.py" line="11682" />
+        <location filename="../artisanlib/canvas.py" line="11677" />
+        <location filename="../artisanlib/roast_properties.py" line="924" />
+        <location filename="../artisanlib/roast_properties.py" line="209" />
+        <location filename="../plus/schedule.py" line="4072" />
+        <source>Green</source>
+        <translation>ירוק</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/statistics.py" line="203" />
         <location filename="../tilauscope/devices.py" line="2808" />
         <location filename="../tilauscope/devices.py" line="681" />
         <location filename="../tilauscope/roast_plan_model.py" line="1497" />
-        <location filename="../tilauscope/onboarding.py" line="1012" />
+        <location filename="../tilauscope/onboarding.py" line="1124" />
         <location filename="../tilauscope/energy_panel.py" line="309" />
         <location filename="../tilauscope/energy_panel.py" line="292" />
         <source>Roaster</source>
@@ -11758,10 +11871,10 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">ייבוש</translation>
     </message>
     <message>
-        <location filename="../tilaucore/roast_plan.py" line="1401" />
         <location filename="../artisanlib/transposer.py" line="1039" />
         <location filename="../artisanlib/statistics.py" line="228" />
         <location filename="../artisanlib/phases.py" line="57" />
+        <location filename="../tilaucore/roast_plan.py" line="1401" />
         <location filename="../tilauscope/graph/curve.py" line="2649" />
         <location filename="../tilauscope/cave/viewer_multi.py" line="410" />
         <location filename="../tilauscope/cave/analysis_view.py" line="726" />
@@ -11800,9 +11913,9 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27692" />
-        <location filename="../artisanlib/main.py" line="27691" />
-        <location filename="../artisanlib/main.py" line="27690" />
+        <location filename="../artisanlib/main.py" line="27695" />
+        <location filename="../artisanlib/main.py" line="27694" />
+        <location filename="../artisanlib/main.py" line="27693" />
         <location filename="../artisanlib/ports.py" line="1177" />
         <location filename="../artisanlib/ports.py" line="713" />
         <location filename="../artisanlib/events.py" line="1421" />
@@ -11813,9 +11926,9 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">הפעל</translation>
     </message>
     <message>
+        <location filename="../artisanlib/main.py" line="27695" />
+        <location filename="../artisanlib/main.py" line="27694" />
         <location filename="../artisanlib/main.py" line="27692" />
-        <location filename="../artisanlib/main.py" line="27691" />
-        <location filename="../artisanlib/main.py" line="27689" />
         <location filename="../artisanlib/ports.py" line="1174" />
         <location filename="../artisanlib/ports.py" line="710" />
         <location filename="../artisanlib/events.py" line="1442" />
@@ -11825,26 +11938,26 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">סיים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27707" />
-        <location filename="../artisanlib/main.py" line="27694" />
-        <location filename="../artisanlib/main.py" line="27693" />
+        <location filename="../artisanlib/main.py" line="27710" />
+        <location filename="../artisanlib/main.py" line="27697" />
+        <location filename="../artisanlib/main.py" line="27696" />
         <location filename="../tilauscope/button_labels.py" line="95" />
         <source>AUTO</source>
         <translation>אוטומטי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27707" />
-        <location filename="../artisanlib/main.py" line="27706" />
-        <location filename="../artisanlib/main.py" line="27694" />
+        <location filename="../artisanlib/main.py" line="27710" />
+        <location filename="../artisanlib/main.py" line="27709" />
+        <location filename="../artisanlib/main.py" line="27697" />
         <location filename="../tilauscope/roast_asssistant.py" line="4369" />
         <location filename="../tilauscope/button_labels.py" line="95" />
         <source>MANUAL</source>
         <translation>מדריך ל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27709" />
-        <location filename="../artisanlib/main.py" line="27697" />
-        <location filename="../artisanlib/main.py" line="27696" />
+        <location filename="../artisanlib/main.py" line="27712" />
+        <location filename="../artisanlib/main.py" line="27700" />
+        <location filename="../artisanlib/main.py" line="27699" />
         <location filename="../tilauscope/pid_autotune.py" line="3087" />
         <location filename="../tilauscope/pid_autotune.py" line="2006" />
         <location filename="../tilauscope/button_labels.py" line="96" />
@@ -11852,17 +11965,17 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>סגור</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27709" />
-        <location filename="../artisanlib/main.py" line="27708" />
-        <location filename="../artisanlib/main.py" line="27697" />
+        <location filename="../artisanlib/main.py" line="27712" />
+        <location filename="../artisanlib/main.py" line="27711" />
+        <location filename="../artisanlib/main.py" line="27700" />
         <location filename="../tilauscope/button_labels.py" line="96" />
         <source>OPEN</source>
         <translation>לִפְתוֹחַ</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27716" />
-        <location filename="../artisanlib/main.py" line="27715" />
-        <location filename="../artisanlib/main.py" line="27711" />
+        <location filename="../artisanlib/main.py" line="27719" />
+        <location filename="../artisanlib/main.py" line="27718" />
+        <location filename="../artisanlib/main.py" line="27714" />
         <location filename="../artisanlib/events.py" line="1479" />
         <location filename="../artisanlib/events.py" line="584" />
         <location filename="../artisanlib/events.py" line="573" />
@@ -11873,59 +11986,59 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">הקלט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27716" />
-        <location filename="../artisanlib/main.py" line="27711" />
-        <location filename="../artisanlib/main.py" line="27710" />
+        <location filename="../artisanlib/main.py" line="27719" />
+        <location filename="../artisanlib/main.py" line="27714" />
+        <location filename="../artisanlib/main.py" line="27713" />
         <location filename="../tilauscope/button_labels.py" line="97" />
         <source>STOP</source>
         <translation>תפסיק</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27695" />
+        <location filename="../artisanlib/main.py" line="27698" />
         <location filename="../tilauscope/button_labels.py" line="105" />
         <source>FLAP</source>
         <translation>מַדָף</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27698" />
+        <location filename="../artisanlib/main.py" line="27701" />
         <location filename="../tilauscope/button_labels.py" line="108" />
         <source>CONTROL</source>
         <translation type="unfinished">לִשְׁלוֹט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27699" />
+        <location filename="../artisanlib/main.py" line="27702" />
         <location filename="../tilauscope/button_labels.py" line="109" />
         <source>DISCHARGE</source>
         <translation>פְּרִיקָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27701" />
+        <location filename="../artisanlib/main.py" line="27704" />
         <location filename="../tilauscope/graph/annotation_text.py" line="110" />
         <location filename="../tilauscope/button_labels.py" line="111" />
         <source>HEATING</source>
         <translation>הַסָקָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27702" />
+        <location filename="../artisanlib/main.py" line="27705" />
         <location filename="../tilauscope/button_labels.py" line="112" />
         <source>STIRRER</source>
         <translation>מערבל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27703" />
+        <location filename="../artisanlib/main.py" line="27706" />
         <location filename="../tilauscope/button_labels.py" line="113" />
         <source>FILL</source>
         <translation>למלא</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27705" />
+        <location filename="../artisanlib/main.py" line="27708" />
         <location filename="../tilauscope/roast_asssistant.py" line="3508" />
         <location filename="../tilauscope/button_labels.py" line="115" />
         <source>COOLING</source>
         <translation>הִתקָרְרוּת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27714" />
+        <location filename="../artisanlib/main.py" line="27717" />
         <location filename="../tilauscope/button_labels.py" line="124" />
         <source>RELEASE</source>
         <translation>לְשַׁחְרֵר</translation>
@@ -11936,8 +12049,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18941" />
-        <location filename="../artisanlib/canvas.py" line="4084" />
+        <location filename="../artisanlib/canvas.py" line="18944" />
+        <location filename="../artisanlib/canvas.py" line="4085" />
         <location filename="../artisanlib/transposer.py" line="1209" />
         <location filename="../artisanlib/transposer.py" line="1138" />
         <location filename="../artisanlib/alarms.py" line="934" />
@@ -11965,8 +12078,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>ס.ייבוש</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18944" />
-        <location filename="../artisanlib/canvas.py" line="4085" />
+        <location filename="../artisanlib/canvas.py" line="18947" />
+        <location filename="../artisanlib/canvas.py" line="4086" />
         <location filename="../artisanlib/transposer.py" line="1210" />
         <location filename="../artisanlib/transposer.py" line="1139" />
         <location filename="../artisanlib/alarms.py" line="935" />
@@ -11989,8 +12102,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>ת.פ.1</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18947" />
-        <location filename="../artisanlib/canvas.py" line="4086" />
+        <location filename="../artisanlib/canvas.py" line="18950" />
+        <location filename="../artisanlib/canvas.py" line="4087" />
         <location filename="../artisanlib/alarms.py" line="936" />
         <location filename="../artisanlib/alarms.py" line="880" />
         <location filename="../artisanlib/curves.py" line="2145" />
@@ -12011,8 +12124,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>ס.פ.1</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18950" />
-        <location filename="../artisanlib/canvas.py" line="4087" />
+        <location filename="../artisanlib/canvas.py" line="18953" />
+        <location filename="../artisanlib/canvas.py" line="4088" />
         <location filename="../artisanlib/transposer.py" line="1211" />
         <location filename="../artisanlib/transposer.py" line="1140" />
         <location filename="../artisanlib/alarms.py" line="937" />
@@ -12035,8 +12148,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>ת.פ.2</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18953" />
-        <location filename="../artisanlib/canvas.py" line="4088" />
+        <location filename="../artisanlib/canvas.py" line="18956" />
+        <location filename="../artisanlib/canvas.py" line="4089" />
         <location filename="../artisanlib/alarms.py" line="938" />
         <location filename="../artisanlib/alarms.py" line="882" />
         <location filename="../artisanlib/curves.py" line="2147" />
@@ -12058,10 +12171,10 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>ס.פ.2</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18956" />
-        <location filename="../artisanlib/canvas.py" line="11627" />
-        <location filename="../artisanlib/canvas.py" line="4089" />
-        <location filename="../artisanlib/canvas.py" line="999" />
+        <location filename="../artisanlib/canvas.py" line="18959" />
+        <location filename="../artisanlib/canvas.py" line="11630" />
+        <location filename="../artisanlib/canvas.py" line="4090" />
+        <location filename="../artisanlib/canvas.py" line="1000" />
         <location filename="../artisanlib/transposer.py" line="1212" />
         <location filename="../artisanlib/transposer.py" line="1141" />
         <location filename="../artisanlib/devices.py" line="1209" />
@@ -12095,15 +12208,15 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>הוצאה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18938" />
-        <location filename="../artisanlib/canvas.py" line="14707" />
-        <location filename="../artisanlib/canvas.py" line="14636" />
-        <location filename="../artisanlib/canvas.py" line="11947" />
-        <location filename="../artisanlib/canvas.py" line="11626" />
-        <location filename="../artisanlib/canvas.py" line="8373" />
-        <location filename="../artisanlib/canvas.py" line="8368" />
-        <location filename="../artisanlib/canvas.py" line="4083" />
-        <location filename="../artisanlib/canvas.py" line="993" />
+        <location filename="../artisanlib/canvas.py" line="18941" />
+        <location filename="../artisanlib/canvas.py" line="14710" />
+        <location filename="../artisanlib/canvas.py" line="14639" />
+        <location filename="../artisanlib/canvas.py" line="11950" />
+        <location filename="../artisanlib/canvas.py" line="11629" />
+        <location filename="../artisanlib/canvas.py" line="8376" />
+        <location filename="../artisanlib/canvas.py" line="8371" />
+        <location filename="../artisanlib/canvas.py" line="4084" />
+        <location filename="../artisanlib/canvas.py" line="994" />
         <location filename="../artisanlib/transposer.py" line="1208" />
         <location filename="../artisanlib/devices.py" line="1203" />
         <location filename="../artisanlib/alarms.py" line="942" />
@@ -12137,29 +12250,6 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>טען</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11679" />
-        <location filename="../artisanlib/roast_properties.py" line="1127" />
-        <location filename="../plus/schedule.py" line="2115" />
-        <location filename="../tilauscope/roast_properties.py" line="3283" />
-        <location filename="../tilauscope/beancave_storage_tab.py" line="519" />
-        <location filename="../tilauscope/roast_insights.py" line="144" />
-        <location filename="../tilauscope/label_printer.py" line="919" />
-        <source>Moisture</source>
-        <translation>לַחוּת</translation>
-    </message>
-    <message>
-        <location filename="../tilaucore/roast_label.py" line="130" />
-        <location filename="../artisanlib/canvas.py" line="11674" />
-        <location filename="../artisanlib/roast_properties.py" line="1019" />
-        <location filename="../plus/schedule.py" line="2095" />
-        <location filename="../tilauscope/roast_plan_model.py" line="1500" />
-        <location filename="../tilauscope/beancave_social_card.py" line="81" />
-        <location filename="../tilauscope/beancave_bean_sheet.py" line="618" />
-        <location filename="../tilauscope/roast_insights.py" line="115" />
-        <source>Density</source>
-        <translation type="unfinished">צפיפות</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/roast_properties.py" line="1384" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="347" />
         <location filename="../tilauscope/beancave_storage_tab.py" line="407" />
@@ -12169,7 +12259,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
     <message>
         <location filename="../artisanlib/main.py" line="5885" />
         <location filename="../artisanlib/roast_properties.py" line="4208" />
-        <location filename="../tilauscope/onboarding.py" line="457" />
+        <location filename="../tilauscope/onboarding.py" line="471" />
         <source>Heating</source>
         <translation>הַסָקָה</translation>
     </message>
@@ -12187,7 +12277,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <location filename="../artisanlib/ports.py" line="1262" />
         <location filename="../artisanlib/ports.py" line="968" />
         <location filename="../artisanlib/ports.py" line="616" />
-        <location filename="../tilauscope/onboarding.py" line="1014" />
+        <location filename="../tilauscope/onboarding.py" line="1126" />
         <source>Port</source>
         <translation>נמל</translation>
     </message>
@@ -12215,16 +12305,6 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">טמפ</translation>
     </message>
     <message>
-        <location filename="../artisanlib/statistics.py" line="234" />
-        <location filename="../artisanlib/roast_properties.py" line="1761" />
-        <location filename="../plus/schedule.py" line="2075" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3683" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3662" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2332" />
-        <source>Yield</source>
-        <translation>תְשׁוּאָה</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/statistics.py" line="128" />
         <location filename="../tilauscope/graph/annotation_text.py" line="93" />
         <location filename="../tilauscope/roast_timeline.py" line="817" />
@@ -12248,8 +12328,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">גרם</translation>
     </message>
     <message>
-        <location filename="../tilaucore/roast_summary.py" line="112" />
         <location filename="../artisanlib/roast_properties.py" line="1098" />
+        <location filename="../tilaucore/roast_summary.py" line="112" />
         <location filename="../tilauscope/roast_properties.py" line="5345" />
         <location filename="../tilauscope/roast_properties.py" line="4847" />
         <source>Ground</source>
@@ -12270,7 +12350,6 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">סמן</translation>
     </message>
     <message>
-        <location filename="../tilaucore/roast_plan.py" line="4964" />
         <location filename="../artisanlib/main.py" line="8226" />
         <location filename="../artisanlib/main.py" line="8220" />
         <location filename="../artisanlib/main.py" line="8053" />
@@ -12280,6 +12359,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <location filename="../artisanlib/events.py" line="622" />
         <location filename="../artisanlib/events.py" line="613" />
         <location filename="../artisanlib/comparator.py" line="1029" />
+        <location filename="../tilaucore/roast_plan.py" line="4964" />
         <location filename="../tilauscope/alarms.py" line="80" />
         <location filename="../tilauscope/roast_plan_model.py" line="772" />
         <location filename="../tilauscope/beancave_roast_card.py" line="520" />
@@ -12320,9 +12400,9 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>זְמַן</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16366" />
-        <location filename="../artisanlib/canvas.py" line="16355" />
-        <location filename="../artisanlib/main.py" line="28378" />
+        <location filename="../artisanlib/canvas.py" line="16369" />
+        <location filename="../artisanlib/canvas.py" line="16358" />
+        <location filename="../artisanlib/main.py" line="28381" />
         <location filename="../tilauscope/window/parts.py" line="915" />
         <location filename="../tilauscope/roast_plan_model.py" line="886" />
         <location filename="../tilauscope/roast_plan_model.py" line="862" />
@@ -12337,10 +12417,10 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>/ דקה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18585" />
-        <location filename="../artisanlib/canvas.py" line="18575" />
-        <location filename="../artisanlib/canvas.py" line="8922" />
-        <location filename="../artisanlib/canvas.py" line="8866" />
+        <location filename="../artisanlib/canvas.py" line="18588" />
+        <location filename="../artisanlib/canvas.py" line="18578" />
+        <location filename="../artisanlib/canvas.py" line="8925" />
+        <location filename="../artisanlib/canvas.py" line="8869" />
         <location filename="../artisanlib/main.py" line="19677" />
         <location filename="../artisanlib/main.py" line="6075" />
         <location filename="../artisanlib/main.py" line="6069" />
@@ -12396,8 +12476,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>לִשְׁלוֹט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16370" />
-        <location filename="../artisanlib/canvas.py" line="16361" />
+        <location filename="../artisanlib/canvas.py" line="16373" />
+        <location filename="../artisanlib/canvas.py" line="16364" />
         <location filename="../tilauscope/graph/annotation_text.py" line="95" />
         <location filename="../tilauscope/roast_plan_model.py" line="1549" />
         <source>FC</source>
@@ -12483,27 +12563,19 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">מ</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="24785" />
-        <location filename="../artisanlib/roast_properties.py" line="1760" />
-        <location filename="../plus/schedule.py" line="2085" />
-        <location filename="../tilauscope/cave/analysis.py" line="605" />
-        <source>Defects</source>
-        <translation>פגמים</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/main.py" line="7382" />
         <location filename="../tilauscope/cave/analysis_view.py" line="353" />
         <source>Swing</source>
         <translation>נַדְנֵדָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28376" />
+        <location filename="../artisanlib/main.py" line="28379" />
         <location filename="../tilauscope/cave/analysis_view.py" line="387" />
         <source>RMSE BT</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28377" />
+        <location filename="../artisanlib/main.py" line="28380" />
         <location filename="../tilauscope/cave/analysis_view.py" line="387" />
         <source>MSE BT</source>
         <translation type="unfinished" />
@@ -12538,10 +12610,10 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">מצב</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18582" />
-        <location filename="../artisanlib/canvas.py" line="18571" />
-        <location filename="../artisanlib/canvas.py" line="8895" />
-        <location filename="../artisanlib/canvas.py" line="8844" />
+        <location filename="../artisanlib/canvas.py" line="18585" />
+        <location filename="../artisanlib/canvas.py" line="18574" />
+        <location filename="../artisanlib/canvas.py" line="8898" />
+        <location filename="../artisanlib/canvas.py" line="8847" />
         <location filename="../artisanlib/main.py" line="19670" />
         <location filename="../artisanlib/main.py" line="6072" />
         <location filename="../artisanlib/main.py" line="6066" />
@@ -12570,14 +12642,6 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>ט.ס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/roast_properties.py" line="1090" />
-        <location filename="../artisanlib/events.py" line="464" />
-        <location filename="../plus/schedule.py" line="2105" />
-        <location filename="../tilauscope/graph/annotation_text.py" line="86" />
-        <source>Color</source>
-        <translation type="unfinished">צבע</translation>
-    </message>
-    <message>
         <location filename="../tilauscope/graph/annotation_text.py" line="88" />
         <source>Segment</source>
         <translation type="unfinished" />
@@ -12595,7 +12659,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="994" />
+        <location filename="../artisanlib/canvas.py" line="995" />
         <location filename="../artisanlib/devices.py" line="1204" />
         <location filename="../artisanlib/main.py" line="8227" />
         <location filename="../artisanlib/main.py" line="8113" />
@@ -12643,68 +12707,9 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11730" />
-        <location filename="../artisanlib/roast_properties.py" line="926" />
-        <location filename="../artisanlib/roast_properties.py" line="224" />
-        <location filename="../artisanlib/roast_properties.py" line="150" />
-        <location filename="../plus/schedule.py" line="2053" />
-        <location filename="../plus/blend.py" line="157" />
-        <source>Weight</source>
-        <translation type="unfinished">משקל</translation>
-    </message>
-    <message>
-        <location filename="../tilaucore/roast_label.py" line="135" />
-        <location filename="../artisanlib/statistics.py" line="205" />
-        <location filename="../artisanlib/roast_properties.py" line="1115" />
-        <location filename="../artisanlib/roast_properties.py" line="917" />
-        <location filename="../plus/blend.py" line="343" />
-        <source>Beans</source>
-        <translation type="unfinished">פולים</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/statistics.py" line="216" />
-        <location filename="../artisanlib/roast_properties.py" line="1201" />
-        <location filename="../plus/schedule.py" line="2126" />
-        <location filename="../plus/schedule.py" line="2125" />
-        <source>Roasting Notes</source>
-        <translation type="unfinished">רשמי קלייה</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2130" />
-        <source>Score</source>
-        <translation>ציון</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/statistics.py" line="217" />
-        <location filename="../plus/schedule.py" line="2131" />
-        <source>Cupping Score</source>
-        <translation>ניקוד כוסות רוח</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/statistics.py" line="218" />
-        <location filename="../artisanlib/roast_properties.py" line="1206" />
-        <location filename="../plus/schedule.py" line="2138" />
-        <location filename="../plus/schedule.py" line="2137" />
-        <source>Cupping Notes</source>
-        <translation type="unfinished">רשמי טעם</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="925" />
-        <location filename="../artisanlib/roast_properties.py" line="283" />
-        <location filename="../plus/schedule.py" line="4074" />
-        <location filename="../plus/schedule.py" line="2226" />
-        <source>Roasted</source>
-        <translation>קָלוּי</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="11730" />
-        <location filename="../artisanlib/canvas.py" line="11679" />
-        <location filename="../artisanlib/canvas.py" line="11674" />
-        <location filename="../artisanlib/roast_properties.py" line="924" />
-        <location filename="../artisanlib/roast_properties.py" line="209" />
-        <location filename="../plus/schedule.py" line="4072" />
-        <source>Green</source>
-        <translation>ירוק</translation>
+        <location filename="../tilaucore/roast_plan.py" line="4967" />
+        <source>Pre-Drop</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="3930" />
@@ -12817,7 +12822,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">הצמד</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="995" />
+        <location filename="../artisanlib/canvas.py" line="996" />
         <location filename="../artisanlib/devices.py" line="1205" />
         <location filename="../artisanlib/main.py" line="8228" />
         <location filename="../artisanlib/main.py" line="8191" />
@@ -12835,7 +12840,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>ת.פ.1</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="996" />
+        <location filename="../artisanlib/canvas.py" line="997" />
         <location filename="../artisanlib/devices.py" line="1206" />
         <location filename="../artisanlib/background.py" line="109" />
         <location filename="../artisanlib/ports.py" line="1463" />
@@ -12844,7 +12849,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">ס.פ.1</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="997" />
+        <location filename="../artisanlib/canvas.py" line="998" />
         <location filename="../artisanlib/devices.py" line="1207" />
         <location filename="../artisanlib/background.py" line="110" />
         <location filename="../artisanlib/ports.py" line="1465" />
@@ -12853,7 +12858,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">ת.פ.2</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="998" />
+        <location filename="../artisanlib/canvas.py" line="999" />
         <location filename="../artisanlib/devices.py" line="1208" />
         <location filename="../artisanlib/background.py" line="111" />
         <location filename="../artisanlib/ports.py" line="1467" />
@@ -12922,8 +12927,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>רמפה / משרים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2481" />
-        <location filename="../artisanlib/canvas.py" line="2479" />
+        <location filename="../artisanlib/canvas.py" line="2482" />
+        <location filename="../artisanlib/canvas.py" line="2480" />
         <location filename="../artisanlib/devices.py" line="3521" />
         <location filename="../artisanlib/devices.py" line="3507" />
         <location filename="../artisanlib/main.py" line="6130" />
@@ -13248,8 +13253,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished">גודל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16365" />
-        <location filename="../artisanlib/canvas.py" line="16356" />
+        <location filename="../artisanlib/canvas.py" line="16368" />
+        <location filename="../artisanlib/canvas.py" line="16359" />
         <location filename="../artisanlib/events.py" line="618" />
         <source>MET</source>
         <translation>נפגש</translation>
@@ -13572,7 +13577,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="1000" />
+        <location filename="../artisanlib/canvas.py" line="1001" />
         <location filename="../artisanlib/background.py" line="113" />
         <source>ALL</source>
         <translation>את כל</translation>
@@ -13783,7 +13788,7 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16489" />
+        <location filename="../artisanlib/canvas.py" line="16492" />
         <location filename="../artisanlib/roast_properties.py" line="3654" />
         <location filename="../artisanlib/roast_properties.py" line="3649" />
         <location filename="../artisanlib/roast_properties.py" line="3625" />
@@ -14112,7 +14117,7 @@ LCDs All</source>
         <translation>לא זמין ב- ArtisanViewer</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="4107" />
+        <location filename="../artisanlib/canvas.py" line="4108" />
         <location filename="../artisanlib/curves.py" line="2154" />
         <source>EVENT</source>
         <translation>שלב</translation>
@@ -14252,8 +14257,8 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16366" />
-        <location filename="../artisanlib/canvas.py" line="16353" />
+        <location filename="../artisanlib/canvas.py" line="16369" />
+        <location filename="../artisanlib/canvas.py" line="16356" />
         <location filename="../artisanlib/main.py" line="7876" />
         <location filename="../artisanlib/main.py" line="6988" />
         <location filename="../artisanlib/main.py" line="6986" />
@@ -14392,23 +14397,23 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>FCs של AUC</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17888" />
-        <location filename="../artisanlib/main.py" line="28388" />
+        <location filename="../artisanlib/canvas.py" line="17891" />
+        <location filename="../artisanlib/main.py" line="28391" />
         <location filename="../artisanlib/main.py" line="7357" />
         <source>ln()</source>
         <translation>ln ()</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28386" />
-        <location filename="../artisanlib/main.py" line="28384" />
+        <location filename="../artisanlib/main.py" line="28389" />
+        <location filename="../artisanlib/main.py" line="28387" />
         <location filename="../artisanlib/main.py" line="7360" />
         <location filename="../artisanlib/main.py" line="7359" />
         <source>x</source>
         <translation>איקס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28382" />
-        <location filename="../artisanlib/main.py" line="28333" />
+        <location filename="../artisanlib/main.py" line="28385" />
+        <location filename="../artisanlib/main.py" line="28336" />
         <location filename="../artisanlib/main.py" line="7361" />
         <source>Bkgnd</source>
         <translation>רקע</translation>
@@ -14552,23 +14557,23 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28375" />
+        <location filename="../artisanlib/main.py" line="28378" />
         <source>Fit</source>
         <comment>Curve Fit Type</comment>
         <translation>לְהַתְאִים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28378" />
+        <location filename="../artisanlib/main.py" line="28381" />
         <source>@FCs</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28379" />
+        <location filename="../artisanlib/main.py" line="28382" />
         <source>Max+/Max- RoR</source>
         <translation>מקס + / מקס- RoR</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28389" />
+        <location filename="../artisanlib/main.py" line="28392" />
         <source>Curve Fit Analysis</source>
         <translation type="unfinished" />
     </message>
@@ -14764,239 +14769,239 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>מיפוי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2164" />
+        <location filename="../artisanlib/canvas.py" line="2165" />
         <source>Preheat Measured</source>
         <translation>חימום מראש נמדד</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2165" />
+        <location filename="../artisanlib/canvas.py" line="2166" />
         <source>Preheat %</source>
         <translation>חממו מראש%</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2166" />
+        <location filename="../artisanlib/canvas.py" line="2167" />
         <source>BBP Measured</source>
         <translation>BBP נמדד</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2167" />
+        <location filename="../artisanlib/canvas.py" line="2168" />
         <source>BBP %</source>
         <translation>BBP%</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2168" />
+        <location filename="../artisanlib/canvas.py" line="2169" />
         <source>Cooling Measured</source>
         <translation>קירור נמדד</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2169" />
+        <location filename="../artisanlib/canvas.py" line="2170" />
         <source>Cooling %</source>
         <translation>קירור%</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2170" />
+        <location filename="../artisanlib/canvas.py" line="2171" />
         <source>Continuous Roast</source>
         <translation>קלייה רציפה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2171" />
+        <location filename="../artisanlib/canvas.py" line="2172" />
         <source>Roast Event</source>
         <translation>אירוע צלוי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2172" />
+        <location filename="../artisanlib/canvas.py" line="2173" />
         <source>Meter Batch</source>
         <translation>אצווה של מטר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2173" />
+        <location filename="../artisanlib/canvas.py" line="2174" />
         <source>PID Duty %</source>
         <translation>אחוז מטלות PID</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2174" />
+        <location filename="../artisanlib/canvas.py" line="2175" />
         <source>Meter Preheat</source>
         <translation>חימום מוקדם של המונה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2175" />
+        <location filename="../artisanlib/canvas.py" line="2176" />
         <source>Meter BBP</source>
         <translation>מד BBP</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2176" />
+        <location filename="../artisanlib/canvas.py" line="2177" />
         <source>Meter Roast</source>
         <translation>מטר קלייה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2177" />
+        <location filename="../artisanlib/canvas.py" line="2178" />
         <source>Meter Cooling</source>
         <translation>קירור מד</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2178" />
+        <location filename="../artisanlib/canvas.py" line="2179" />
         <source>PID Duty % BBP</source>
         <translation>אחוז מתח PID BBP</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2179" />
+        <location filename="../artisanlib/canvas.py" line="2180" />
         <source>PID Duty % Roast</source>
         <translation>אחוז צלייה של PID</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2180" />
+        <location filename="../artisanlib/canvas.py" line="2181" />
         <source>PID Duty % Cooling</source>
         <translation>אחוזי עבודה של PID קירור</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2181" />
+        <location filename="../artisanlib/canvas.py" line="2182" />
         <source>Preheat Event</source>
         <translation>אירוע חימום מקדים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2182" />
+        <location filename="../artisanlib/canvas.py" line="2183" />
         <source>BBP Event</source>
         <translation>אירוע BBP</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2183" />
+        <location filename="../artisanlib/canvas.py" line="2184" />
         <source>Cooling Event</source>
         <translation>אירוע קירור</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2184" />
+        <location filename="../artisanlib/canvas.py" line="2185" />
         <source>PID Duty % Preheat</source>
         <translation>חימום מוקדם של PID %</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2185" />
+        <location filename="../artisanlib/canvas.py" line="2186" />
         <source>Continuous Batch</source>
         <translation>אצווה רציפה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2186" />
+        <location filename="../artisanlib/canvas.py" line="2187" />
         <source>Continuous Preheat</source>
         <translation>חימום מוקדם רציף</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2187" />
+        <location filename="../artisanlib/canvas.py" line="2188" />
         <source>Continuous BBP</source>
         <translation>BBP רציף</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2188" />
+        <location filename="../artisanlib/canvas.py" line="2189" />
         <source>Continuous Cooling</source>
         <translation>קירור רציף</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2189" />
+        <location filename="../artisanlib/canvas.py" line="2190" />
         <source>Event Batch</source>
         <translation>קבוצת אירועים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="4080" />
-        <location filename="../artisanlib/canvas.py" line="4078" />
+        <location filename="../artisanlib/canvas.py" line="4081" />
+        <location filename="../artisanlib/canvas.py" line="4079" />
         <source>at</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="4090" />
+        <location filename="../artisanlib/canvas.py" line="4091" />
         <source>COOL</source>
         <translation>קירור</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="9556" />
+        <location filename="../artisanlib/canvas.py" line="9559" />
         <source>BackgroundXT</source>
         <translation>רקע XT</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="9615" />
+        <location filename="../artisanlib/canvas.py" line="9618" />
         <source>BackgroundYT</source>
         <translation>רקע YT</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18550" />
-        <location filename="../artisanlib/canvas.py" line="9649" />
+        <location filename="../artisanlib/canvas.py" line="18553" />
+        <location filename="../artisanlib/canvas.py" line="9652" />
         <source>BackgroundET</source>
         <translation>רקע ט.ס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18554" />
-        <location filename="../artisanlib/canvas.py" line="9680" />
+        <location filename="../artisanlib/canvas.py" line="18557" />
+        <location filename="../artisanlib/canvas.py" line="9683" />
         <source>BackgroundBT</source>
         <translation>רקע ט.פ</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="9706" />
+        <location filename="../artisanlib/canvas.py" line="9709" />
         <source>BackgroundDeltaET</source>
         <translation>רקע ק.ש-ט.ס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="9725" />
+        <location filename="../artisanlib/canvas.py" line="9728" />
         <source>BackgroundDeltaBT</source>
         <translation>רקע ק.ש-ט.פ</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11133" />
+        <location filename="../artisanlib/canvas.py" line="11136" />
         <source>ETprojection</source>
         <translation>פרויקט ET</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11140" />
+        <location filename="../artisanlib/canvas.py" line="11143" />
         <source>DeltaETprojection</source>
         <translation>הקרנת DeltaET</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11146" />
+        <location filename="../artisanlib/canvas.py" line="11149" />
         <source>BTprojection</source>
         <translation>פרויקט BT</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11153" />
+        <location filename="../artisanlib/canvas.py" line="11156" />
         <source>DeltaBTprojection</source>
         <translation>הקרנת DeltaBT</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11157" />
+        <location filename="../artisanlib/canvas.py" line="11160" />
         <source>TIMEguide</source>
         <translation>מדריך TIME</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11162" />
+        <location filename="../artisanlib/canvas.py" line="11165" />
         <source>AUCguide</source>
         <translation>מדריך AUC</translation>
     </message>
     <message>
         <location filename="../artisanlib/cup_profile.py" line="84" />
-        <location filename="../artisanlib/canvas.py" line="12730" />
-        <location filename="../artisanlib/canvas.py" line="12565" />
-        <location filename="../artisanlib/canvas.py" line="11797" />
+        <location filename="../artisanlib/canvas.py" line="12733" />
+        <location filename="../artisanlib/canvas.py" line="12568" />
+        <location filename="../artisanlib/canvas.py" line="11800" />
         <source>Correction</source>
         <translation>תִקוּן</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16148" />
+        <location filename="../artisanlib/canvas.py" line="16151" />
         <source>Event #&lt;b&gt;{0} &lt;/b&gt;</source>
         <translation>אירוע מס '&lt;b&gt; {0} &lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16368" />
-        <location filename="../artisanlib/canvas.py" line="16359" />
+        <location filename="../artisanlib/canvas.py" line="16371" />
+        <location filename="../artisanlib/canvas.py" line="16362" />
         <source>CM</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18521" />
+        <location filename="../artisanlib/canvas.py" line="18524" />
         <source>Designer</source>
         <translation>מעצב פרופיל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19334" />
+        <location filename="../artisanlib/canvas.py" line="19337" />
         <source>BT {0} {1}/min for {2}</source>
         <translation>BT {0} {1} / דקה למשך {2}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19347" />
+        <location filename="../artisanlib/canvas.py" line="19350" />
         <source>ET {0} {1}/min for {2}</source>
         <translation>ET {0} {1} / דקה למשך {2}</translation>
     </message>
@@ -15019,11 +15024,6 @@ Fewer nodes: simpler curve but may lose detail</source>
         <location filename="../artisanlib/cup_profile.py" line="116" />
         <source>Aspect Ratio</source>
         <translation>יחס גובה-רוחב</translation>
-    </message>
-    <message>
-        <location filename="../tilaucore/roast_plan.py" line="4967" />
-        <source>Pre-Drop</source>
-        <translation type="unfinished" />
     </message>
 </context><context>
     <name>MAC_APPLICATION_MENU</name>
@@ -15119,6 +15119,12 @@ Fewer nodes: simpler curve but may lose detail</source>
     </message>
 </context><context>
     <name>Menu</name>
+    <message>
+        <location filename="../artisanlib/main.py" line="2837" />
+        <location filename="../plus/schedule.py" line="2431" />
+        <source>Schedule</source>
+        <translation>לְתַכְנֵן</translation>
+    </message>
     <message>
         <location filename="../tilauscope/menu_extension.py" line="91" />
         <source>BeanCave</source>
@@ -15237,12 +15243,6 @@ Fewer nodes: simpler curve but may lose detail</source>
         <location filename="../tilauscope/device_setup/dialog.py" line="751" />
         <source>Temperature</source>
         <translation>טמפרטורה</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="2837" />
-        <location filename="../plus/schedule.py" line="2431" />
-        <source>Schedule</source>
-        <translation>לְתַכְנֵן</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="4186" />
@@ -15522,8 +15522,8 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation type="unfinished">מְכוֹנָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25550" />
-        <location filename="../artisanlib/main.py" line="25550" />
+        <location filename="../artisanlib/main.py" line="25553" />
+        <location filename="../artisanlib/main.py" line="25553" />
         <location filename="../artisanlib/main.py" line="2595" />
         <source>Machine Name</source>
         <translation type="unfinished" />
@@ -15816,6 +15816,63 @@ Fewer nodes: simpler curve but may lose detail</source>
 </context><context>
     <name>Message</name>
     <message>
+        <location filename="../plus/schedule.py" line="1527" />
+        <source>Register the currently loaded roast profile&lt;br&gt;in the selected entry.&lt;br&gt;This will overwrite some roast properties.</source>
+        <translation>רשום את פרופיל הצלייה הנטען כעת&lt;br&gt;בערך שנבחר.&lt;br&gt;פעולה זו תחליף חלק ממאפייני הצלייה.</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="1541" />
+        <location filename="../plus/schedule.py" line="1532" />
+        <source>Register Roast</source>
+        <translation>רשום צלי</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="2485" />
+        <source>Scheduler started</source>
+        <translation>מתזמן התחיל</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="2796" />
+        <source>Roasts will not adjust the schedule&lt;br&gt;while the schedule window is closed</source>
+        <translation>צלי לא יתאים את לוח הזמנים&lt;br&gt;בזמן שחלון לוח הזמנים סגור</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="2810" />
+        <location filename="../plus/schedule.py" line="2801" />
+        <source>Close Scheduler</source>
+        <translation>סגור את מתזמן</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="2868" />
+        <source>Scheduler stopped</source>
+        <translation>המתזמן נעצר</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="3584" />
+        <location filename="../plus/schedule.py" line="3176" />
+        <source>Updating completed roast properties failed</source>
+        <translation>עדכון מאפייני הצלייה שהושלמו נכשל</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="3756" />
+        <location filename="../plus/schedule.py" line="3295" />
+        <source>1 batch</source>
+        <translation>אצווה 1</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="3771" />
+        <location filename="../plus/schedule.py" line="3762" />
+        <location filename="../plus/schedule.py" line="3303" />
+        <location filename="../plus/schedule.py" line="3297" />
+        <source>{} batches</source>
+        <translation>{} קבוצות</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="3650" />
+        <source>Fetching completed roast properties failed</source>
+        <translation>אחזור מאפייני הצלייה שהושלמו נכשל</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="13979" />
         <location filename="../tilauscope/device_setup/dialog.py" line="904" />
         <location filename="../tilauscope/device_setup/dialog.py" line="225" />
@@ -15828,7 +15885,7 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation type="unfinished">שמור</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14514" />
+        <location filename="../artisanlib/canvas.py" line="14517" />
         <location filename="../tilauscope/artisan_message_ticker.py" line="110" />
         <source>Scope recording stopped</source>
         <translation>מטרה הקלטה הופסקה</translation>
@@ -15954,63 +16011,6 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="1527" />
-        <source>Register the currently loaded roast profile&lt;br&gt;in the selected entry.&lt;br&gt;This will overwrite some roast properties.</source>
-        <translation>רשום את פרופיל הצלייה הנטען כעת&lt;br&gt;בערך שנבחר.&lt;br&gt;פעולה זו תחליף חלק ממאפייני הצלייה.</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1541" />
-        <location filename="../plus/schedule.py" line="1532" />
-        <source>Register Roast</source>
-        <translation>רשום צלי</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2485" />
-        <source>Scheduler started</source>
-        <translation>מתזמן התחיל</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2796" />
-        <source>Roasts will not adjust the schedule&lt;br&gt;while the schedule window is closed</source>
-        <translation>צלי לא יתאים את לוח הזמנים&lt;br&gt;בזמן שחלון לוח הזמנים סגור</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2810" />
-        <location filename="../plus/schedule.py" line="2801" />
-        <source>Close Scheduler</source>
-        <translation>סגור את מתזמן</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2868" />
-        <source>Scheduler stopped</source>
-        <translation>המתזמן נעצר</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3584" />
-        <location filename="../plus/schedule.py" line="3176" />
-        <source>Updating completed roast properties failed</source>
-        <translation>עדכון מאפייני הצלייה שהושלמו נכשל</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3756" />
-        <location filename="../plus/schedule.py" line="3295" />
-        <source>1 batch</source>
-        <translation>אצווה 1</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3771" />
-        <location filename="../plus/schedule.py" line="3762" />
-        <location filename="../plus/schedule.py" line="3303" />
-        <location filename="../plus/schedule.py" line="3297" />
-        <source>{} batches</source>
-        <translation>{} קבוצות</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="3650" />
-        <source>Fetching completed roast properties failed</source>
-        <translation>אחזור מאפייני הצלייה שהושלמו נכשל</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/axis.py" line="899" />
         <source>xlimit = ({2},{3}) ylimit = ({0},{1}) zlimit = ({4},{5})</source>
         <translation type="unfinished" />
@@ -16026,22 +16026,22 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>גרף גלגל נשמר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19476" />
+        <location filename="../artisanlib/canvas.py" line="19479" />
         <location filename="../artisanlib/wheels.py" line="658" />
         <source>Open Wheel Graph</source>
         <translation>פתיחת גלגל גרפי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13436" />
-        <location filename="../artisanlib/canvas.py" line="13420" />
-        <location filename="../artisanlib/canvas.py" line="13403" />
-        <location filename="../artisanlib/canvas.py" line="13390" />
-        <location filename="../artisanlib/canvas.py" line="13377" />
-        <location filename="../artisanlib/canvas.py" line="13371" />
-        <location filename="../artisanlib/canvas.py" line="13350" />
-        <location filename="../artisanlib/canvas.py" line="13342" />
-        <location filename="../artisanlib/canvas.py" line="13327" />
-        <location filename="../artisanlib/canvas.py" line="13308" />
+        <location filename="../artisanlib/canvas.py" line="13439" />
+        <location filename="../artisanlib/canvas.py" line="13423" />
+        <location filename="../artisanlib/canvas.py" line="13406" />
+        <location filename="../artisanlib/canvas.py" line="13393" />
+        <location filename="../artisanlib/canvas.py" line="13380" />
+        <location filename="../artisanlib/canvas.py" line="13374" />
+        <location filename="../artisanlib/canvas.py" line="13353" />
+        <location filename="../artisanlib/canvas.py" line="13345" />
+        <location filename="../artisanlib/canvas.py" line="13330" />
+        <location filename="../artisanlib/canvas.py" line="13311" />
         <location filename="../artisanlib/main.py" line="4417" />
         <location filename="../artisanlib/mqttport.py" line="92" />
         <location filename="../artisanlib/comm.py" line="1889" />
@@ -16051,16 +16051,16 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>{} מחובר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13437" />
-        <location filename="../artisanlib/canvas.py" line="13421" />
-        <location filename="../artisanlib/canvas.py" line="13404" />
-        <location filename="../artisanlib/canvas.py" line="13391" />
-        <location filename="../artisanlib/canvas.py" line="13378" />
-        <location filename="../artisanlib/canvas.py" line="13372" />
-        <location filename="../artisanlib/canvas.py" line="13351" />
-        <location filename="../artisanlib/canvas.py" line="13343" />
-        <location filename="../artisanlib/canvas.py" line="13328" />
-        <location filename="../artisanlib/canvas.py" line="13309" />
+        <location filename="../artisanlib/canvas.py" line="13440" />
+        <location filename="../artisanlib/canvas.py" line="13424" />
+        <location filename="../artisanlib/canvas.py" line="13407" />
+        <location filename="../artisanlib/canvas.py" line="13394" />
+        <location filename="../artisanlib/canvas.py" line="13381" />
+        <location filename="../artisanlib/canvas.py" line="13375" />
+        <location filename="../artisanlib/canvas.py" line="13354" />
+        <location filename="../artisanlib/canvas.py" line="13346" />
+        <location filename="../artisanlib/canvas.py" line="13331" />
+        <location filename="../artisanlib/canvas.py" line="13312" />
         <location filename="../artisanlib/main.py" line="4424" />
         <location filename="../artisanlib/mqttport.py" line="120" />
         <location filename="../artisanlib/comm.py" line="1890" />
@@ -16072,7 +16072,7 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>{} מנותק</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28870" />
+        <location filename="../artisanlib/main.py" line="28873" />
         <location filename="../artisanlib/main.py" line="16131" />
         <location filename="../artisanlib/main.py" line="14980" />
         <location filename="../artisanlib/main.py" line="14956" />
@@ -16581,7 +16581,7 @@ Repeat Operation at the end: {0}</source>
         <translation>שמירה אוטומטית כבויה. קידומת: {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25858" />
+        <location filename="../artisanlib/main.py" line="25861" />
         <location filename="../artisanlib/sampling.py" line="135" />
         <location filename="../artisanlib/autosave.py" line="228" />
         <source>Warning</source>
@@ -16870,13 +16870,13 @@ ATTENTION: Recorded data will get cleared without confirmation</source>
         <translation>מרווח דגימה צר עלול להוביל לאי יציבות במכונות מסוימות. אנו מציעים לפחות 1 שניות.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28615" />
+        <location filename="../artisanlib/main.py" line="28618" />
         <location filename="../artisanlib/curves.py" line="1779" />
         <source>Incompatible variables found in %s</source>
         <translation>נמצאו משתנים לא תואמים ב-%s</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28617" />
+        <location filename="../artisanlib/main.py" line="28620" />
         <location filename="../artisanlib/curves.py" line="1781" />
         <source>Assignment problem</source>
         <translation>בעיה בהקצאה</translation>
@@ -16960,21 +16960,21 @@ ATTENTION: Recorded data will get cleared without confirmation</source>
         <translation>פרופיל פתוח של כתובת אתר: {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27312" />
-        <location filename="../artisanlib/main.py" line="27305" />
-        <location filename="../artisanlib/main.py" line="27299" />
-        <location filename="../artisanlib/main.py" line="27293" />
-        <location filename="../artisanlib/main.py" line="27287" />
-        <location filename="../artisanlib/main.py" line="27281" />
-        <location filename="../artisanlib/main.py" line="27275" />
-        <location filename="../artisanlib/main.py" line="27269" />
-        <location filename="../artisanlib/main.py" line="27263" />
-        <location filename="../artisanlib/main.py" line="27257" />
-        <location filename="../artisanlib/main.py" line="27239" />
-        <location filename="../artisanlib/main.py" line="27233" />
-        <location filename="../artisanlib/main.py" line="27227" />
-        <location filename="../artisanlib/main.py" line="26794" />
-        <location filename="../artisanlib/main.py" line="26728" />
+        <location filename="../artisanlib/main.py" line="27315" />
+        <location filename="../artisanlib/main.py" line="27308" />
+        <location filename="../artisanlib/main.py" line="27302" />
+        <location filename="../artisanlib/main.py" line="27296" />
+        <location filename="../artisanlib/main.py" line="27290" />
+        <location filename="../artisanlib/main.py" line="27284" />
+        <location filename="../artisanlib/main.py" line="27278" />
+        <location filename="../artisanlib/main.py" line="27272" />
+        <location filename="../artisanlib/main.py" line="27266" />
+        <location filename="../artisanlib/main.py" line="27260" />
+        <location filename="../artisanlib/main.py" line="27242" />
+        <location filename="../artisanlib/main.py" line="27236" />
+        <location filename="../artisanlib/main.py" line="27230" />
+        <location filename="../artisanlib/main.py" line="26797" />
+        <location filename="../artisanlib/main.py" line="26731" />
         <location filename="../artisanlib/main.py" line="18414" />
         <location filename="../artisanlib/main.py" line="18409" />
         <location filename="../artisanlib/main.py" line="18402" />
@@ -17072,7 +17072,7 @@ To keep it free and current please support us with your donation and subscribe t
         <translation>גובה (MASL)</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="7693" />
+        <location filename="../artisanlib/canvas.py" line="7696" />
         <location filename="../artisanlib/main.py" line="5960" />
         <location filename="../artisanlib/main.py" line="5769" />
         <location filename="../artisanlib/main.py" line="5737" />
@@ -17112,19 +17112,19 @@ To keep it free and current please support us with your donation and subscribe t
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26187" />
+        <location filename="../artisanlib/main.py" line="26190" />
         <location filename="../artisanlib/main.py" line="5995" />
         <source>Load theme {0}?</source>
         <translation>לטעון ערכת נושא {0}?</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26188" />
+        <location filename="../artisanlib/main.py" line="26191" />
         <location filename="../artisanlib/main.py" line="5996" />
         <source>Adjust Theme Related Settings</source>
         <translation>התאם הגדרות הקשורות לנושאים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26195" />
+        <location filename="../artisanlib/main.py" line="26198" />
         <location filename="../artisanlib/main.py" line="6008" />
         <source>Loaded theme {0}</source>
         <translation>נושא נטען {0}</translation>
@@ -17135,8 +17135,8 @@ To keep it free and current please support us with your donation and subscribe t
         <translation>זיהה זוג צבעים שעשוי להיות קשה לראות:</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28862" />
-        <location filename="../artisanlib/main.py" line="28787" />
+        <location filename="../artisanlib/main.py" line="28865" />
+        <location filename="../artisanlib/main.py" line="28790" />
         <location filename="../artisanlib/main.py" line="6969" />
         <location filename="../artisanlib/main.py" line="6927" />
         <source>Simulator started @{}x</source>
@@ -17198,14 +17198,14 @@ To keep it free and current please support us with your donation and subscribe t
         <translation>AutoDROP כבוי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25872" />
+        <location filename="../artisanlib/main.py" line="25875" />
         <location filename="../artisanlib/main.py" line="10474" />
         <location filename="../artisanlib/main.py" line="10452" />
         <source>PID set to OFF</source>
         <translation>PID מוגדר ל-OFF</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25876" />
+        <location filename="../artisanlib/main.py" line="25879" />
         <location filename="../artisanlib/main.py" line="10471" />
         <location filename="../artisanlib/main.py" line="10461" />
         <source>PID set to ON</source>
@@ -17542,10 +17542,10 @@ It is advisable to save your current settings beforehand via menu Help &gt;&gt; 
         <translation>הפרופיל נשמר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26246" />
-        <location filename="../artisanlib/main.py" line="26174" />
-        <location filename="../artisanlib/main.py" line="26106" />
-        <location filename="../artisanlib/main.py" line="26032" />
+        <location filename="../artisanlib/main.py" line="26249" />
+        <location filename="../artisanlib/main.py" line="26177" />
+        <location filename="../artisanlib/main.py" line="26109" />
+        <location filename="../artisanlib/main.py" line="26035" />
         <location filename="../artisanlib/main.py" line="18375" />
         <location filename="../artisanlib/main.py" line="17916" />
         <location filename="../artisanlib/main.py" line="17900" />
@@ -17671,226 +17671,226 @@ It is advisable to save your current settings beforehand via menu Help &gt;&gt; 
         <translation>דוח דירוג Excel מיוצא אל {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25829" />
+        <location filename="../artisanlib/main.py" line="25832" />
         <source>Hottop control turned off</source>
         <translation>בקרת Hottop כבויה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25854" />
+        <location filename="../artisanlib/main.py" line="25857" />
         <source>Hottop control turned on</source>
         <translation>שליטה חמה מופעלת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="25858" />
+        <location filename="../artisanlib/main.py" line="25861" />
         <source>To control a Hottop you need to activate the super user mode via a right click on the timer LCD first!</source>
         <translation>כדי לשלוט ב-Hottop, עליך להפעיל תחילה את מצב משתמש העל באמצעות לחיצה ימנית על ה-LCD בטיימר!</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26146" />
-        <location filename="../artisanlib/main.py" line="26076" />
+        <location filename="../artisanlib/main.py" line="26149" />
+        <location filename="../artisanlib/main.py" line="26079" />
         <source>Settings not found</source>
         <translation>ההגדרות לא נמצאו</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26087" />
+        <location filename="../artisanlib/main.py" line="26090" />
         <source>Save Settings</source>
         <translation>שמור הגדרות</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26091" />
+        <location filename="../artisanlib/main.py" line="26094" />
         <source>Settings saved</source>
         <translation>הגדרות נשמרו</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26153" />
+        <location filename="../artisanlib/main.py" line="26156" />
         <source>artisan-theme</source>
         <translation>נושא אומן</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26154" />
+        <location filename="../artisanlib/main.py" line="26157" />
         <source>Save Theme</source>
         <translation>שמור עיצוב</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26157" />
+        <location filename="../artisanlib/main.py" line="26160" />
         <source>Theme saved</source>
         <translation>הנושא נשמר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26185" />
+        <location filename="../artisanlib/main.py" line="26188" />
         <source>Load Theme</source>
         <translation>טען ערכת נושא</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26212" />
+        <location filename="../artisanlib/main.py" line="26215" />
         <source>Theme loaded</source>
         <translation>הנושא נטען</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26518" />
+        <location filename="../artisanlib/main.py" line="26521" />
         <source>Background profile removed</source>
         <translation>פרופיל הרקע הוסר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26664" />
+        <location filename="../artisanlib/main.py" line="26667" />
         <source>Alarm Config</source>
         <translation>תצורת אזעקה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26665" />
+        <location filename="../artisanlib/main.py" line="26668" />
         <source>Alarms are not available for device None</source>
         <translation>אזעקות אינן זמינות עבור המכשיר ללא</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26682" />
+        <location filename="../artisanlib/main.py" line="26685" />
         <source>Switching the language needs a restart. Restart now?</source>
         <translation>החלפת השפה דורשת הפעלה מחדש. אתחל עכשיו?</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26684" />
+        <location filename="../artisanlib/main.py" line="26687" />
         <source>Restart</source>
         <translation>איתחול</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26778" />
+        <location filename="../artisanlib/main.py" line="26781" />
         <source>K202 file loaded successfully</source>
         <translation>קובץ K202 נטען בהצלחה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="26858" />
+        <location filename="../artisanlib/main.py" line="26861" />
         <source>K204 file loaded successfully</source>
         <translation>קובץ K204 נטען בהצלחה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27204" />
-        <location filename="../artisanlib/main.py" line="27158" />
+        <location filename="../artisanlib/main.py" line="27207" />
+        <location filename="../artisanlib/main.py" line="27161" />
         <source>{0} imported</source>
         <translation>{0} מיובא</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27161" />
+        <location filename="../artisanlib/main.py" line="27164" />
         <source>an error occurred on importing {0}</source>
         <translation>אירעה שגיאה בייבוא {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27221" />
+        <location filename="../artisanlib/main.py" line="27224" />
         <source>Import Hibean JSON</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27251" />
+        <location filename="../artisanlib/main.py" line="27254" />
         <source>Import RoastPATH URL</source>
         <translation>ייבא כתובת URL של RoastPATH</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27361" />
+        <location filename="../artisanlib/main.py" line="27364" />
         <source>HH506RA file loaded successfully</source>
         <translation>קובץ HH506RA נטען בהצלחה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27441" />
+        <location filename="../artisanlib/main.py" line="27444" />
         <source>Save Graph as</source>
         <translation>שמור גרף בשם</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27502" />
+        <location filename="../artisanlib/main.py" line="27505" />
         <source>{0}  size({1},{2}) saved</source>
         <translation>גודל {0} ({1},{2}) נשמר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27513" />
+        <location filename="../artisanlib/main.py" line="27516" />
         <source>Save Graph as PDF</source>
         <translation>שמור גרף כ-PDF</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27515" />
+        <location filename="../artisanlib/main.py" line="27518" />
         <source>Save Graph as SVG</source>
         <translation>שמור גרף כ-SVG</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27554" />
+        <location filename="../artisanlib/main.py" line="27557" />
         <source>{0} saved</source>
         <translation>{0} נשמר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27615" />
+        <location filename="../artisanlib/main.py" line="27618" />
         <source>Wheel {0} loaded</source>
         <translation>הגלגל {0} נטען</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27618" />
+        <location filename="../artisanlib/main.py" line="27621" />
         <source>Invalid Wheel graph format</source>
         <translation>פורמט גרף גלגל לא חוקי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27877" />
+        <location filename="../artisanlib/main.py" line="27880" />
         <source>Buttons copied to Palette #</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27940" />
+        <location filename="../artisanlib/main.py" line="27943" />
         <source>Palette #%i restored</source>
         <translation>לוח #%i שוחזר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27945" />
+        <location filename="../artisanlib/main.py" line="27948" />
         <source>Palette #%i empty</source>
         <translation>לוח #%i ריק</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27970" />
+        <location filename="../artisanlib/main.py" line="27973" />
         <source>Save Palettes</source>
         <translation>שמור פלטות</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27974" />
+        <location filename="../artisanlib/main.py" line="27977" />
         <source>Palettes saved</source>
         <translation>לוחות הצבעים נשמרו</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28111" />
+        <location filename="../artisanlib/main.py" line="28114" />
         <source>Palettes loaded</source>
         <translation>לוחות הצבעים נטענו</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28114" />
+        <location filename="../artisanlib/main.py" line="28117" />
         <source>Invalid palettes file format</source>
         <translation>פורמט קובץ פלטות לא חוקי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28152" />
+        <location filename="../artisanlib/main.py" line="28155" />
         <source>Alarms loaded</source>
         <translation>אזעקות נטענו</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28226" />
+        <location filename="../artisanlib/main.py" line="28229" />
         <source>Fitting curves...</source>
         <translation>התאמת עקומות...</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28485" />
+        <location filename="../artisanlib/main.py" line="28488" />
         <source>Warning: The start of the analysis interval of interest is earlier than the start of curve fitting.
 Correct this on the Config&gt;Curves&gt;Analyze tab.</source>
         <translation>אזהרה: ההתחלה של מרווח הניתוח של עניין מוקדם מתחילת התאמת העקומה.
 תקן זאת בכרטיסייה Config&gt; Curves&gt; Analyze.</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28487" />
+        <location filename="../artisanlib/main.py" line="28490" />
         <source>Analysis earlier than Curve fit</source>
         <translation>ניתוח מוקדם מההתאמה לעקומה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28807" />
+        <location filename="../artisanlib/main.py" line="28810" />
         <source>Simulator stopped</source>
         <translation>הסימולטור נעצר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="28855" />
+        <location filename="../artisanlib/main.py" line="28858" />
         <source>Simulator: this profile has no recorded curve to replay — open a past roast recording first</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="29277" />
+        <location filename="../artisanlib/main.py" line="29280" />
         <source>debug logging ON</source>
         <translation type="unfinished">רישום באגים מופעל</translation>
     </message>
@@ -18024,406 +18024,406 @@ Correct this on the Config&gt;Curves&gt;Analyze tab.</source>
         <translation>התקן מוגדר ל-{0}, שהוא שווה ערך ל-CENTER 302. כעת, בחר יציאה טורית</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="2482" />
+        <location filename="../artisanlib/canvas.py" line="2483" />
         <source>set y-coordinate to {}</source>
         <translation>הגדר את קואורדינטת ה-y ל-{}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="3047" />
+        <location filename="../artisanlib/canvas.py" line="3048" />
         <source>seconds before FCs</source>
         <translation>שניות לפני FCs</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="3050" />
+        <location filename="../artisanlib/canvas.py" line="3051" />
         <source>seconds after FCs</source>
         <translation>שניות לאחר FCs</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="4304" />
+        <location filename="../artisanlib/canvas.py" line="4305" />
         <source>Alarm notice</source>
         <translation>הודעת התראה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="6214" />
+        <location filename="../artisanlib/canvas.py" line="6216" />
         <source>Alarm is calling: {0}</source>
         <translation>ההתראה מתקשרת: {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="6216" />
+        <location filename="../artisanlib/canvas.py" line="6218" />
         <source>Calling alarm failed on {0}</source>
         <translation>אזעקת שיחות נכשלה ב-{0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="6231" />
+        <location filename="../artisanlib/canvas.py" line="6233" />
         <source>Alarm trigger button error, description '{0}' not a number</source>
         <translation>שגיאה בלחצן הפעלת אזעקה, תיאור '{0}' אינו מספר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="6259" />
+        <location filename="../artisanlib/canvas.py" line="6261" />
         <source>Alarm trigger slider error, description '{0}' not a valid number [0-100]</source>
         <translation>שגיאת מחוון הפעלת אזעקה, תיאור '{0}' אינו מספר חוקי [0-100]</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="6342" />
+        <location filename="../artisanlib/canvas.py" line="6344" />
         <source>Alarm trigger SV slider error, description '{0}' not a valid number</source>
         <translation>שגיאת מחוון SV מפעיל אזעקה, תיאור '{0}' אינו מספר חוקי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="6384" />
+        <location filename="../artisanlib/canvas.py" line="6386" />
         <source>Alarm {0} triggered</source>
         <translation>אזעקה {0} הופעלה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="8212" />
+        <location filename="../artisanlib/canvas.py" line="8215" />
         <source>Scope has been reset</source>
         <translation>מטרה אופסה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11550" />
+        <location filename="../artisanlib/canvas.py" line="11553" />
         <source>Load Image File</source>
         <translation>טען קובץ תמונה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11557" />
+        <location filename="../artisanlib/canvas.py" line="11560" />
         <source>Loaded watermark image {0}</source>
         <translation>תמונת סימן מים נטענה {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="11568" />
+        <location filename="../artisanlib/canvas.py" line="11571" />
         <source>Unable to load watermark image {0}</source>
         <translation>לא ניתן לטעון תמונת סימן מים {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12275" />
+        <location filename="../artisanlib/canvas.py" line="12278" />
         <source>Convert profile data to Fahrenheit?</source>
         <translation>להמיר פרופיל  לפרנהייט?</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12388" />
-        <location filename="../artisanlib/canvas.py" line="12336" />
-        <location filename="../artisanlib/canvas.py" line="12326" />
-        <location filename="../artisanlib/canvas.py" line="12276" />
+        <location filename="../artisanlib/canvas.py" line="12391" />
+        <location filename="../artisanlib/canvas.py" line="12339" />
+        <location filename="../artisanlib/canvas.py" line="12329" />
+        <location filename="../artisanlib/canvas.py" line="12279" />
         <source>Convert Profile Temperature</source>
         <translation>המרה של פרופיל טמפרטורה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12323" />
+        <location filename="../artisanlib/canvas.py" line="12326" />
         <source>Profile changed to Fahrenheit</source>
         <translation>פרופיל הומר לפרנהייט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12327" />
+        <location filename="../artisanlib/canvas.py" line="12330" />
         <source>Unable to comply. You already are in Fahrenheit</source>
         <translation>לא ניתן לבצע המרה, הפרופיל הנוכחי כבר בפרנהייט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12390" />
-        <location filename="../artisanlib/canvas.py" line="12328" />
+        <location filename="../artisanlib/canvas.py" line="12393" />
+        <location filename="../artisanlib/canvas.py" line="12331" />
         <source>Profile not changed</source>
         <translation>פרופיל אינו הומר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12335" />
+        <location filename="../artisanlib/canvas.py" line="12338" />
         <source>Convert profile data to Celsius?</source>
         <translation>להמיר פרופיל לצלזיוס ?</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12385" />
+        <location filename="../artisanlib/canvas.py" line="12388" />
         <source>Profile changed to Celsius</source>
         <translation>פרופיל הומר לצלזסיוס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12389" />
+        <location filename="../artisanlib/canvas.py" line="12392" />
         <source>Unable to comply. You already are in Celsius</source>
         <translation>לא ניתן לבצע המרה, הפרופיל הנוכחי כבר בצלזסיוס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12397" />
+        <location filename="../artisanlib/canvas.py" line="12400" />
         <source>Convert Profile Scale</source>
         <translation>המרת סולם פרופיל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12398" />
+        <location filename="../artisanlib/canvas.py" line="12401" />
         <source>No profile data found</source>
         <translation>פרופיל לא זמין</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12427" />
-        <location filename="../artisanlib/canvas.py" line="12409" />
+        <location filename="../artisanlib/canvas.py" line="12430" />
+        <location filename="../artisanlib/canvas.py" line="12412" />
         <source>Colors set to defaults</source>
         <translation>ערכת צבעי ברירית מחדל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12415" />
+        <location filename="../artisanlib/canvas.py" line="12418" />
         <source>Colors set to Default Theme</source>
         <translation>צבעים מוגדרים לעיצוב ברירת המחדל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12430" />
+        <location filename="../artisanlib/canvas.py" line="12433" />
         <source>Colors set to grey</source>
         <translation>ערכת צבעי אפור</translation>
     </message>
     <message>
         <location filename="../artisanlib/cup_profile.py" line="261" />
-        <location filename="../artisanlib/canvas.py" line="12621" />
+        <location filename="../artisanlib/canvas.py" line="12624" />
         <source>Background does not match number of labels</source>
         <translation>הרקע אינו תואם למספר התוויות</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="12884" />
+        <location filename="../artisanlib/canvas.py" line="12887" />
         <source>Phidget service discovery started...</source>
         <translation>גילוי שירות Phidget התחיל...</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13204" />
+        <location filename="../artisanlib/canvas.py" line="13207" />
         <source>Roaster link lost: temperatures are not recorded until it reconnects.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13207" />
+        <location filename="../artisanlib/canvas.py" line="13210" />
         <source>Roaster did not confirm the burner is off: link dropped.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13210" />
+        <location filename="../artisanlib/canvas.py" line="13213" />
         <source>Roaster burner above the commanded level: command sent again.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13394" />
-        <location filename="../artisanlib/canvas.py" line="13381" />
+        <location filename="../artisanlib/canvas.py" line="13397" />
+        <location filename="../artisanlib/canvas.py" line="13384" />
         <source>scanning for device</source>
         <translation>סורק אחר מכשיר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13458" />
+        <location filename="../artisanlib/canvas.py" line="13461" />
         <source>Scope monitoring...</source>
         <translation>מטרת בקרה...</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13694" />
+        <location filename="../artisanlib/canvas.py" line="13697" />
         <source>Scope stopped</source>
         <translation>מטרה הופסקה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14003" />
+        <location filename="../artisanlib/canvas.py" line="14006" />
         <source>Humidity: {}%</source>
         <translation>לחות: {}%</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14011" />
+        <location filename="../artisanlib/canvas.py" line="14014" />
         <source>Temperature: {}{}</source>
         <translation>טמפרטורה: {}{}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14017" />
+        <location filename="../artisanlib/canvas.py" line="14020" />
         <source>Pressure: {}hPa</source>
         <translation>לחץ: {}hPa</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14396" />
+        <location filename="../artisanlib/canvas.py" line="14399" />
         <source>Scope recording...</source>
         <translation>מטרה הקלטה...</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14677" />
+        <location filename="../artisanlib/canvas.py" line="14680" />
         <source>Not enough data collected yet. Try again in a few seconds</source>
         <translation>עדיין לא נאספו מספיק נתונים. נסה שוב בעוד מספר שניות</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14741" />
+        <location filename="../artisanlib/canvas.py" line="14744" />
         <source>CHARGE: Scope is not recording</source>
         <translation>טעינה: ההיקף אינו מוקלט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14766" />
+        <location filename="../artisanlib/canvas.py" line="14769" />
         <source>Roast time starts now 00:00 BT = {0}</source>
         <translation>מונה קלייה מתחיל כעת 00:00</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14800" />
+        <location filename="../artisanlib/canvas.py" line="14803" />
         <source>[TP] recorded at {0} BT = {1}</source>
         <translation>[TP] הוקלט ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14891" />
+        <location filename="../artisanlib/canvas.py" line="14894" />
         <source>DRY END: Scope is not recording</source>
         <translation>DRY END: היקף אינו מקליט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14927" />
+        <location filename="../artisanlib/canvas.py" line="14930" />
         <source>[DRY END] recorded at {0} BT = {1}</source>
         <translation>[סיום יבש] הוקלט ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15015" />
+        <location filename="../artisanlib/canvas.py" line="15018" />
         <source>FC START: Scope is not recording</source>
         <translation>FC START: ההיקף אינו מוקלט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15053" />
+        <location filename="../artisanlib/canvas.py" line="15056" />
         <source>[FC START] recorded at {0} BT = {1}</source>
         <translation>[FC START] הוקלט ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15133" />
+        <location filename="../artisanlib/canvas.py" line="15136" />
         <source>FC END: Scope is not recording</source>
         <translation>FC END: ההיקף אינו מוקלט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15175" />
+        <location filename="../artisanlib/canvas.py" line="15178" />
         <source>[FC END] recorded at {0} BT = {1}</source>
         <translation>[FC END] הוקלט ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15254" />
+        <location filename="../artisanlib/canvas.py" line="15257" />
         <source>SC START: Scope is not recording</source>
         <translation>SC START: ההיקף אינו מוקלט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15302" />
+        <location filename="../artisanlib/canvas.py" line="15305" />
         <source>[SC START] recorded at {0} BT = {1}</source>
         <translation>[SC START] הוקלט ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15377" />
+        <location filename="../artisanlib/canvas.py" line="15380" />
         <source>SC END: Scope is not recording</source>
         <translation>SC END: ההיקף אינו מוקלט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15424" />
+        <location filename="../artisanlib/canvas.py" line="15427" />
         <source>[SC END] recorded at {0} BT = {1}</source>
         <translation>[SC END] הוקלט ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15433" />
+        <location filename="../artisanlib/canvas.py" line="15436" />
         <source>Uploaded to {}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15435" />
+        <location filename="../artisanlib/canvas.py" line="15438" />
         <source>Upload to {} failed</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15608" />
+        <location filename="../artisanlib/canvas.py" line="15611" />
         <source>DROP: Scope is not recording</source>
         <translation>DROP: היקף אינו מקליט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15661" />
+        <location filename="../artisanlib/canvas.py" line="15664" />
         <source>Roast ended at {0} BT = {1}</source>
         <translation>הצלייה הסתיימה ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15751" />
+        <location filename="../artisanlib/canvas.py" line="15754" />
         <source>COOL: Scope is not recording</source>
         <translation>מגניב: סקופ לא מקליט</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15800" />
+        <location filename="../artisanlib/canvas.py" line="15803" />
         <source>[COOL END] recorded at {0} BT = {1}</source>
         <translation>[סיום קריר] הוקלט ב-{0} BT = {1}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16195" />
-        <location filename="../artisanlib/canvas.py" line="16145" />
+        <location filename="../artisanlib/canvas.py" line="16198" />
+        <location filename="../artisanlib/canvas.py" line="16148" />
         <source>Event # {0} recorded at BT = {1}{2} Time = {3}</source>
         <translation>אירוע מס' {0} תועד ב-BT = {2}{1} זמן = {3}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="16165" />
+        <location filename="../artisanlib/canvas.py" line="16168" />
         <source>Timer is OFF</source>
         <translation>מונה זמן לא פעיל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17647" />
+        <location filename="../artisanlib/canvas.py" line="17650" />
         <source>Unable to move background</source>
         <translation>לא ניתן להזיז רקע</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17699" />
+        <location filename="../artisanlib/canvas.py" line="17702" />
         <source>No finished profile found</source>
         <translation>לא נמצאו פרופילים שלמים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17716" />
+        <location filename="../artisanlib/canvas.py" line="17719" />
         <source>Polynomial coefficients (Horner form):</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17718" />
+        <location filename="../artisanlib/canvas.py" line="17721" />
         <source>Knots:</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17720" />
+        <location filename="../artisanlib/canvas.py" line="17723" />
         <source>Residual:</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17722" />
+        <location filename="../artisanlib/canvas.py" line="17725" />
         <source>Roots:</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="17725" />
+        <location filename="../artisanlib/canvas.py" line="17728" />
         <source>Profile information</source>
         <translation>נתוני פרופיל קלייה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18219" />
+        <location filename="../artisanlib/canvas.py" line="18222" />
         <source>Save Points</source>
         <translation>שמור נקודות</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18228" />
+        <location filename="../artisanlib/canvas.py" line="18231" />
         <source>Points saved</source>
         <translation>נקודות נשמרו</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18238" />
+        <location filename="../artisanlib/canvas.py" line="18241" />
         <source>Load Points</source>
         <translation>נקודות טעינה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18250" />
+        <location filename="../artisanlib/canvas.py" line="18253" />
         <source>Points loaded</source>
         <translation>נקודות נטענו</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18328" />
+        <location filename="../artisanlib/canvas.py" line="18331" />
         <source>Designer Init</source>
         <translation>תחילת עיצוב</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="18329" />
+        <location filename="../artisanlib/canvas.py" line="18332" />
         <source>Unable to start designer.
 Profile missing [CHARGE] or [DROP]</source>
         <translation>לא ניתן להפעיל עיצוב קלייה. פורפיל חסר ללא אירוע הטענה או אירוע הוצאה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19270" />
+        <location filename="../artisanlib/canvas.py" line="19273" />
         <source>New profile created</source>
         <translation>פרופיל חדש נוצר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19490" />
+        <location filename="../artisanlib/canvas.py" line="19493" />
         <source> added to cupping notes</source>
         <translation>התווסף לפרופיל טעם</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19501" />
+        <location filename="../artisanlib/canvas.py" line="19504" />
         <source> added to roasting notes</source>
         <translation>התווסף להערות קלייה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19767" />
+        <location filename="../artisanlib/canvas.py" line="19770" />
         <source>Mouse Cross ON: move mouse around</source>
         <translation>הצלב עכבר מופעל: הזז את העכבר</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="19812" />
+        <location filename="../artisanlib/canvas.py" line="19815" />
         <source>Mouse cross OFF</source>
         <translation>הצלב עכבר OFF</translation>
     </message>
@@ -18539,19 +18539,6 @@ To keep it free and current please support us with your donation and subscribe t
 </context><context>
     <name>Plus</name>
     <message>
-        <location filename="../plus/schedule.py" line="1963" />
-        <location filename="../plus/schedule.py" line="1418" />
-        <location filename="../tilauscope/cave/roast_list.py" line="167" />
-        <source>Today</source>
-        <translation>היום</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="1343" />
-        <location filename="../tilauscope/cave/roast_list.py" line="169" />
-        <source>Yesterday</source>
-        <translation>אתמול</translation>
-    </message>
-    <message>
         <location filename="../plus/queue.py" line="141" />
         <source>Roast successfully uploaded to {}</source>
         <translation>צלי הועלה בהצלחה אל {}</translation>
@@ -18652,6 +18639,19 @@ To keep it free and current please support us with your donation and subscribe t
         <location filename="../plus/stock.py" line="477" />
         <source>barrels</source>
         <translation>חביות</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/roast_list.py" line="169" />
+        <location filename="../plus/schedule.py" line="1343" />
+        <source>Yesterday</source>
+        <translation>אתמול</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/cave/roast_list.py" line="167" />
+        <location filename="../plus/schedule.py" line="1963" />
+        <location filename="../plus/schedule.py" line="1418" />
+        <source>Today</source>
+        <translation>היום</translation>
     </message>
     <message>
         <location filename="../plus/schedule.py" line="1420" />
@@ -18858,67 +18858,72 @@ To keep it free and current please support us with your donation and subscribe t
 </context><context>
     <name>Scope Annotation</name>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14791" />
-        <location filename="../artisanlib/canvas.py" line="8397" />
-        <location filename="../artisanlib/canvas.py" line="8385" />
+        <location filename="../artisanlib/canvas.py" line="14794" />
+        <location filename="../artisanlib/canvas.py" line="8400" />
+        <location filename="../artisanlib/canvas.py" line="8388" />
         <source>TP {0}</source>
         <translation>נק' סיבוב {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14872" />
-        <location filename="../artisanlib/canvas.py" line="14836" />
-        <location filename="../artisanlib/canvas.py" line="8411" />
+        <location filename="../artisanlib/canvas.py" line="14875" />
+        <location filename="../artisanlib/canvas.py" line="14839" />
+        <location filename="../artisanlib/canvas.py" line="8414" />
         <source>DE {0}</source>
         <translation>ייבוש {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14999" />
-        <location filename="../artisanlib/canvas.py" line="14962" />
-        <location filename="../artisanlib/canvas.py" line="8426" />
+        <location filename="../artisanlib/canvas.py" line="15002" />
+        <location filename="../artisanlib/canvas.py" line="14965" />
+        <location filename="../artisanlib/canvas.py" line="8429" />
         <source>FCs {0}</source>
         <translation>ת.פ.1 {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15114" />
-        <location filename="../artisanlib/canvas.py" line="15080" />
-        <location filename="../artisanlib/canvas.py" line="8440" />
+        <location filename="../artisanlib/canvas.py" line="15117" />
+        <location filename="../artisanlib/canvas.py" line="15083" />
+        <location filename="../artisanlib/canvas.py" line="8443" />
         <source>FCe {0}</source>
         <translation>ס.פ.1 {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15235" />
-        <location filename="../artisanlib/canvas.py" line="15203" />
-        <location filename="../artisanlib/canvas.py" line="8462" />
+        <location filename="../artisanlib/canvas.py" line="15238" />
+        <location filename="../artisanlib/canvas.py" line="15206" />
+        <location filename="../artisanlib/canvas.py" line="8465" />
         <source>SCs {0}</source>
         <translation>ת.פ.2 {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15362" />
-        <location filename="../artisanlib/canvas.py" line="15330" />
-        <location filename="../artisanlib/canvas.py" line="8476" />
+        <location filename="../artisanlib/canvas.py" line="15365" />
+        <location filename="../artisanlib/canvas.py" line="15333" />
+        <location filename="../artisanlib/canvas.py" line="8479" />
         <source>SCe {0}</source>
         <translation>ס.פ.2 {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15542" />
-        <location filename="../artisanlib/canvas.py" line="15496" />
-        <location filename="../artisanlib/canvas.py" line="11945" />
-        <location filename="../artisanlib/canvas.py" line="8510" />
+        <location filename="../artisanlib/canvas.py" line="15545" />
+        <location filename="../artisanlib/canvas.py" line="15499" />
+        <location filename="../artisanlib/canvas.py" line="11948" />
+        <location filename="../artisanlib/canvas.py" line="8513" />
         <source>DROP {0}</source>
         <translation>הוצאה {0}</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="15733" />
-        <location filename="../artisanlib/canvas.py" line="15699" />
+        <location filename="../artisanlib/canvas.py" line="15736" />
+        <location filename="../artisanlib/canvas.py" line="15702" />
         <source>CE {0}</source>
         <translation>קירור {0}</translation>
     </message>
 </context><context>
     <name>Scope Title</name>
     <message>
-        <location filename="../artisanlib/canvas.py" line="8757" />
-        <location filename="../artisanlib/canvas.py" line="7944" />
-        <location filename="../artisanlib/canvas.py" line="1031" />
+        <location filename="../plus/schedule.py" line="2977" />
+        <source>Roaster Scope</source>
+        <translation>מטרת הקלייה</translation>
+    </message>
+    <message>
+        <location filename="../artisanlib/canvas.py" line="8760" />
+        <location filename="../artisanlib/canvas.py" line="7947" />
+        <location filename="../artisanlib/canvas.py" line="1032" />
         <location filename="../artisanlib/main.py" line="16406" />
         <location filename="../artisanlib/main.py" line="14854" />
         <location filename="../artisanlib/main.py" line="13418" />
@@ -18932,11 +18937,6 @@ To keep it free and current please support us with your donation and subscribe t
         <location filename="../tilauscope/graph/curve.py" line="1574" />
         <source>TilauScope</source>
         <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2977" />
-        <source>Roaster Scope</source>
-        <translation>מטרת הקלייה</translation>
     </message>
 </context><context>
     <name>StatusBar</name>
@@ -19306,6 +19306,16 @@ To keep it free and current please support us with your donation and subscribe t
 </context><context>
     <name>Tab</name>
     <message>
+        <location filename="../plus/schedule.py" line="2332" />
+        <source>To-Do</source>
+        <translation>לעשות</translation>
+    </message>
+    <message>
+        <location filename="../plus/schedule.py" line="2333" />
+        <source>Completed</source>
+        <translation>הושלם</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/events.py" line="1812" />
         <location filename="../tilauscope/custom_buttons.py" line="1154" />
         <source>Buttons</source>
@@ -19313,8 +19323,8 @@ To keep it free and current please support us with your donation and subscribe t
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="1818" />
-        <location filename="../tilauscope/onboarding.py" line="1023" />
-        <location filename="../tilauscope/onboarding.py" line="1021" />
+        <location filename="../tilauscope/onboarding.py" line="1135" />
+        <location filename="../tilauscope/onboarding.py" line="1133" />
         <source>Sliders</source>
         <translation type="unfinished">סליידר</translation>
     </message>
@@ -19380,16 +19390,6 @@ To keep it free and current please support us with your donation and subscribe t
         <location filename="../tilauscope/graph/annotation_text.py" line="80" />
         <source>PID</source>
         <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2332" />
-        <source>To-Do</source>
-        <translation>לעשות</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2333" />
-        <source>Completed</source>
-        <translation>הושלם</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="977" />
@@ -20004,219 +20004,219 @@ To keep it free and current please support us with your donation and subscribe t
 </context><context>
     <name>Textbox</name>
     <message>
-        <location filename="../artisanlib/canvas.py" line="581" />
+        <location filename="../artisanlib/canvas.py" line="582" />
         <location filename="../tilauscope/roast_properties.py" line="5255" />
         <source>Defects</source>
         <translation>פגמים</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="572" />
-        <location filename="../artisanlib/canvas.py" line="540" />
+        <location filename="../artisanlib/canvas.py" line="573" />
+        <location filename="../artisanlib/canvas.py" line="541" />
         <location filename="../tilauscope/alarms.py" line="137" />
         <source>Finish</source>
         <translation>סִיוּם</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="548" />
+        <location filename="../artisanlib/canvas.py" line="549" />
         <location filename="../tilauscope/cave/viewer.py" line="1739" />
         <source>Taste</source>
         <translation>טַעַם</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="589" />
-        <location filename="../artisanlib/canvas.py" line="579" />
-        <location filename="../artisanlib/canvas.py" line="570" />
-        <location filename="../artisanlib/canvas.py" line="563" />
-        <location filename="../artisanlib/canvas.py" line="555" />
-        <location filename="../artisanlib/canvas.py" line="552" />
-        <location filename="../artisanlib/canvas.py" line="531" />
-        <location filename="../artisanlib/canvas.py" line="519" />
-        <location filename="../artisanlib/canvas.py" line="508" />
-        <location filename="../artisanlib/canvas.py" line="492" />
+        <location filename="../artisanlib/canvas.py" line="590" />
+        <location filename="../artisanlib/canvas.py" line="580" />
+        <location filename="../artisanlib/canvas.py" line="571" />
+        <location filename="../artisanlib/canvas.py" line="564" />
+        <location filename="../artisanlib/canvas.py" line="556" />
+        <location filename="../artisanlib/canvas.py" line="553" />
+        <location filename="../artisanlib/canvas.py" line="532" />
+        <location filename="../artisanlib/canvas.py" line="520" />
+        <location filename="../artisanlib/canvas.py" line="509" />
+        <location filename="../artisanlib/canvas.py" line="493" />
         <source>Acidity</source>
         <translation>חוּמצִיוּת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="588" />
-        <location filename="../artisanlib/canvas.py" line="566" />
-        <location filename="../artisanlib/canvas.py" line="558" />
-        <location filename="../artisanlib/canvas.py" line="550" />
-        <location filename="../artisanlib/canvas.py" line="533" />
-        <location filename="../artisanlib/canvas.py" line="518" />
-        <location filename="../artisanlib/canvas.py" line="507" />
-        <location filename="../artisanlib/canvas.py" line="493" />
+        <location filename="../artisanlib/canvas.py" line="589" />
+        <location filename="../artisanlib/canvas.py" line="567" />
+        <location filename="../artisanlib/canvas.py" line="559" />
+        <location filename="../artisanlib/canvas.py" line="551" />
+        <location filename="../artisanlib/canvas.py" line="534" />
+        <location filename="../artisanlib/canvas.py" line="519" />
+        <location filename="../artisanlib/canvas.py" line="508" />
+        <location filename="../artisanlib/canvas.py" line="494" />
         <source>Aftertaste</source>
         <translation>טעם לוואי</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="538" />
-        <location filename="../artisanlib/canvas.py" line="524" />
-        <location filename="../artisanlib/canvas.py" line="512" />
-        <location filename="../artisanlib/canvas.py" line="494" />
+        <location filename="../artisanlib/canvas.py" line="539" />
+        <location filename="../artisanlib/canvas.py" line="525" />
+        <location filename="../artisanlib/canvas.py" line="513" />
+        <location filename="../artisanlib/canvas.py" line="495" />
         <source>Clean Cup</source>
         <translation>כוס נקייה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="495" />
+        <location filename="../artisanlib/canvas.py" line="496" />
         <source>Head</source>
         <translation>רֹאשׁ</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="577" />
-        <location filename="../artisanlib/canvas.py" line="546" />
-        <location filename="../artisanlib/canvas.py" line="496" />
+        <location filename="../artisanlib/canvas.py" line="578" />
+        <location filename="../artisanlib/canvas.py" line="547" />
+        <location filename="../artisanlib/canvas.py" line="497" />
         <source>Fragrance</source>
         <translation>נִיחוֹחַ</translation>
     </message>
     <message>
+        <location filename="../artisanlib/canvas.py" line="593" />
         <location filename="../artisanlib/canvas.py" line="592" />
-        <location filename="../artisanlib/canvas.py" line="591" />
-        <location filename="../artisanlib/canvas.py" line="569" />
-        <location filename="../artisanlib/canvas.py" line="539" />
-        <location filename="../artisanlib/canvas.py" line="525" />
-        <location filename="../artisanlib/canvas.py" line="513" />
-        <location filename="../artisanlib/canvas.py" line="497" />
+        <location filename="../artisanlib/canvas.py" line="570" />
+        <location filename="../artisanlib/canvas.py" line="540" />
+        <location filename="../artisanlib/canvas.py" line="526" />
+        <location filename="../artisanlib/canvas.py" line="514" />
+        <location filename="../artisanlib/canvas.py" line="498" />
         <source>Sweetness</source>
         <translation>מְתִיקוּת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="586" />
-        <location filename="../artisanlib/canvas.py" line="562" />
-        <location filename="../artisanlib/canvas.py" line="547" />
-        <location filename="../artisanlib/canvas.py" line="529" />
-        <location filename="../artisanlib/canvas.py" line="498" />
+        <location filename="../artisanlib/canvas.py" line="587" />
+        <location filename="../artisanlib/canvas.py" line="563" />
+        <location filename="../artisanlib/canvas.py" line="548" />
+        <location filename="../artisanlib/canvas.py" line="530" />
+        <location filename="../artisanlib/canvas.py" line="499" />
         <source>Aroma</source>
         <translation>אֲרוֹמָה</translation>
     </message>
     <message>
+        <location filename="../artisanlib/canvas.py" line="595" />
         <location filename="../artisanlib/canvas.py" line="594" />
-        <location filename="../artisanlib/canvas.py" line="593" />
-        <location filename="../artisanlib/canvas.py" line="584" />
-        <location filename="../artisanlib/canvas.py" line="567" />
-        <location filename="../artisanlib/canvas.py" line="559" />
-        <location filename="../artisanlib/canvas.py" line="523" />
-        <location filename="../artisanlib/canvas.py" line="511" />
-        <location filename="../artisanlib/canvas.py" line="499" />
+        <location filename="../artisanlib/canvas.py" line="585" />
+        <location filename="../artisanlib/canvas.py" line="568" />
+        <location filename="../artisanlib/canvas.py" line="560" />
+        <location filename="../artisanlib/canvas.py" line="524" />
+        <location filename="../artisanlib/canvas.py" line="512" />
+        <location filename="../artisanlib/canvas.py" line="500" />
         <source>Balance</source>
         <translation>לְאַזֵן</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="590" />
-        <location filename="../artisanlib/canvas.py" line="578" />
-        <location filename="../artisanlib/canvas.py" line="571" />
-        <location filename="../artisanlib/canvas.py" line="557" />
-        <location filename="../artisanlib/canvas.py" line="551" />
-        <location filename="../artisanlib/canvas.py" line="541" />
-        <location filename="../artisanlib/canvas.py" line="532" />
-        <location filename="../artisanlib/canvas.py" line="521" />
-        <location filename="../artisanlib/canvas.py" line="509" />
-        <location filename="../artisanlib/canvas.py" line="500" />
+        <location filename="../artisanlib/canvas.py" line="591" />
+        <location filename="../artisanlib/canvas.py" line="579" />
+        <location filename="../artisanlib/canvas.py" line="572" />
+        <location filename="../artisanlib/canvas.py" line="558" />
+        <location filename="../artisanlib/canvas.py" line="552" />
+        <location filename="../artisanlib/canvas.py" line="542" />
+        <location filename="../artisanlib/canvas.py" line="533" />
+        <location filename="../artisanlib/canvas.py" line="522" />
+        <location filename="../artisanlib/canvas.py" line="510" />
+        <location filename="../artisanlib/canvas.py" line="501" />
         <source>Body</source>
         <translation>גוּף</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="554" />
-        <location filename="../artisanlib/canvas.py" line="516" />
-        <location filename="../artisanlib/canvas.py" line="505" />
+        <location filename="../artisanlib/canvas.py" line="555" />
+        <location filename="../artisanlib/canvas.py" line="517" />
+        <location filename="../artisanlib/canvas.py" line="506" />
         <source>Fragrance-Aroma</source>
         <translation>ניחוח-ארומה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="556" />
-        <location filename="../artisanlib/canvas.py" line="542" />
-        <location filename="../artisanlib/canvas.py" line="530" />
-        <location filename="../artisanlib/canvas.py" line="517" />
-        <location filename="../artisanlib/canvas.py" line="506" />
+        <location filename="../artisanlib/canvas.py" line="557" />
+        <location filename="../artisanlib/canvas.py" line="543" />
+        <location filename="../artisanlib/canvas.py" line="531" />
+        <location filename="../artisanlib/canvas.py" line="518" />
+        <location filename="../artisanlib/canvas.py" line="507" />
         <source>Flavor</source>
         <translation>טַעַם</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="536" />
-        <location filename="../artisanlib/canvas.py" line="522" />
-        <location filename="../artisanlib/canvas.py" line="510" />
+        <location filename="../artisanlib/canvas.py" line="537" />
+        <location filename="../artisanlib/canvas.py" line="523" />
+        <location filename="../artisanlib/canvas.py" line="511" />
         <source>Uniformity</source>
         <translation>אֲחִידוּת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="595" />
-        <location filename="../artisanlib/canvas.py" line="526" />
-        <location filename="../artisanlib/canvas.py" line="514" />
+        <location filename="../artisanlib/canvas.py" line="596" />
+        <location filename="../artisanlib/canvas.py" line="527" />
+        <location filename="../artisanlib/canvas.py" line="515" />
         <source>Overall</source>
         <translation>בסך הכל</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="520" />
+        <location filename="../artisanlib/canvas.py" line="521" />
         <source>Intensity</source>
         <translation>עָצמָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="528" />
+        <location filename="../artisanlib/canvas.py" line="529" />
         <source>Fragance</source>
         <translation>ניחוח</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="535" />
+        <location filename="../artisanlib/canvas.py" line="536" />
         <source>Dry Fragrance</source>
         <translation>ניחוח יבש</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="537" />
+        <location filename="../artisanlib/canvas.py" line="538" />
         <source>Complexity</source>
         <translation>מוּרכָּבוּת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="543" />
+        <location filename="../artisanlib/canvas.py" line="544" />
         <source>Brightness</source>
         <translation>בְּהִירוּת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="544" />
+        <location filename="../artisanlib/canvas.py" line="545" />
         <source>Wet Aroma</source>
         <translation>ארומה רטובה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="549" />
+        <location filename="../artisanlib/canvas.py" line="550" />
         <source>Nose</source>
         <translation>אַף</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="564" />
+        <location filename="../artisanlib/canvas.py" line="565" />
         <source>Mouthfeel</source>
         <translation>תחושת הפה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="587" />
-        <location filename="../artisanlib/canvas.py" line="565" />
+        <location filename="../artisanlib/canvas.py" line="588" />
+        <location filename="../artisanlib/canvas.py" line="566" />
         <source>Flavour</source>
         <translation>טַעַם</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="574" />
+        <location filename="../artisanlib/canvas.py" line="575" />
         <source>Roast Color</source>
         <translation>צבע צלייה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="575" />
+        <location filename="../artisanlib/canvas.py" line="576" />
         <source>Crema Texture</source>
         <translation>מרקם קרמה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="576" />
+        <location filename="../artisanlib/canvas.py" line="577" />
         <source>Crema Volume</source>
         <translation>קרמה נפח</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="580" />
+        <location filename="../artisanlib/canvas.py" line="581" />
         <source>Bitterness</source>
         <translation>מְרִירוּת</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="582" />
+        <location filename="../artisanlib/canvas.py" line="583" />
         <source>Aroma Intensity</source>
         <translation>עוצמת הארומה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="583" />
+        <location filename="../artisanlib/canvas.py" line="584" />
         <source>Aroma Persistence</source>
         <translation>עמידות ארומה</translation>
     </message>
@@ -20225,7 +20225,7 @@ To keep it free and current please support us with your donation and subscribe t
     <message>
         <location filename="../artisanlib/main.py" line="798" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="340" />
-        <location filename="../tilauscope/onboarding.py" line="312" />
+        <location filename="../tilauscope/onboarding.py" line="326" />
         <source>Back</source>
         <translation>חזור</translation>
     </message>
@@ -20257,6 +20257,11 @@ To keep it free and current please support us with your donation and subscribe t
     </message>
 </context><context>
     <name>Tooltip</name>
+    <message>
+        <location filename="../plus/schedule.py" line="2266" />
+        <source>Update schedule</source>
+        <translation>עדכון לוח זמנים</translation>
+    </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="189" />
         <source>Automatically center the timeline in the visualization window.</source>
@@ -20302,14 +20307,14 @@ To keep it free and current please support us with your donation and subscribe t
         <translation>יְרִידָה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13481" />
+        <location filename="../artisanlib/canvas.py" line="13484" />
         <location filename="../tilauscope/window/lifecycle.py" line="650" />
         <location filename="../tilauscope/displayscope.py" line="926" />
         <source>Stop monitoring</source>
         <translation>הפסק בקרה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="13693" />
+        <location filename="../artisanlib/canvas.py" line="13696" />
         <location filename="../artisanlib/main.py" line="3046" />
         <location filename="../tilauscope/window/build.py" line="565" />
         <location filename="../tilauscope/displayscope.py" line="949" />
@@ -20324,34 +20329,29 @@ To keep it free and current please support us with your donation and subscribe t
         <translation>איפוס</translation>
     </message>
     <message>
-        <location filename="../artisanlib/canvas.py" line="14402" />
+        <location filename="../artisanlib/canvas.py" line="14405" />
         <location filename="../tilauscope/window/lifecycle.py" line="957" />
         <location filename="../tilauscope/window/lifecycle.py" line="667" />
         <source>Stop recording</source>
         <translation>הפבק הקלטה</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27838" />
+        <location filename="../artisanlib/main.py" line="27841" />
         <location filename="../tilauscope/window/parts.py" line="343" />
         <source>&lt;b&gt;Type &lt;/b&gt;= </source>
         <translation>&lt;b&gt;סוג &lt;/b&gt;=</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27840" />
+        <location filename="../artisanlib/main.py" line="27843" />
         <location filename="../tilauscope/window/parts.py" line="345" />
         <source>&lt;b&gt;Value &lt;/b&gt;= </source>
         <translation>&lt;b&gt;ערך &lt;/b&gt;=</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27842" />
+        <location filename="../artisanlib/main.py" line="27845" />
         <location filename="../tilauscope/window/parts.py" line="347" />
         <source>&lt;b&gt;Documentation &lt;/b&gt;= </source>
         <translation>&lt;b&gt;תיעוד &lt;/b&gt;=</translation>
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2266" />
-        <source>Update schedule</source>
-        <translation>עדכון לוח זמנים</translation>
     </message>
     <message>
         <location filename="../artisanlib/axis.py" line="86" />
@@ -21968,17 +21968,17 @@ Currently in TEMP MODE</source>
 כרגע במצב TEMP MODE</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27836" />
+        <location filename="../artisanlib/main.py" line="27839" />
         <source>&lt;b&gt;Label&lt;/b&gt;= </source>
         <translation>&lt;b&gt;תווית&lt;/b&gt;=</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27837" />
+        <location filename="../artisanlib/main.py" line="27840" />
         <source>&lt;b&gt;Description &lt;/b&gt;= </source>
         <translation>&lt;b&gt;תיאור &lt;/b&gt;=</translation>
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="27843" />
+        <location filename="../artisanlib/main.py" line="27846" />
         <source>&lt;b&gt;Button# &lt;/b&gt;= </source>
         <translation>&lt;b&gt;כפתור מס' &lt;/b&gt;=</translation>
     </message>
@@ -22251,31 +22251,31 @@ enabling the addition of more batches</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="29163" />
+        <location filename="../artisanlib/main.py" line="29166" />
         <source>TilauScope is already running</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="29166" />
+        <location filename="../artisanlib/main.py" line="29169" />
         <source>TilauScope is already open on this computer.
 
 A second window cannot drive the roaster: the meter connection, the Bluetooth devices and the bean database belong to the instance already running. Switch to that window to keep roasting.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="29167" />
+        <location filename="../artisanlib/main.py" line="29170" />
         <source>Quit</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="29169" />
+        <location filename="../artisanlib/main.py" line="29172" />
         <source>
 
 Remote control is enabled, so you can open the control client in your browser instead.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../artisanlib/main.py" line="29170" />
+        <location filename="../artisanlib/main.py" line="29173" />
         <source>Open the control client</source>
         <translation type="unfinished" />
     </message>
@@ -23041,286 +23041,316 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="238" />
+        <location filename="../tilauscope/library_tab.py" line="192" />
+        <source>This roast has no CHARGE or no DROP marked, so the library cannot show its curve.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/library_tab.py" line="194" />
+        <source>The library takes a crop year between 1990 and 2100. Correct the crop year in the coffee's BeanCave record, or leave it empty, then publish again.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/library_tab.py" line="196" />
+        <source>The library takes batches up to 5 kg. Correct the batch weight in this roast's properties, then publish again.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/library_tab.py" line="198" />
+        <source>From CHARGE to DROP, this roast lasts less than a minute or more than an hour. Check where CHARGE and DROP are marked, then publish again.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/library_tab.py" line="200" />
+        <source>First crack is marked after DROP, or more than 30 minutes before it. Check where first crack is marked, then publish again.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/library_tab.py" line="202" />
+        <source>The bean temperature at DROP must be between 100 and 300 °C for the library. Check where DROP is marked, then publish again.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/library_tab.py" line="203" />
+        <source>This roast holds a value the library does not accept, so it cannot be published.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/library_tab.py" line="255" />
         <source>MINE</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="396" />
+        <location filename="../tilauscope/library_tab.py" line="413" />
         <source>Publish this roast of {0} to the library</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="399" />
+        <location filename="../tilauscope/library_tab.py" line="416" />
         <source>GOES TO THE LIBRARY</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="400" />
+        <location filename="../tilauscope/library_tab.py" line="417" />
         <source>The coffee: origin, process, flavours</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="401" />
+        <location filename="../tilauscope/library_tab.py" line="418" />
         <source>This roast and its curve</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="403" />
+        <location filename="../tilauscope/library_tab.py" line="420" />
         <source>Your tasting</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="405" />
+        <location filename="../tilauscope/library_tab.py" line="422" />
         <source>Brew settings</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="409" />
+        <location filename="../tilauscope/library_tab.py" line="426" />
         <source>STAYS ON THIS COMPUTER</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="410" />
+        <location filename="../tilauscope/library_tab.py" line="427" />
         <source>Your name and organisation</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="411" />
+        <location filename="../tilauscope/library_tab.py" line="428" />
         <source>Stock, sacks, price</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="412" />
+        <location filename="../tilauscope/library_tab.py" line="429" />
         <source>Room conditions, altitude</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="413" />
+        <location filename="../tilauscope/library_tab.py" line="430" />
         <source>File locations, alarms</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="421" />
+        <location filename="../tilauscope/library_tab.py" line="438" />
         <source>Withdrawing it later removes it from the library, not from the roasters who already imported it.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="422" />
+        <location filename="../tilauscope/library_tab.py" line="439" />
         <source>Any roaster may use this coffee and adapt it.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="429" />
+        <location filename="../tilauscope/library_tab.py" line="446" />
         <source>Publish</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="507" />
+        <location filename="../tilauscope/library_tab.py" line="524" />
         <source>Coffee, country, process…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="518" />
+        <location filename="../tilauscope/library_tab.py" line="535" />
         <source>My machine</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/cave/lifecycle.py" line="1433" />
-        <location filename="../tilauscope/library_tab.py" line="620" />
+        <location filename="../tilauscope/library_tab.py" line="637" />
         <source>Try again</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/cave/lifecycle.py" line="1169" />
-        <location filename="../tilauscope/library_tab.py" line="636" />
+        <location filename="../tilauscope/library_tab.py" line="653" />
         <source>Library</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="717" />
+        <location filename="../tilauscope/library_tab.py" line="734" />
         <source>Loading the library…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="765" />
+        <location filename="../tilauscope/library_tab.py" line="782" />
         <source>Loading more…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="767" />
+        <location filename="../tilauscope/library_tab.py" line="784" />
         <source>The next roasts did not load. Click to try again.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="781" />
+        <location filename="../tilauscope/library_tab.py" line="798" />
         <source>The library cannot be reached</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="782" />
+        <location filename="../tilauscope/library_tab.py" line="799" />
         <source>Check the internet connection. Your own coffees and roasts are not affected.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="784" />
+        <location filename="../tilauscope/library_tab.py" line="801" />
         <source>The library is not available</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="885" />
+        <location filename="../tilauscope/library_tab.py" line="902" />
         <source>Mine · {0}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="889" />
+        <location filename="../tilauscope/library_tab.py" line="906" />
         <source>1 roast · newest first</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="890" />
+        <location filename="../tilauscope/library_tab.py" line="907" />
         <source>{0} roasts · newest first</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="903" />
+        <location filename="../tilauscope/library_tab.py" line="920" />
         <source>You have not published a roast yet</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="904" />
+        <location filename="../tilauscope/library_tab.py" line="921" />
         <source>Open a roast in the Roasts tab, then Export › Publish to the library.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="906" />
+        <location filename="../tilauscope/library_tab.py" line="923" />
         <source>No roast in the library yet</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="907" />
+        <location filename="../tilauscope/library_tab.py" line="924" />
         <source>Be the first: open a roast in the Roasts tab, then Export › Publish to the library.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="909" />
+        <location filename="../tilauscope/library_tab.py" line="926" />
         <source>No coffee matches</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="910" />
+        <location filename="../tilauscope/library_tab.py" line="927" />
         <source>Clear the search, or turn off My machine.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="982" />
+        <location filename="../tilauscope/library_tab.py" line="999" />
         <source>Loading the roast card…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1037" />
+        <location filename="../tilauscope/library_tab.py" line="1054" />
         <source>YOUR ROAST</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1040" />
+        <location filename="../tilauscope/library_tab.py" line="1057" />
         <source>Published {0} · other roasters can import it now.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1042" />
+        <location filename="../tilauscope/library_tab.py" line="1059" />
         <source>Other roasters can import it now.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1045" />
+        <location filename="../tilauscope/library_tab.py" line="1062" />
         <source>THEIR TASTING</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1047" />
+        <location filename="../tilauscope/library_tab.py" line="1064" />
         <source>Not tasted</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1184" />
-        <location filename="../tilauscope/library_tab.py" line="1057" />
+        <location filename="../tilauscope/library_tab.py" line="1205" />
+        <location filename="../tilauscope/library_tab.py" line="1074" />
         <source>Withdraw from the library</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1061" />
+        <location filename="../tilauscope/library_tab.py" line="1078" />
         <source>Import this coffee</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/coffee_share_dialog.py" line="265" />
-        <location filename="../tilauscope/library_tab.py" line="1079" />
+        <location filename="../tilauscope/library_tab.py" line="1096" />
         <source>Roasted on a {0}. Use it as a curve to read, not to copy.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1081" />
+        <location filename="../tilauscope/library_tab.py" line="1098" />
         <source>Roasted on a {0}, like yours</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1083" />
+        <location filename="../tilauscope/library_tab.py" line="1100" />
         <source>Roasted on a {0}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1099" />
+        <location filename="../tilauscope/library_tab.py" line="1116" />
         <source>Downloading {0}…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1129" />
+        <location filename="../tilauscope/library_tab.py" line="1146" />
         <source>This roast was shared by another roaster: it is theirs to publish.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1135" />
+        <location filename="../tilauscope/library_tab.py" line="1152" />
         <source>Only a real roast of a coffee of your BeanCave can be published: the library lists a roast under its coffee.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1140" />
+        <location filename="../tilauscope/library_tab.py" line="1157" />
         <source>Publishing needs the system keychain, which does not answer on this computer. Browsing and importing coffees still work.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1147" />
-        <source>This roast has no CHARGE or no DROP marked, so the library cannot show its curve.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/library_tab.py" line="1159" />
+        <location filename="../tilauscope/library_tab.py" line="1180" />
         <source>Publishing {0}…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1174" />
+        <location filename="../tilauscope/library_tab.py" line="1195" />
         <source>Published: {0}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1185" />
+        <location filename="../tilauscope/library_tab.py" line="1206" />
         <source>Withdraw {0} from the library? Roasters who already imported it keep their copy.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1187" />
+        <location filename="../tilauscope/library_tab.py" line="1208" />
         <source>Withdraw</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1192" />
+        <location filename="../tilauscope/library_tab.py" line="1213" />
         <source>Withdrawing needs the system keychain, which does not answer on this computer. Try again once it does.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/library_tab.py" line="1218" />
+        <location filename="../tilauscope/library_tab.py" line="1239" />
         <source>Withdrawn: {0}</source>
         <translation type="unfinished" />
     </message>
@@ -23921,6 +23951,11 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="988" />
         <source>The record could not be saved. See the log for details.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/coffee_share.py" line="229" />
+        <source>TilauScope cannot open this coffee while a roast is being recorded. Open it again once the roast is saved.</source>
         <translation type="unfinished" />
     </message>
     <message>
@@ -29175,57 +29210,57 @@ Modern: a fixed short pre-infusion (2-3 s bloom, 7-8 s soak) then a fast 9-bar p
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="351" />
-        <location filename="../tilauscope/onboarding.py" line="1130" />
-        <location filename="../tilauscope/onboarding.py" line="317" />
+        <location filename="../tilauscope/onboarding.py" line="1242" />
+        <location filename="../tilauscope/onboarding.py" line="331" />
         <source>Next</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="586" />
-        <location filename="../tilauscope/onboarding.py" line="343" />
+        <location filename="../tilauscope/onboarding.py" line="357" />
         <source>Your name</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/device_setup/dialog.py" line="286" />
-        <location filename="../tilauscope/onboarding.py" line="668" />
+        <location filename="../tilauscope/onboarding.py" line="764" />
         <source>USB port</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1259" />
-        <location filename="../tilauscope/onboarding.py" line="685" />
+        <location filename="../tilauscope/onboarding.py" line="786" />
         <source>Scan again</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2827" />
         <location filename="../tilauscope/roast_properties.py" line="2961" />
-        <location filename="../tilauscope/onboarding.py" line="887" />
+        <location filename="../tilauscope/onboarding.py" line="999" />
         <source>Choose…</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/custom_label_dialog.py" line="228" />
-        <location filename="../tilauscope/onboarding.py" line="1007" />
+        <location filename="../tilauscope/onboarding.py" line="1119" />
         <source>Roasted by</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="954" />
-        <location filename="../tilauscope/onboarding.py" line="1087" />
+        <location filename="../tilauscope/onboarding.py" line="1199" />
         <source>Pair</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1764" />
-        <location filename="../tilauscope/onboarding.py" line="1171" />
+        <location filename="../tilauscope/onboarding.py" line="1283" />
         <source>detected ✓</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2072" />
-        <location filename="../tilauscope/onboarding.py" line="1298" />
+        <location filename="../tilauscope/onboarding.py" line="1410" />
         <source>recognised · not configured</source>
         <translation type="unfinished" />
     </message>
@@ -33221,440 +33256,526 @@ Enter your passwords and API keys again: AI assistant, MQTT.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="84" />
-        <source>Gas</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="85" />
-        <source>Electric</source>
-        <translation type="unfinished">חשמלי</translation>
-    </message>
-    <message>
         <location filename="../tilauscope/onboarding.py" line="86" />
-        <source>Infrared</source>
+        <source>SkyCommand Bluetooth</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="87" />
-        <source>Induction</source>
+        <source>ESP32 box on the roaster. No cable to this computer.</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="88" />
-        <source>Hybrid</source>
+        <source>SkyCommand USB</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="89" />
+        <source>Arduino or ESP32 box plugged into this computer by USB.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="97" />
+        <source>Gas</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="98" />
+        <source>Electric</source>
+        <translation type="unfinished">חשמלי</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="99" />
+        <source>Infrared</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="100" />
+        <source>Induction</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="101" />
+        <source>Hybrid</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="102" />
         <source>Wood</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="90" />
+        <location filename="../tilauscope/onboarding.py" line="103" />
         <source>Coal</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="148" />
+        <location filename="../tilauscope/onboarding.py" line="162" />
         <source>You</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="149" />
+        <location filename="../tilauscope/onboarding.py" line="163" />
         <source>Roaster</source>
         <translation type="unfinished">קולה</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="150" />
+        <location filename="../tilauscope/onboarding.py" line="164" />
         <source>Connection</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="151" />
+        <location filename="../tilauscope/onboarding.py" line="165" />
         <source>Hardware</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="152" />
+        <location filename="../tilauscope/onboarding.py" line="166" />
         <source>Folders</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="153" />
+        <location filename="../tilauscope/onboarding.py" line="167" />
         <source>First bean</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="230" />
+        <location filename="../tilauscope/onboarding.py" line="244" />
         <source>Welcome — first-time setup</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="300" />
+        <location filename="../tilauscope/onboarding.py" line="314" />
         <source>Skip for now</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="333" />
+        <location filename="../tilauscope/onboarding.py" line="347" />
         <source>Who is roasting?</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="370" />
+        <location filename="../tilauscope/onboarding.py" line="384" />
         <source>Temperatures in</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="391" />
+        <location filename="../tilauscope/onboarding.py" line="405" />
         <source>Ethiopia Guji · #142</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="393" />
+        <location filename="../tilauscope/onboarding.py" line="407" />
         <source>roasted by {0}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="400" />
+        <location filename="../tilauscope/onboarding.py" line="414" />
         <source>Which roaster do you use?</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="401" />
+        <location filename="../tilauscope/onboarding.py" line="415" />
         <source>It sets the roast plan, and how TilauScope reads and drives the machine.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="405" />
+        <location filename="../tilauscope/onboarding.py" line="419" />
         <source>Search roasters</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="450" />
+        <location filename="../tilauscope/onboarding.py" line="464" />
         <source>From this roaster</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1034" />
-        <location filename="../tilauscope/onboarding.py" line="458" />
+        <location filename="../tilauscope/onboarding.py" line="1146" />
+        <location filename="../tilauscope/onboarding.py" line="472" />
         <source>First batch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="514" />
+        <location filename="../tilauscope/onboarding.py" line="528" />
         <source>Manual setup</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="526" />
+        <location filename="../tilauscope/onboarding.py" line="540" />
         <source>{0}–{1} g</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="527" />
+        <location filename="../tilauscope/onboarding.py" line="541" />
         <source>up to {0} g</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="554" />
+        <location filename="../tilauscope/onboarding.py" line="568" />
         <source>nominal</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="558" />
+        <location filename="../tilauscope/onboarding.py" line="572" />
         <source>sweet spot</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="566" />
+        <location filename="../tilauscope/onboarding.py" line="642" />
+        <location filename="../tilauscope/onboarding.py" line="580" />
         <source>Plug the roaster in and switch it on. Nothing changes until you finish.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="621" />
+        <location filename="../tilauscope/onboarding.py" line="636" />
         <source>How is your {0} connected?</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="649" />
+        <location filename="../tilauscope/onboarding.py" line="639" />
+        <source>Your roaster talks to this computer through an add-on box. Pick the one you built.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="684" />
+        <source>Found nearby</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="686" />
+        <source>Searching…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="687" />
+        <source>Not seen</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="690" />
+        <source>Cable</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="693" />
+        <source>No port</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="698" />
+        <source>Port found</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="699" />
+        <source>Pick a port</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="745" />
         <source>Plug the cable in. TilauScope finds the roaster by itself.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="661" />
+        <location filename="../tilauscope/onboarding.py" line="757" />
         <source>The port used last time. TilauScope keeps it.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="663" />
+        <location filename="../tilauscope/onboarding.py" line="759" />
         <source>The only USB serial port on this computer. TilauScope will use it.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="665" />
+        <location filename="../tilauscope/onboarding.py" line="761" />
         <source>USB port found</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="680" />
+        <location filename="../tilauscope/onboarding.py" line="776" />
         <source>Not listed? Unplug the cable, plug it back in, then scan again.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="683" />
-        <source>No USB port found. Plug the cable in, switch the roaster on, then scan again.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="695" />
-        <source>Roaster address (name or IP)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="706" />
-        <source>Your roaster and this computer must be on the same network. The address is shown in the roaster's network settings.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="711" />
-        <source>Switch the roaster on. TilauScope connects to it when monitoring starts.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="715" />
-        <source>{0} found nearby</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="716" />
-        <source>TilauScope will read and drive it over Bluetooth. No cable needed.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="718" />
-        <source>Searching nearby… Switch the roaster on.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="721" />
-        <source>Keep the roaster within a few metres of this computer. If the link drops mid-roast, switch to the USB cable.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="724" />
-        <source>Keep the roaster within a few metres of this computer.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="729" />
-        <source>Temperatures come from the probes fitted to the roaster. Probe settings and formulas come with the kit.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="732" />
-        <source>This roaster takes no command from TilauScope. It records, and the assistant shows the settings to make by hand.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="777" />
-        <source>Connect your hardware</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/onboarding.py" line="778" />
-        <source>TilauScope scans for your gear and registers what it finds. Anything already set up shows as detected. Everything is optional.</source>
+        <location filename="../tilauscope/onboarding.py" line="780" />
+        <source>No USB port found</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="781" />
+        <source>Plug the box into this computer, switch the roaster on, then scan again.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="784" />
+        <source>No USB port found. Plug the cable in, switch the roaster on, then scan again.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="796" />
+        <source>Roaster address (name or IP)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="807" />
+        <source>Your roaster and this computer must be on the same network. The address is shown in the roaster's network settings.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="813" />
+        <source>Switch the roaster on. TilauScope connects to it when monitoring starts.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="817" />
+        <source>{0} found nearby</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="818" />
+        <source>TilauScope will read and drive it over Bluetooth. No cable needed.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="821" />
+        <source>Searching nearby…</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="822" />
+        <source>Switch the roaster on with the {0} box plugged in. Its light must be on.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="825" />
+        <source>Searching nearby… Switch the roaster on.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="829" />
+        <source>Keep the roaster within a few metres of this computer. If the link drops mid-roast, switch to {0}.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="833" />
+        <source>Keep the roaster within a few metres of this computer. If the link drops mid-roast, switch to the USB cable.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="836" />
+        <source>Keep the roaster within a few metres of this computer.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="841" />
+        <source>Temperatures come from the probes fitted to the roaster. Probe settings and formulas come with the kit.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="844" />
+        <source>This roaster takes no command from TilauScope. It records, and the assistant shows the settings to make by hand.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="889" />
+        <source>Connect your hardware</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="890" />
+        <source>TilauScope scans for your gear and registers what it finds. Anything already set up shows as detected. Everything is optional.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/onboarding.py" line="893" />
         <source>Search &amp; auto-register</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="806" />
+        <location filename="../tilauscope/onboarding.py" line="918" />
         <source>smoke extractor · PID</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="808" />
+        <location filename="../tilauscope/onboarding.py" line="920" />
         <source>Bluetooth scale</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="808" />
+        <location filename="../tilauscope/onboarding.py" line="920" />
         <source>charge &amp; output weighing</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="810" />
+        <location filename="../tilauscope/onboarding.py" line="922" />
         <source>ESP32 probe · BME280 / I²S mic</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="812" />
+        <location filename="../tilauscope/onboarding.py" line="924" />
         <source>water activity (Aw)</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="815" />
+        <location filename="../tilauscope/onboarding.py" line="927" />
         <source>Bluetooth colour meter</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="815" />
+        <location filename="../tilauscope/onboarding.py" line="927" />
         <source>bean colour reader</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="828" />
+        <location filename="../tilauscope/onboarding.py" line="940" />
         <source>Other Artisan BLE devices detected</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="838" />
+        <location filename="../tilauscope/onboarding.py" line="950" />
         <source>nothing recognised nearby — these are identified, not configured</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="852" />
+        <location filename="../tilauscope/onboarding.py" line="964" />
         <source>Where should your files live?</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="853" />
+        <location filename="../tilauscope/onboarding.py" line="965" />
         <source>Choose the folders for your BeanCave green-bean database and your roast logs (.alog). Existing folders are pre-filled.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1037" />
-        <location filename="../tilauscope/onboarding.py" line="858" />
+        <location filename="../tilauscope/onboarding.py" line="1149" />
+        <location filename="../tilauscope/onboarding.py" line="970" />
         <source>BeanCave folder</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1039" />
-        <location filename="../tilauscope/onboarding.py" line="859" />
+        <location filename="../tilauscope/onboarding.py" line="1151" />
+        <location filename="../tilauscope/onboarding.py" line="971" />
         <source>Roast logs folder</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="925" />
+        <location filename="../tilauscope/onboarding.py" line="1037" />
         <source>Select folder</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="942" />
+        <location filename="../tilauscope/onboarding.py" line="1054" />
         <source>not set — click Choose…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="951" />
+        <location filename="../tilauscope/onboarding.py" line="1063" />
         <source>Ready to set up</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="952" />
+        <location filename="../tilauscope/onboarding.py" line="1064" />
         <source>Here is what Finish changes. Anything under “Kept as it is” stays yours.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="957" />
+        <location filename="../tilauscope/onboarding.py" line="1069" />
         <source>Will be set</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="958" />
+        <location filename="../tilauscope/onboarding.py" line="1070" />
         <source>Kept as it is</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="963" />
+        <location filename="../tilauscope/onboarding.py" line="1075" />
         <source>Next: add your first green coffee, then start a roast.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1008" />
+        <location filename="../tilauscope/onboarding.py" line="1120" />
         <source>Units</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1011" />
+        <location filename="../tilauscope/onboarding.py" line="1123" />
         <source>set up later in Devices…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1016" />
+        <location filename="../tilauscope/onboarding.py" line="1128" />
         <source>Address</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1021" />
+        <location filename="../tilauscope/onboarding.py" line="1133" />
         <source>none · read-only roaster</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1025" />
+        <location filename="../tilauscope/onboarding.py" line="1137" />
         <source>Milestone buttons</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1026" />
+        <location filename="../tilauscope/onboarding.py" line="1138" />
         <source>{0} send commands</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1028" />
+        <location filename="../tilauscope/onboarding.py" line="1140" />
         <source>Command buttons</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1035" />
+        <location filename="../tilauscope/onboarding.py" line="1147" />
         <source>Theme and curves</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1043" />
+        <location filename="../tilauscope/onboarding.py" line="1155" />
         <source>Your alarms</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1043" />
+        <location filename="../tilauscope/onboarding.py" line="1155" />
         <source>Sounds</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1043" />
+        <location filename="../tilauscope/onboarding.py" line="1155" />
         <source>Batch counter</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1043" />
+        <location filename="../tilauscope/onboarding.py" line="1155" />
         <source>Paired devices</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1044" />
+        <location filename="../tilauscope/onboarding.py" line="1156" />
         <source>unchanged</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1092" />
+        <location filename="../tilauscope/onboarding.py" line="1204" />
         <source>searching…</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1130" />
+        <location filename="../tilauscope/onboarding.py" line="1242" />
         <source>Finish</source>
         <translation type="unfinished">סִיוּם</translation>
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1161" />
+        <location filename="../tilauscope/onboarding.py" line="1273" />
         <source>Monitoring is on</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/onboarding.py" line="1162" />
+        <location filename="../tilauscope/onboarding.py" line="1274" />
         <source>Turn monitoring off, then press Finish again. The roaster setup cannot change while it is being read.</source>
         <translation type="unfinished" />
     </message>
@@ -41185,17 +41306,17 @@ The drum keeps turning: empty it into the cooling tray yourself.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/window/milestones.py" line="193" />
+        <location filename="../tilauscope/window/milestones.py" line="194" />
         <source>This event is already recorded</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/window/milestones.py" line="209" />
+        <location filename="../tilauscope/window/milestones.py" line="210" />
         <source>Click to cancel marking of this event</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/window/milestones.py" line="237" />
+        <location filename="../tilauscope/window/milestones.py" line="238" />
         <source>Click to mark this event</source>
         <translation type="unfinished" />
     </message>

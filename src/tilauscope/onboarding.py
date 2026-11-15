@@ -80,6 +80,19 @@ _LINK_LABELS: Final[dict[str, str]] = {
     "network":   QT_TRANSLATE_NOOP("tilauscope_onboarding", "Network"),
     "probes":    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Probe kit"),
 }
+# Box cards of the Connection step: roasters.json artisan_setups "label" and "hint",
+# translated where the card is built; declared here for the extractor.
+_SETUP_TEXTS: Final[tuple[str, ...]] = (
+    QT_TRANSLATE_NOOP("tilauscope_onboarding", "SkyCommand Bluetooth"),
+    QT_TRANSLATE_NOOP("tilauscope_onboarding", "ESP32 box on the roaster. No cable to this computer."),
+    QT_TRANSLATE_NOOP("tilauscope_onboarding", "SkyCommand USB"),
+    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Arduino or ESP32 box plugged into this computer by USB."),
+)
+# Stroked 24-unit icons of the box cards, by link kind.
+_SVG_LINK: Final[dict[str, str]] = {
+    "bluetooth": "M7 7l10 10-5 5V2l5 5L7 17",
+    "usb": "M12 2v14M9 5l3-3 3 3M12 11l-5-2V6M12 13l5-2V8M12 16a3 3 0 1 0 0 6a3 3 0 1 0 0-6",
+}
 _HEATING_LABELS: Final[dict[str, str]] = {
     "gas":       QT_TRANSLATE_NOOP("tilauscope_onboarding", "Gas"),
     "electric":  QT_TRANSLATE_NOOP("tilauscope_onboarding", "Electric"),
@@ -98,6 +111,7 @@ _THEME_REL: Final[tuple[str, ...]] = ("Themes", "TilauScope", "Catppuccin.athm")
 
 
 from tilauscope import machine_setup
+from tilauscope.beancave_catalogue import svg_pixmap
 from tilauscope.theme_qss import apply_tilau_theme, tint
 
 
@@ -567,6 +581,7 @@ class OnboardingWizard(QDialog):
             "Plug the roaster in and switch it on. Nothing changes until you finish."))
         lay = page.layout()
         self._conn_title = lay.itemAt(0).widget()
+        self._conn_sub = lay.itemAt(1).widget()
         self._link_bar = QHBoxLayout()
         self._link_bar.setSpacing(6)
         lay.addLayout(self._link_bar)
@@ -619,7 +634,22 @@ class OnboardingWizard(QDialog):
         self._clear_layout(self._conn_body)
         self._conn_title.setText(
             QApplication.translate("tilauscope_onboarding","How is your {0} connected?").format(self._roaster))
-        if len(self._setups) > 1:
+        boxes = self._box_cards()
+        self._conn_sub.setText(
+            QApplication.translate("tilauscope_onboarding",
+                "Your roaster talks to this computer through an add-on box. Pick the one you built.")
+            if boxes else
+            QApplication.translate("tilauscope_onboarding",
+                "Plug the roaster in and switch it on. Nothing changes until you finish."))
+        self._link_bar.setSpacing(14 if boxes else 6)
+        if boxes:
+            group = self._fresh_group("_link_group")
+            for i, setup in enumerate(self._setups):
+                card = self._box_card(setup, i == self._setup_index)
+                card.clicked.connect(lambda _=False, k=i: self._choose_setup(k))
+                group.addButton(card)
+                self._link_bar.addWidget(card, 1)
+        elif len(self._setups) > 1:
             group = self._fresh_group("_link_group")
             for i, setup in enumerate(self._setups):
                 b = QPushButton(QApplication.translate("tilauscope_onboarding", _LINK_LABELS.get(setup.link, setup.link)))
@@ -642,6 +672,72 @@ class OnboardingWizard(QDialog):
             self._fill_probes(setup)
         else:
             self._fill_usb(setup)
+
+    def _box_cards(self) -> bool:
+        """Whether the links are add-on boxes the roaster declares by name: one card each."""
+        return len(self._setups) > 1 and all(s.label for s in self._setups)
+
+    def _box_status(self, setup, selected: bool) -> tuple[str, str | None]:
+        """The chip on a box card: what TilauScope sees of that box right now."""
+        if setup.link == "bluetooth" and setup.ble_prefix:
+            if setup.ble_prefix in self._ble_seen:
+                return "● " + QApplication.translate("tilauscope_onboarding","Found nearby"), "SUCCESS"
+            if selected:
+                return "⌕ " + QApplication.translate("tilauscope_onboarding","Searching…"), "ACCENT"
+            return QApplication.translate("tilauscope_onboarding","Not seen"), None
+        if setup.link == "usb":
+            if not selected:
+                return QApplication.translate("tilauscope_onboarding","Cable"), None
+            ports = machine_setup.usb_serial_ports()
+            if not ports:
+                return "! " + QApplication.translate("tilauscope_onboarding","No port"), "WARNING"
+            devices = {d for d, _ in ports}
+            path = machine_setup.preset_path(setup)
+            saved = machine_setup.saved_port(self._aw, path) if path is not None else ""
+            if self._port in devices or machine_setup.auto_port(saved, ports) is not None:
+                return "● " + QApplication.translate("tilauscope_onboarding","Port found"), "SUCCESS"
+            return QApplication.translate("tilauscope_onboarding","Pick a port"), "ACCENT"  # several, none chosen yet
+        return QApplication.translate("tilauscope_onboarding", _LINK_LABELS.get(setup.link, setup.link)), None
+
+    def _box_card(self, setup, selected: bool) -> QPushButton:
+        card = QPushButton()
+        card.setCheckable(True)
+        card.setChecked(selected)
+        card.setCursor(Qt.CursorShape.PointingHandCursor)
+        card.setFixedHeight(124)
+        card.setStyleSheet(
+            f"QPushButton {{ background:{_T['SURFACE']}; border:2px solid {_T['OVERLAY']};"
+            f" border-radius:14px; text-align:left; }}"
+            f"QPushButton:hover {{ border-color:{_T['OVER2']}; }}"
+            f"QPushButton:checked {{ border-color:{_T['ACCENT']}; background:{tint('ACCENT', 0.10)}; }}"
+        )
+        vl = QVBoxLayout(card)
+        vl.setContentsMargins(16, 14, 14, 14)
+        vl.setSpacing(6)
+        top = QHBoxLayout()
+        icon = QLabel()
+        icon.setFixedSize(40, 40)
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setStyleSheet(f"background:{_T['OVERLAY']}; border-radius:10px;")
+        icon.setPixmap(svg_pixmap(_SVG_LINK.get(setup.link, _SVG_LINK["usb"]),
+                                  _T["ACCENT"] if selected else _T["TEXT"], 22))
+        top.addWidget(icon)
+        top.addStretch()
+        text, token = self._box_status(setup, selected)
+        top.addWidget(self._pill(text, token), 0, Qt.AlignmentFlag.AlignVCenter)
+        vl.addLayout(top)
+        title = QLabel(QApplication.translate("tilauscope_onboarding", setup.label))
+        title.setStyleSheet(f"color:{_T['TEXT']}; font-size:15px; font-weight:600; background:transparent;")
+        vl.addWidget(title)
+        if setup.hint:
+            hint = QLabel(QApplication.translate("tilauscope_onboarding", setup.hint))
+            hint.setWordWrap(True)
+            hint.setStyleSheet(f"color:{_T['SUBTEXT']}; font-size:12px; background:transparent;")
+            vl.addWidget(hint)
+        vl.addStretch()
+        for w in card.findChildren(QLabel):
+            w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        return card
 
     def _fill_usb(self, setup) -> None:
         path = machine_setup.preset_path(setup)
@@ -679,6 +775,11 @@ class OnboardingWizard(QDialog):
                 self._conn_body.addWidget(rb)
             self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
                 "Not listed? Unplug the cable, plug it back in, then scan again.")))
+        elif setup.label:
+            self._conn_body.addWidget(self._hint("WARNING", "!", "<b>{}</b><br>{}".format(
+                QApplication.translate("tilauscope_onboarding","No USB port found"),
+                QApplication.translate("tilauscope_onboarding",
+                    "Plug the box into this computer, switch the roaster on, then scan again."))))
         else:
             self._conn_body.addWidget(self._hint("WARNING", "!", QApplication.translate("tilauscope_onboarding",
                 "No USB port found. Plug the cable in, switch the roaster on, then scan again.")))
@@ -707,17 +808,28 @@ class OnboardingWizard(QDialog):
             "Your roaster and this computer must be on the same network. The address is shown in the roaster's network settings.")))
 
     def _fill_bluetooth(self, setup, model: str) -> None:
+        box = QApplication.translate("tilauscope_onboarding", setup.label) if setup.label else ""
         if not setup.ble_prefix:
             self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
                 "Switch the roaster on. TilauScope connects to it when monitoring starts.")))
         elif setup.ble_prefix in self._ble_seen:
             self._conn_body.addWidget(self._hint("SUCCESS", "✓", "<b>{}</b><br>{}".format(
-                QApplication.translate("tilauscope_onboarding","{0} found nearby").format(model),
+                QApplication.translate("tilauscope_onboarding","{0} found nearby").format(box or model),
                 QApplication.translate("tilauscope_onboarding","TilauScope will read and drive it over Bluetooth. No cable needed."))))
+        elif box:
+            self._conn_body.addWidget(self._hint("ACCENT", "⌕", "<b>{}</b><br>{}".format(
+                QApplication.translate("tilauscope_onboarding","Searching nearby…"),
+                QApplication.translate("tilauscope_onboarding",
+                    "Switch the roaster on with the {0} box plugged in. Its light must be on.").format(box))))
         else:
             self._conn_body.addWidget(self._hint("ACCENT", "⌕", QApplication.translate("tilauscope_onboarding",
                 "Searching nearby… Switch the roaster on.")))
-        if any(s.link == "usb" for s in self._setups):
+        usb_box = next((s.label for s in self._setups if s.link == "usb" and s.label), None)
+        if box and usb_box:
+            near = QApplication.translate("tilauscope_onboarding",
+                "Keep the roaster within a few metres of this computer. If the link drops mid-roast, switch to {0}.").format(
+                QApplication.translate("tilauscope_onboarding", usb_box))
+        elif any(s.link == "usb" for s in self._setups):
             near = QApplication.translate("tilauscope_onboarding",
                 "Keep the roaster within a few metres of this computer. If the link drops mid-roast, switch to the USB cable.")
         else:

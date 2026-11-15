@@ -49,10 +49,17 @@ re-applied: the burner slider shows the roaster's actual output, and resuming he
 STOP is your decision. A burner that does not confirm it is off when the link opens, or that runs
 above its command, is also reported on screen.
 
-!!! note "Older Skywalker models"
-    An earlier Skywalker generation connects over a different Bluetooth link than the one
-    described above. It is recognised, but its setup is closer to a generic Bluetooth device
-    than to the guided pairing the current model gets.
+!!! note "Skywalker V1"
+    The Skywalker V1 has no link of its own: it reaches the computer through a SkyCommand box
+    plugged into the roaster. Two kinds are supported, and the first-time setup asks which one
+    you built (see [Getting started](getting-started.md)):
+
+    - **SkyCommand Bluetooth** — an ESP32 box, no cable to the computer; it is found nearby
+      once the roaster is on.
+    - **SkyCommand USB** — an Arduino or ESP32 box plugged into the computer by USB.
+
+    Either way the burner and air sliders, their buttons and the cooling buttons drive the
+    roaster. The drum turns at a fixed speed and there is no environment probe.
 
 <!-- CAPTURE 9.1 — the roaster model picker, list open. -->
 

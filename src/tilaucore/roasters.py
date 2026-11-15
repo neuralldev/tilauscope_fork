@@ -205,6 +205,8 @@ class ArtisanSetup:
     preset: str                     # path under includes/Machines
     ble_prefix: str | None = None   # advertised name that selects this link
     read_only: bool = False         # measurement only, the roaster takes no command
+    label: str | None = None        # wizard card title naming the add-on box (English, translated by the wizard)
+    hint: str | None = None         # wizard card line under the label
 
 @dataclass(slots=True)
 class OpticalSensor:

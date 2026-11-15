@@ -9,7 +9,8 @@ up to its DROP are played again, each as a jump to the recorded value, as the ha
 between two moves. A move is played at
 the same time after CHARGE as in the recorded roast while the live turning point is not known; past
 it, when the live BT reaches the BT the move was made at (moves of one lever in their recorded
-order). A recorded roast without BT is played by time throughout. Nothing is played after the live
+order). A move made before the recorded turning point stays on time: BT was still falling. A
+recorded roast without BT is played by time throughout. Nothing is played after the live
 DROP. Times are the roast clock's seconds, temperatures the roast's unit; the sliders, the playback
 aid, its beep and the Fuji PID strings stay with the apps.
 """
@@ -49,10 +50,13 @@ class Playback:
                  etypes: Sequence[int], evalues: Sequence[float], timeindex: Sequence[int],
                  replay_type: int = BY_BT, playback: Sequence[bool] = (True,) * LEVERS,
                  ramp: Sequence[bool] = (True,) * LEVERS, lookahead_s: float = 0, moves: bool = True,  # noqa: ARG002
-                 aid: Sequence[bool] = (False,) * LEVERS, aid_window_s: float = 0) -> None:
+                 aid: Sequence[bool] = (False,) * LEVERS, aid_window_s: float = 0,
+                 tp_s: float | None = None) -> None:
         # read in place, never copied: the desktop builds one at every sample. `temp1`, `temp2`,
         # `stemp1`, `ramp` and `lookahead_s` are what the desktop passes; no move is played on ET nor ramped.
+        # `tp_s`: the recorded turning point, s after its CHARGE (the roast file's computed TP_time).
         self.times = times
+        self.tp_s = tp_s
         self.stemp2 = stemp2
         self.events, self.etypes, self.evalues = events, etypes, evalues
         self.timeindex = timeindex
@@ -101,6 +105,9 @@ class Playback:
         drop = self.timeindex[6]
         live_bt = live.ctemp2[-1] if live.ctemp2 else None
         by_bt = self.by_bt and live.tp_index is not None and _reads(live_bt)
+        charge = self.timeindex[0]
+        recorded_tp = (self.times[charge] + self.tp_s if self.tp_s is not None and 0 <= charge < len(self.times)
+                       else None)
         waiting = [False] * LEVERS  # a lever's next move not reached yet holds its later ones
         for i, at in enumerate(self.events):
             lever = self.etypes[i] if i < len(self.etypes) else -1
@@ -111,7 +118,8 @@ class Playback:
             until = self.times[at] - now
             if self.announced is None and self.aid[lever] and 0 < until < self.aid_window_s:
                 self.announced = (i, until)
-            if by_bt and at < len(self.stemp2) and _reads(self.stemp2[at]):
+            if (by_bt and at < len(self.stemp2) and _reads(self.stemp2[at])
+                    and (recorded_tp is None or self.times[at] >= recorded_tp)):
                 reached = live_bt >= self.stemp2[at]  # type: ignore[operator]
             else:
                 reached = until <= 0

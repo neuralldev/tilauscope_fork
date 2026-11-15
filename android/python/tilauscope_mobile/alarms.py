@@ -18,7 +18,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from tilaucore.alarms import (AIRWAVE, AMBIENT, ANCHORS, EVENT_BUTTON, IF_ALARM, NO_SOURCE, POPUP, SLIDERS, Alarm,
-                              AlarmRun, Readings, TurningPoint, event_buttons, read_alrm, slider_value, write_alrm)
+                              AlarmRun, Readings, event_buttons, read_alrm, slider_value, write_alrm)
 from tilaucore.artisan_compat import events_internal_to_external_value
 from tilaucore.artisan_setup import LEVERS, MachineSetup
 
@@ -30,6 +30,16 @@ CHANNELS = {key: (first, second, (label1, label2)) for key, first, second, label
 
 # Artisan's timeindex position of each tablet milestone (canvas.py: 0 CHARGE … 6 DROP)
 MARK_INDEX = {"charge": 0, "dry_end": 1, "first_crack": 2, "drop": 6}
+
+
+def timeindex(milestones: dict[str, int]) -> list[int]:
+    """The session's milestones as Artisan's timeindex: CHARGE -1 when unmarked, the others 0."""
+    marks = [-1, 0, 0, 0, 0, 0, 0, 0]
+    for key, index in milestones.items():
+        marks[MARK_INDEX[key]] = index
+    return marks
+
+
 ANCHOR_WORDS = {"on": "Start", "start": "Start", "charge": "Charge", "tp": "TP", "dry_end": "Dry end",
                 "first_crack": "First crack", "first_crack_end": "First crack end", "second_crack": "Second crack",
                 "second_crack_end": "Second crack end", "drop": "Drop", "cool_end": "Cool end"}
@@ -169,25 +179,22 @@ class TabletAlarms:
         self.desktop_devices = desktop_devices or []
         self.unit = unit # the thresholds are kept in °C; the sentences say them in this unit
         self.run = AlarmRun(rows)
-        self.tp = TurningPoint()
         self.fired_at: dict[int, float] = {} # row -> roast time it fired
         self.recent: list[dict] = [] # the latest fired rows, for the toast
         self.message: dict | None = None # the latest message alarm
         self.texts = [self._describe(i) for i in range(len(rows))]
 
     # ── firing ───────────────────────────────────────────────────────────
-    def step(self, session: Session, now: float) -> list[Act]:
-        """The rows that fire at this sample, as acts for the caller to run."""
+    def step(self, session: Session, now: float, tp: int | None) -> list[Act]:
+        """The rows that fire at this sample, as acts for the caller to run; `tp`: the roast's TP anchor
+        (TurningPoint.index, kept by the caller)."""
         samples = session.samples
         if not samples:
             return []
         times = [s.elapsed_s for s in samples]
         bt = [s.bt_c for s in samples]
         et = [s.et_c if s.et_c is not None else -1 for s in samples]
-        marks = [-1, 0, 0, 0, 0, 0, 0, 0]
-        for key, index in session.milestones.items():
-            marks[MARK_INDEX[key]] = index
-        tp = self.tp.update(times, bt, marks)
+        marks = timeindex(session.milestones)
         extra = []
         for key in self.desktop_devices: # each device's two channels as Artisan holds them (-1: no reading)
             first, second, _ = CHANNELS.get(key, (None, None, None))

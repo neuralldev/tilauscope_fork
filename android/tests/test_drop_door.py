@@ -64,6 +64,34 @@ class DropDoorTests(unittest.TestCase):
         self.run_to(402)
         self.assertIn(self.demo.session.milestones["drop"], (400, 401))
 
+    def test_a_probe_read_first_after_charge_still_marks_the_drop(self):
+        self.demo.start("plan") # no door frame before CHARGE: the probe came late
+        self.run_to(300)
+        self.read(frame(False, 3, 600_000)) # first frame: the last roast's drop, before CHARGE
+        self.run_to(400)
+        self.assertNotIn("drop", self.demo.session.milestones)
+        self.read(frame(True, 4, 0))
+        self.run_to(402)
+        self.assertIn(self.demo.session.milestones["drop"], (400, 401))
+
+    def test_a_door_open_since_before_charge_at_the_first_frame_is_not_the_drop(self):
+        self.demo.start("plan")
+        self.run_to(300)
+        self.read(frame(True, 2, 600_000)) # left open since before CHARGE
+        self.read(frame(False, 2, 600_000)) # shut: armed, still nothing to mark
+        self.run_to(400)
+        self.assertNotIn("drop", self.demo.session.milestones)
+        self.read(frame(True, 3, 0))
+        self.run_to(402)
+        self.assertIn(self.demo.session.milestones["drop"], (400, 401))
+
+    def test_an_opening_after_charge_in_the_first_frame_is_the_drop(self):
+        self.demo.start("plan")
+        self.run_to(300)
+        self.read(frame(True, 5, 2000)) # the probe connected after the door opened
+        self.run_to(302)
+        self.assertIn(self.demo.session.milestones["drop"], (297, 298))
+
     def test_a_contact_never_seen_closed_marks_nothing(self):
         self.read(frame(True, 0)) # nothing wired: the pull-up reads open
         self.demo.start("plan")

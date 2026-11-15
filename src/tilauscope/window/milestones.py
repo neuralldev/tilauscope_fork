@@ -159,12 +159,13 @@ class MilestonesMixin:
         The unmarked sentinel differs by index, and by index only: CHARGE (0)
         uses -1 because 0 is a valid sample index, every milestone after it
         uses 0. Artisan reads it the same way (canvas.py markDryEnd/markDrop).
-        Single reader, so the two conventions can never drift apart again.
+        Single reader (tilaucore.roast_analysis.marked, shared with the core and
+        the drop door watch), so the two conventions can never drift apart again.
         """
+        from tilaucore.roast_analysis import marked  # noqa: PLC0415
         try:
-            timeindex = self.aw.qmc.timeindex
-            return timeindex[0] > -1 if idx == 0 else timeindex[idx] > 0
-        except (AttributeError, IndexError, TypeError):
+            return marked(self.aw.qmc.timeindex, idx)
+        except AttributeError:
             return False
 
     def _milestone_key_allowed(self, target: int, prerequisite: int) -> bool:

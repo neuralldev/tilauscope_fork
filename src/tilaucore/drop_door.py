@@ -94,10 +94,35 @@ class DropDoor:
         self._reference = None
         return read_at_s - frame.since_open_ms / 1000.0
 
-    def charge(self) -> bool:
-        """CHARGE was marked: the openings from now on are this roast's. True when the contact counts."""
-        self._reference = self._last_count if self.armed else None
+    def charge(self, reference: int | None = None) -> bool:
+        """CHARGE was marked: the openings from now on are this roast's. True when the contact counts.
+
+        `reference`: the count before this roast's openings, when the app could only learn it from
+        a frame read after CHARGE. A counted opening means the door read closed before it: armed.
+        """
+        if reference is not None:
+            self.armed = True
+            self._reference = reference
+        else:
+            self._reference = self._last_count if self.armed else None
         return self._reference is not None
+
+    def read_after_charge(self, frame: DoorFrame, read_at_s: float, charge_at_s: float,
+                          first: bool) -> tuple[float | None, bool]:
+        """A fresh frame while CHARGE, marked before any closed frame, still waits for its reference:
+        when the door opened (as `read`) and whether it still waits.
+
+        On the link's very first frame (`first`), `since_open_ms` dates the last opening: one dated at
+        or after `charge_at_s` is this roast's drop (the roast's reference is one less); one dated
+        before it is the previous roast's, or the door left open. Later frames follow the contact's
+        rule: armed only once read closed (a contact seen open and never closed is not there).
+        """
+        since = frame.since_open_ms
+        if first and since is not None and frame.open_count > 0 and read_at_s - since / 1000.0 >= charge_at_s:
+            self.charge(frame.open_count - 1)
+            return self.read(frame, read_at_s), False
+        self.read(frame, read_at_s)
+        return None, not self.charge() # an open door arms only once it reads closed
 
     def stop(self) -> None:
         """The roast ended without the door's DROP (marked by hand, from the curve, or abandoned)."""

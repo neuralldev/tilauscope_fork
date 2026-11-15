@@ -1142,7 +1142,8 @@ function render() {
   $("bt").style.color = lost ? "#6C7086" : "var(--blue)";
   $("btnote").innerHTML = "";
   if (lost && d.bt_c != null) $("btnote").textContent = "Last " + Math.round(shownT(d.bt_c)) + " " + deg();
-  else if (!lost && d.et_c != null) $("btnote").innerHTML = 'ET <span style="color:var(--peach);font-weight:600">' + shownT(d.et_c).toFixed(1) + " " + deg() + "</span>";
+  else if (!lost && d.has_et !== false) // the machine's ET, "—" until it reads; none on a roaster without the probe
+    $("btnote").innerHTML = 'ET <span style="color:var(--peach);font-weight:600">' + (d.et_c != null ? shownT(d.et_c).toFixed(1) + " " + deg() : "—") + "</span>";
   var ror = d.ror_c_per_min, win = rorWindow(m);
   var showRor = win != null && stage >= 2 && stage <= 4 && ror != null;
   $("ror").textContent = showRor ? shownD(ror).toFixed(1) : "—";

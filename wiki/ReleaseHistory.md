@@ -1,3 +1,16 @@
+## [4.4] 2026-11-14
+build 1
+* ⚡ [feat(onboarding)] : for the Skywalker V1, the first-time setup's Connection step asks which SkyCommand box you built, Bluetooth or USB, on two cards that show whether the box is found nearby or its USB port is plugged in
+* 🐛 [fix(skywalker)] : the Skywalker V1 on a USB SkyCommand box (Arduino or ESP32) obeys the burner and air sliders and buttons, and its cooling buttons start and stop cooling; the box ignored the commands it was sent
+* 🐛 [fix(skywalker)] : the Skywalker V1 on a Bluetooth SkyCommand box (ESP32) shows its temperatures, and its cooling buttons start and stop cooling
+* 🐛 [fix(detection)] : automatic DROP is never marked before first crack, on the desktop as on the Android prototype; the Android prototype also waits 7 minutes and a bean temperature above 160 °C, as the desktop does
+* 🐛 [fix(alarms)] : alarms, Roast Replay and dry end that start from the turning point start at 2:00 when the beans have not turned yet; a turning point confirmed just after 2:00 is still found, and an undone milestone no longer stops the search
+* 🐛 [fix(replay)] : Roast Replay plays the moves recorded before the reference roast's turning point on time, instead of waiting for bean temperature to climb back to them
+* 🐛 [fix(detection)] : the drop door contact marks DROP even when the probe is first read after CHARGE, on the desktop and the Android prototype
+* 🐛 [fix(beancave)] : publishing to the library is no longer blocked by a short probe dropout, and a roast the library refuses says which value to correct
+* 🐛 [fix(beancave)] : a .tilaucoffee file opened while TilauScope starts or is closed opens once it is ready; while a roast is recorded it is refused with a message; a coffee with a very long name imports
+* ⚡ [feat(android)] : on the Android prototype, dry end is looked for from 2:00 without a turning point instead of 4:00
+* 🐛 [fix(network)] : the installed app reaches the coffee library and the other HTTPS services again; it could not check their certificates and read them as offline
 ## [4.3] 2026-09-13
 build 60
 build 59

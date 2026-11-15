@@ -41,7 +41,7 @@ class SkyCommand(ClientBLE):
     # TC4 protocol
     POLL_S:Final[float]  = 1.0          # READ poll cadence (keep <= sample interval / 2)
     CMD_TERM:Final[str]  = '\n'         # commands are LF-terminated
-    LINE_TERM:Final[bytes] = b'\r\n'    # telemetry lines are CRLF-terminated
+    LINE_TERM:Final[bytes] = b'\n'      # telemetry lines end in LF (SkiBean) or CRLF; the CR is stripped
     CHAN_INIT:Final[str] = 'CHAN;1200'  # logical->physical channel map (Artisan default)
     READ_CMD:Final[str]  = 'READ'       # request one CSV telemetry line
 
@@ -117,13 +117,13 @@ class SkyCommand(ClientBLE):
     # ── telemetry RX ──────────────────────────────────────────────────────────
     # runs in the ClientBLE async loop thread
     def notify_callback(self, _sender:'BleakGATTCharacteristic', data:bytearray) -> None:
-        # the bridge may fragment or coalesce frames, so accumulate then split on CRLF
+        # the bridge may fragment or coalesce frames, so accumulate then split on LF
         _log.debug("Skycommand received notification")
         self._buf.extend(data)
         while self.LINE_TERM in self._buf:
             line, _, rest = self._buf.partition(self.LINE_TERM)
             self._buf = bytearray(rest)
-            self._parse(bytes(line))
+            self._parse(bytes(line).rstrip(b'\r'))
 
     # received telemetry is a CSV line: "ambient,et,bt[,burner,airflow]"
     # avoid to erase current value if there is a parsing error, use previous value instead
@@ -136,21 +136,21 @@ class SkyCommand(ClientBLE):
             airflow:int = self._airflow
         try:
             parts = line.decode('ascii', 'ignore').split(',')
-            ambient = int(parts[self.IDX_AMBIENT])
+            ambient = int(float(parts[self.IDX_AMBIENT]))
             et = float(parts[self.IDX_ET])
             bt = float(parts[self.IDX_BT])
             _log.debug('Skycommand parsed line: ambient=%d, et=%.1f, bt=%.1f', ambient, et, bt)
-        except (ValueError, IndexError):
+        except (ValueError, IndexError, OverflowError):
             _log.debug('Skycommand unparsable line: %r', line)
             return
         # actuator duty echoes (optional fields)
         try:
             burner = int(float(parts[self.IDX_BURNER]))
-        except (ValueError, IndexError):
+        except (ValueError, IndexError, OverflowError):
             pass
         try:
             airflow = int(float(parts[self.IDX_AIRFLOW]))
-        except (ValueError, IndexError):
+        except (ValueError, IndexError, OverflowError):
             pass
         with self._lock:
             self._ambient = ambient

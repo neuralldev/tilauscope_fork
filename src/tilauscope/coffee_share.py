@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +29,8 @@ from tilaucore.beans import BrewSample, GreenBean, RoastTasting
 from tilaucore.coffee_library import Card
 from tilaucore.coffee_share import Clean
 from tilauscope.tilau_privacy import Profile, runtime_sensitive_values, sanitize_text
+
+_log = logging.getLogger(__name__)
 
 
 def shared_cleaner(keep: Iterable[str], sensitive: Iterable[str] | None = None) -> Clean:
@@ -187,3 +190,53 @@ def apply_import(package: core.Package, *, beans: list[GreenBean], preview: Impo
             if sample not in here:
                 brew_log.record(cave_directory, package.bean.uuid, sample)
     return changed
+
+
+#: Coffee packages the system opened before the TilauScope window existed (launch, first-run wizard).
+_waiting: list[str] = []
+#: True once tilauscopeCall has built the window: from then on, no window means the operator closed it.
+_window_built = False
+
+
+def open_coffee_when_ready(aw: Any, path: str) -> None:
+    """Open the package on BeanCave's import now. At launch it waits for tilauscopeCall to build the window;
+    once the operator has closed that window, TilauScope opens again, as its menu entry opens it, and takes it.
+    A hidden window that refuses to close (a roast is being recorded) is not shown again: the package is dropped
+    and the operator told to open it once the roast is saved."""
+    reopened = refused = False
+    try:                                        # called from the event loop: nothing may escape
+        window = aw.tilauscope_main
+        if window is not None and window.isVisible():
+            window.open_coffee_package(path)
+            return
+        _waiting.append(path)
+        if not _window_built:
+            return                              # starting: tilauscopeCall delivers it
+        if window is not None:
+            aw.tilauscopeCall()                 # closed by its own button: drop the closed window first
+            refused = aw.tilauscope_main is window
+        if aw.tilauscope_main is None:
+            aw.tilauscopeCall()                 # builds the window, which takes what waits
+        reopened = aw.tilauscope_main is not None and not refused
+    except Exception:  # pylint: disable=broad-except
+        _log.exception("opening a coffee package failed")
+    if _window_built and not reopened and path in _waiting:   # never left to pop up at a later opening
+        _waiting.remove(path)
+    if refused:
+        try:
+            from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: PLC0415
+            from tilauscope.tilauscope_types import show_styled_message  # noqa: PLC0415
+            text = QApplication.translate("tilauscope_beancave", "TilauScope cannot open this coffee while a roast is being recorded. Open it again once the roast is saved.")
+            show_styled_message(aw, "TilauScope", text, QMessageBox.Icon.Warning)
+        except Exception:  # pylint: disable=broad-except
+            _log.exception("telling the operator a coffee package waits for the roast failed")
+
+
+def deliver_waiting_coffees(window: Any) -> None:
+    """The packages that waited for ``window``, in the order the system opened them; called by tilauscopeCall."""
+    global _window_built  # noqa: PLW0603
+    if window is None:
+        return
+    _window_built = True
+    while _waiting:
+        window.open_coffee_package(_waiting.pop(0))
