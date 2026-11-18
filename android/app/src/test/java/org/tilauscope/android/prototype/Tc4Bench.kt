@@ -42,7 +42,7 @@ class RecordingGatt : ShadowBluetoothGatt() {
     override fun discoverServices() = true
 
     @Implementation
-    override fun getServices(): List<BluetoothGattService> = listOf(SERVICE, ACAIA)
+    override fun getServices(): List<BluetoothGattService> = offeredServices
 
     @Implementation
     override fun getService(uuid: UUID): BluetoothGattService? = getServices().firstOrNull { it.uuid == uuid }
@@ -66,6 +66,17 @@ class RecordingGatt : ShadowBluetoothGatt() {
             addCharacteristic(RX)
             addCharacteristic(TX)
         }
+        // The Skywalker V1's SkyCommand box (ESP32, Nordic UART service).
+        val SKY_RX = BluetoothGattCharacteristic(UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e"),
+            BluetoothGattCharacteristic.PROPERTY_NOTIFY, 0).apply {
+            addDescriptor(BluetoothGattDescriptor(CCCD_UUID, BluetoothGattDescriptor.PERMISSION_WRITE))
+        }
+        val SKYCOMMAND = BluetoothGattService(UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e"),
+            BluetoothGattService.SERVICE_TYPE_PRIMARY).apply {
+            addCharacteristic(SKY_RX)
+            addCharacteristic(BluetoothGattCharacteristic(UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e"),
+                BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE, 0))
+        }
         // The Acaia scale's serial service, as AcaiaLink declares it.
         val ACAIA_RX = BluetoothGattCharacteristic(UUID.fromString("49535343-1e4d-4bd9-ba61-23c647249616"),
             BluetoothGattCharacteristic.PROPERTY_NOTIFY, 0).apply {
@@ -77,14 +88,20 @@ class RecordingGatt : ShadowBluetoothGatt() {
             addCharacteristic(BluetoothGattCharacteristic(UUID.fromString("49535343-8841-43f4-a8d4-ecbe34729bb3"),
                 BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE, 0))
         }
+        val V2 = listOf(SERVICE, ACAIA)
+        /** What the roaster offers; a test of the V1 sets [SKYCOMMAND] and puts [V2] back after.
+         *  Not named `services`: inside the shadow that name is the inherited getServices(), which would call itself. */
+        var offeredServices: List<BluetoothGattService> = V2
     }
 }
 
 /** A Tc4Link driven as the Skywalker would answer it, on the link's own thread and simulated clock. */
-class Tc4Bench(val link: Tc4Link) {
+class Tc4Bench(val link: Tc4Link, private val rx: BluetoothGattCharacteristic = RecordingGatt.RX,
+               private val eol: String = "\r\n") {
     fun field(name: String): Any? = Tc4Link::class.java.getDeclaredField(name).apply { isAccessible = true }.get(link)
 
     fun run(ms: Long = 0) {
+        check((field("thread") as HandlerThread).isAlive) { "the link's thread died" } // fail, never wait on a dead looper
         val looper = shadowOf((field("thread") as HandlerThread).looper)
         if (ms > 0) looper.idleFor(Duration.ofMillis(ms)) else looper.idle()
     }
@@ -101,7 +118,7 @@ class Tc4Bench(val link: Tc4Link) {
         callback(g).onConnectionStateChange(g, BluetoothGatt.GATT_SUCCESS, BluetoothProfile.STATE_CONNECTED); run()
         callback(g).onMtuChanged(g, 185, BluetoothGatt.GATT_SUCCESS); run()
         callback(g).onServicesDiscovered(g, BluetoothGatt.GATT_SUCCESS); run()
-        callback(g).onDescriptorWrite(g, RecordingGatt.RX.getDescriptor(CCCD_UUID), BluetoothGatt.GATT_SUCCESS); run()
+        callback(g).onDescriptorWrite(g, rx.getDescriptor(CCCD_UUID), BluetoothGatt.GATT_SUCCESS); run()
         run(10)
         frame(g, bt, 0)
         run(VERIFY_WAIT_MS)
@@ -110,7 +127,7 @@ class Tc4Bench(val link: Tc4Link) {
     }
 
     fun frame(g: BluetoothGatt, bt: Double, burner: Int) {
-        callback(g).onCharacteristicChanged(g, RecordingGatt.RX, "21.0,180.0,$bt,$burner,40\r\n".toByteArray()); run()
+        callback(g).onCharacteristicChanged(g, rx, "21.0,180.0,$bt,$burner,40$eol".toByteArray()); run()
     }
 
     fun disconnected(g: BluetoothGatt) {

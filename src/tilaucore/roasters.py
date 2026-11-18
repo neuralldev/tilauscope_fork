@@ -39,6 +39,12 @@ _LEGACY_ROASTER_NAMES_CI: Final[dict[str, str]] = {
     k.lower(): v for k, v in LEGACY_ROASTER_NAMES.items()}
 
 
+def roaster_display_name(manufacturer: str, model: str) -> str:
+    """The roaster's name as the apps show and save it: maker then model, or the model alone when it has no maker
+    shown (the Cubean)."""
+    return " ".join(part for part in (manufacturer, model) if part)
+
+
 def canonical_roaster_name(name: str) -> str:
     """Normalize known legacy Artisan labels to a roasters.json display name."""
     stripped = name.strip()
@@ -677,7 +683,7 @@ class RoasterContext:
         heater_res = float(hc.power_resolution_percent) if hc else 1.0
 
         return cls(
-            display_name             = f"{roaster.manufacturer} {roaster.model}",
+            display_name             = roaster_display_name(roaster.manufacturer, roaster.model),
             batch_min_g              = roaster.batch_capacity_min_g,
             batch_max_g              = roaster.batch_capacity_max_g,
             batch_optimal_g          = roaster.optimal_batch_capacity_g or roaster.batch_capacity_max_g,
@@ -957,14 +963,14 @@ class RoasterManager:
 
     def get_display_names(self) -> list[str]:
         """Retourne la liste des noms complets (Constructeur + Modèle) pour l'UI."""
-        return [f"{r.manufacturer} {r.model}" for r in self._roasters]
+        return [roaster_display_name(r.manufacturer, r.model) for r in self._roasters]
 
     def get_by_display_name(self, name: str) -> Roaster | None:
         """Find a roaster by display name; falls back to model-only match."""
         self._ensure_loaded()
         name = canonical_roaster_name(name)
         exact = next((r for r in self._roasters
-                      if f"{r.manufacturer} {r.model}" == name), None)
+                      if roaster_display_name(r.manufacturer, r.model) == name), None)
         if exact is not None:
             return exact
         # Tolerate roastertype values stored as model-only (e.g. "CR600g")

@@ -17,13 +17,20 @@ from tilaucore import storage_advisor
 MACHINES = {
     "skywalker-v2": {"manufacturer": "Skywalker", "model": "V2", "link": "Bluetooth",
                      "prefixes": ["TD5325A"], "levers": ["burner", "air", "drum"],
+                     "start": [], # its drum is a lever, sent at connection with the air
                      "stop": ["OFF"], # stops burner, air and drum (link test 2026-10-13)
                      # Cooled first: the .aset's cooling button, then its levers as roasters.json sets them.
                      "cool": ["CLDN,ON"], "lever_commands": {"burner": "OT1", "air": "OT2", "drum": "OT3"}},
     "skywalker-v1": {"manufacturer": "Skywalker", "model": "V1", "link": "Bluetooth · Skycommand",
                      "prefixes": ["ESP32_Skycommand_BLE"], "levers": ["burner", "air"],
+                     # The drum only runs or stops: the box boots with it stopped, and stops it after 10 s silent.
+                     "start": ["DRUM,100"],
                      # SkyCommand firmware (SkiBean): OFF zeroes heat, air, drum and cooling; COOL runs the cooling.
                      "stop": ["OFF"], "cool": ["COOL,100"], "lever_commands": {"burner": "OT1", "air": "OT2"}},
+    # Same ESP32 box protocol as the V1 (Cubean firmware): drum on or off only, one temperature.
+    "skywalker-cubean": {"manufacturer": "", "model": "Cubean", "link": "Bluetooth · Cubean",
+                         "prefixes": ["CUBEAN_ESP32"], "levers": ["burner", "air"], "start": ["DRUM,100"],
+                         "stop": ["OFF"], "cool": ["COOL,100"], "lever_commands": {"burner": "OT1", "air": "OT2"}},
 }
 
 # Shown greyed in the machine step, with the reason.

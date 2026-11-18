@@ -86,7 +86,9 @@ _SETUP_TEXTS: Final[tuple[str, ...]] = (
     QT_TRANSLATE_NOOP("tilauscope_onboarding", "SkyCommand Bluetooth"),
     QT_TRANSLATE_NOOP("tilauscope_onboarding", "ESP32 box on the roaster. No cable to this computer."),
     QT_TRANSLATE_NOOP("tilauscope_onboarding", "SkyCommand USB"),
-    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Arduino or ESP32 box plugged into this computer by USB."),
+    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Arduino or ESP32 box, or the Bluetooth bridge, plugged into this computer by USB."),
+    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Cubean Bluetooth"),
+    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Cubean USB"),
 )
 # Stroked 24-unit icons of the box cards, by link kind.
 _SVG_LINK: Final[dict[str, str]] = {
@@ -131,6 +133,7 @@ _KNOWN_BLE_SIGNATURES: Final[tuple[tuple[str, str, str | None], ...]] = (
     ("ColorTrack",             "ColorTrack",            "713d0000-503e-4c75-ba94-3148f18d941e"),
     ("BlueDOT",                "BlueDOT",               None),
     ("Skywalker (Skycommand)", "ESP32_Skycommand_BLE",  "6e400001-b5a3-f393-e0a9-e50e24dcca9e"),
+    ("Cubean",                 "CUBEAN_ESP32",          "6e400001-b5a3-f393-e0a9-e50e24dcca9e"),
     ("Lebrew RoastSeeNEXT",    "RoastSeeNEXT",          "000000bb-0000-1000-8000-00805f9b34fb"),
 )
 
@@ -511,7 +514,8 @@ class OnboardingWizard(QDialog):
         box.setSpacing(1)
         maker = roaster.manufacturer if roaster is not None else ""
         model = roaster.model if roaster is not None else name
-        title = QLabel(f"<span style='color:{_T['MUTED']}; font-weight:400;'>{maker}</span>&nbsp; {model}")
+        title = QLabel(f"<span style='color:{_T['MUTED']}; font-weight:400;'>{maker}</span>&nbsp; {model}" if maker
+                       else model)  # a roaster shown by its model alone (the Cubean)
         title.setTextFormat(Qt.TextFormat.RichText)
         title.setStyleSheet(f"color:{_T['TEXT']}; font-size:14px; font-weight:600; background:transparent;")
         meta = QLabel(self._roaster_meta(roaster))

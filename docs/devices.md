@@ -31,7 +31,7 @@ Choose **Meter** or **TC4 board**.
 **Meter** is a list of every [meter](glossary.md#meter) Artisan supports, with TilauScope's own
 roaster links first. What appears under it depends on the meter chosen:
 
-- a Bluetooth roaster link (Skywalker V2, SkyCommand V1) needs no port — which link to use is
+- a Bluetooth roaster link (Skywalker V2, SkyCommand V1, Cubean) needs no port — which link to use is
   chosen in [Configuration → SENSORS](configuration.md#-sensors--every-device-by-role);
 - a meter on a USB cable shows **USB port**, listing the ports found on this computer;
 - a Modbus, S7 or WebSocket meter shows **Open Artisan port settings**, where its connection

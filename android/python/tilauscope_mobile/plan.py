@@ -17,7 +17,7 @@ from tilaucore.roast_colour import AGTRON_SCALES, set_whole_to_ground_offset
 from tilaucore.roast_plan import ROAST_DESTINATION_KEYS, RoastPlanEngine
 from tilaucore.roast_plan_view import (confidence, control_trajectories, english, entry_levels, plan_cooled_weight,
                                       reference_line, tasting_change_text)
-from tilaucore.roasters import RoasterManager
+from tilaucore.roasters import RoasterManager, roaster_display_name
 
 from .catalogue import MACHINES
 from .machine import setup as machine_setup
@@ -36,7 +36,7 @@ class TabletPlan(RoastPlanEngine):
         context = None
         if machine in MACHINES:
             entry = MACHINES[machine]
-            context = RoasterManager().get_roast_context(f"{entry['manufacturer']} {entry['model']}")
+            context = RoasterManager().get_roast_context(roaster_display_name(entry['manufacturer'], entry['model']))
         super().__init__(context, alog_directory=str(roasts.folder("tablet")),
                          beancave_directory=beancave_directory, roast_destination=destination,
                          ror_settings=machine_setup(machine).ror if machine in MACHINES else None)
@@ -77,7 +77,7 @@ def apply_colour_gap(machine: str | None) -> None:
     context = None
     if machine in MACHINES:
         entry = MACHINES[machine]
-        context = RoasterManager().get_roast_context(f"{entry['manufacturer']} {entry['model']}")
+        context = RoasterManager().get_roast_context(roaster_display_name(entry['manufacturer'], entry['model']))
     set_whole_to_ground_offset(getattr(context, "whole_to_ground_agtron_offset", 0.0))
 
 

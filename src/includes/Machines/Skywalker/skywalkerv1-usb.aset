@@ -98,12 +98,12 @@ svValues=100, 185, 0, 0, 0, 0, 0, 0
 sv_filter=0
 
 [DefaultButtons]
-buttonactions=0, 0, 0, 0, 0, 0, 0, 0
-buttonactionstrings=, , , , , , , 
+buttonactions=0, 0, 0, 0, 0, 0, 1, 1
+buttonactionstrings=, , , , , , "COOL;100", "COOL;0"
 buttons_undo=true
 buttonvisibility=true, false, true, false, false, false, true, true
-extrabuttonactions=0, 0, 0
-extrabuttonactionstrings=, , 
+extrabuttonactions=1, 1, 0
+extrabuttonactionstrings="DRUM;100", OFF, 
 xextrabuttonactions=0, 0
 xextrabuttonactionstrings=, 
 

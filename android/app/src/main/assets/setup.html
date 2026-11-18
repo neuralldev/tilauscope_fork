@@ -157,13 +157,13 @@ function renderConnection() {
   var m = setup.catalogue.machines[draft.machine];
   var found = heard.filter(function (h) { return h.kind === "machine" && h.key === draft.machine; });
   var html = '<div style="flex:1;display:flex;gap:40px;min-height:0"><div style="width:400px;display:flex;flex-direction:column">' +
-    "<h1>Switch on your<br>" + esc(m.manufacturer + " " + m.model) + '</h1><div class="lede">Keep it close to the tablet. It appears here as soon as it is found.</div>' +
+    "<h1>Switch on your<br>" + esc([m.manufacturer, m.model].filter(Boolean).join(" ")) + '</h1><div class="lede">Keep it close to the tablet. It appears here as soon as it is found.</div>' +
     '<div class="pinger"><span></span><span></span><b>' + BT + "</b></div></div>" +
     '<div style="flex:1;display:flex;flex-direction:column;gap:12px">' + problem() + '<span class="label">FOUND NEARBY</span>';
   found.forEach(function (f) {
     var sel = draft.roaster && draft.roaster.address === f.address;
     html += '<button class="found' + (sel ? " sel" : "") + '" data-a="' + esc(f.address) + '" data-n="' + esc(f.name) + '">' + (sel ? TICK : "") +
-      '<span style="display:flex;flex-direction:column;gap:3px"><span class="t">' + esc(m.manufacturer + " " + m.model) + '</span><span class="s num">' +
+      '<span style="display:flex;flex-direction:column;gap:3px"><span class="t">' + esc([m.manufacturer, m.model].filter(Boolean).join(" ")) + '</span><span class="s num">' +
       esc(f.name) + " · " + esc(f.address.slice(-5)) + '</span></span><span style="flex:1"></span>' + bars(f.rssi) + "</button>";
   });
   if (!found.length && scanState === "scanning") html += '<div class="looking"><span style="width:8px;height:8px;border-radius:4px;background:var(--muted)"></span>Still looking…</div>';

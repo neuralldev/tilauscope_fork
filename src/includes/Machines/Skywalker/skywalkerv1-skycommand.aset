@@ -98,8 +98,8 @@ svValues=100, 185, 0, 0, 0, 0, 0, 0
 sv_filter=0
 
 [DefaultButtons]
-buttonactions=0, 0, 0, 0, 0, 0, 0, 0
-buttonactionstrings=, , , , , , , 
+buttonactions=0, 0, 0, 0, 0, 0, 5, 5
+buttonactionstrings=, , , , , , "skycommand(COOL,100)", "skycommand(COOL,0)"
 buttons_undo=true
 buttonvisibility=true, false, false, false, false, false, true, true
 extrabuttonactions=0, 0, 0

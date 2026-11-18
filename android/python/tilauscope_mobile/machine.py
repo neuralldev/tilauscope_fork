@@ -67,6 +67,11 @@ def drop_detection(machine: str) -> tuple[float | None, float | None]:
     return roaster.drop_fall_c, roaster.drop_probe_lag_s
 
 
+def start(machine: str | None) -> list[str]:
+    """What the roaster is sent once the link is up, and again after a dropout (its drum when it only runs or stops)."""
+    return list(MACHINES[machine].get("start", [])) if machine in MACHINES else []
+
+
 COOL_UNTIL = "UNTIL_BT_BELOW" # pseudo-command for the link: wait for the bean probe under the value (°C)
 
 

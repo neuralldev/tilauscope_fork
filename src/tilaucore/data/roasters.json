@@ -159,7 +159,7 @@
             {"link": "bluetooth", "preset": "Skywalker/skywalkerv1-skycommand.aset", "ble_prefix": "ESP32_Skycommand_BLE",
              "label": "SkyCommand Bluetooth", "hint": "ESP32 box on the roaster. No cable to this computer."},
             {"link": "usb", "preset": "Skywalker/skywalkerv1-usb.aset",
-             "label": "SkyCommand USB", "hint": "Arduino or ESP32 box plugged into this computer by USB."}
+             "label": "SkyCommand USB", "hint": "Arduino or ESP32 box, or the Bluetooth bridge, plugged into this computer by USB."}
         ],
         "bean_temperature_offset_c": [
             -13.0,
@@ -184,6 +184,47 @@
         "peak_ror_ceiling_c": 16.0,
         "thermal_model_kernel": "triangular",
         "thermal_model_sigma": 1.0
+    },
+    {
+        "manufacturer": "",
+        "model": "Cubean",
+        "roaster_id": "skywalker-cubean",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "electrical_specification": {
+            "max_power_draw_kw": 1.0
+        },
+        "is_radiant_electric": true,
+        "maillard_ror_decay": 2.0,
+        "has_et_probe": false,
+        "technology": [
+            "radiation"
+        ],
+        "batch_capacity_min_g": 150,
+        "batch_capacity_max_g": 200,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "heating_control": {
+            "control_type": "variable"
+        },
+        "airflow_control": {
+            "control_type": "variable"
+        },
+        "drum_control": {
+            "variable_speed": false
+        },
+        "cooling_system": "internal_tray",
+        "supported_interfaces": [
+            "serial"
+        ],
+        "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "bluetooth", "preset": "Skywalker/cubean-skycommand.aset", "ble_prefix": "CUBEAN_ESP32",
+             "label": "Cubean Bluetooth", "hint": "ESP32 box on the roaster. No cable to this computer."},
+            {"link": "usb", "preset": "Skywalker/cubean-usb.aset",
+             "label": "Cubean USB", "hint": "Arduino or ESP32 box, or the Bluetooth bridge, plugged into this computer by USB."}
+        ],
+        "notes": "Same ESP32 box protocol as the Skywalker V1 (Cubean firmware, matelbear/SkywalkerRoasterLab): drum on or off only, one temperature. Roast-plan timings and probe offsets not measured yet: defaults."
     },
     {
         "manufacturer": "Aillio",

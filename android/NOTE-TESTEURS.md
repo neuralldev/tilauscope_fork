@@ -6,7 +6,7 @@ Merci de tester l'application. C'est une version de travail : elle sert à trouv
 
 - Une tablette Android 8 ou plus récente (processeur ARM 64 bits, le cas de presque toutes les tablettes récentes).
 - Le Bluetooth activé.
-- Pour piloter une machine : un Skywalker V2 (Bluetooth). Le Skywalker V1 équipé du module SkyCommand est prévu mais n'a pas encore été essayé : vos retours sont les bienvenus. Sans machine, l'application fonctionne en simulation.
+- Pour piloter une machine : un Skywalker V2 (Bluetooth). Le Skywalker V1 et le Cubean, équipés d'un boîtier ESP32 SkyCommand ou Cubean, sont pris en charge (brûleur, air, tambour lancé à la connexion, refroidissement du DROP à COOL END) mais n'ont pas encore été essayés sur une vraie machine : vos retours sont les bienvenus. Sans machine, l'application fonctionne en simulation.
 
 ## Installer
 

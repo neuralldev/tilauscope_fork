@@ -49,17 +49,21 @@ re-applied: the burner slider shows the roaster's actual output, and resuming he
 STOP is your decision. A burner that does not confirm it is off when the link opens, or that runs
 above its command, is also reported on screen.
 
-!!! note "Skywalker V1"
-    The Skywalker V1 has no link of its own: it reaches the computer through a SkyCommand box
-    plugged into the roaster. Two kinds are supported, and the first-time setup asks which one
-    you built (see [Getting started](getting-started.md)):
+!!! note "Skywalker V1 and Cubean"
+    The Skywalker V1 and the Cubean (200 g) have no link of their own: each reaches the computer
+    through an ESP32 box plugged into the roaster, built from the community's firmware
+    (SkywalkerRoasterLab). Two links are supported, and the first-time setup asks which one you
+    built (see [Getting started](getting-started.md)):
 
-    - **SkyCommand Bluetooth** — an ESP32 box, no cable to the computer; it is found nearby
-      once the roaster is on.
-    - **SkyCommand USB** — an Arduino or ESP32 box plugged into the computer by USB.
+    - **Bluetooth** — the box alone, no cable to the computer; it is found nearby once the
+      roaster is on.
+    - **USB** — an Arduino or ESP32 box plugged into the computer by USB, or the Bluetooth
+      bridge: a second ESP32 plugged into the computer that talks to the box over Bluetooth.
 
-    Either way the burner and air sliders, their buttons and the cooling buttons drive the
-    roaster. The drum turns at a fixed speed and there is no environment probe.
+    Either way the burner and air sliders and their buttons drive the roaster. The drum only runs
+    or stops: TilauScope starts it as soon as the box is linked, and again after a dropout. The
+    cooling starts at DROP and stops at COOL END. There is no environment probe, so no ET is shown.
+    The Cubean's roast plan uses general values until roasts on it are measured.
 
 <!-- CAPTURE 9.1 — the roaster model picker, list open. -->
 

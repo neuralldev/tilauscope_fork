@@ -939,7 +939,7 @@ window.onSnapshot = function (method, d) {
     roaster = config.roaster && config.machine && !d.reply.simulation ? config.roaster : null; // declared in Settings: the tablet drives it
     endRoast = (d && d.reply && d.reply.end_roast) || []; // cool first, then stop: run by the link when it is let go hot
     var known = roaster && d.reply.catalogue.machines[config.machine];
-    if (known) roaster.label = known.manufacturer + " " + known.model;
+    if (known) roaster.label = [known.manufacturer, known.model].filter(Boolean).join(" ");
     if (snap) render();
     return;
   }

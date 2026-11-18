@@ -34,6 +34,7 @@ class SkyCommand(ClientBLE):
     # download esp32 S3 4Mb flash here https://github.com/ThankGod886/SkywalkerRoasterLab/tree/main/CONTROLLER
 
     SKYCOMMAND_NAME:Final[str]    = 'ESP32_Skycommand_BLE'                  # advertised name prefix
+    CUBEAN_NAME:Final[str]        = 'CUBEAN_ESP32'                          # the Cubean's box: same protocol
     SKYCOMMAND_SERVICE:Final[str] = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'  # advertised service UUID
     SKYCOMMAND_NOTIFY:Final[str]  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'  # TC4 telemetry (RX)
     SKYCOMMAND_WRITE:Final[str]   = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'  # TC4 commands (TX)
@@ -44,6 +45,7 @@ class SkyCommand(ClientBLE):
     LINE_TERM:Final[bytes] = b'\n'      # telemetry lines end in LF (SkiBean) or CRLF; the CR is stripped
     CHAN_INIT:Final[str] = 'CHAN;1200'  # logical->physical channel map (Artisan default)
     READ_CMD:Final[str]  = 'READ'       # request one CSV telemetry line
+    DRUM_ON:Final[str]   = 'DRUM;100'   # the drum only runs or stops: the box boots with it stopped
 
     # output channels
     OT_BURNER:Final[int]  = 1
@@ -83,6 +85,7 @@ class SkyCommand(ClientBLE):
         self._airflow:int = -1
 
         self.add_device_description(self.SKYCOMMAND_SERVICE, self.SKYCOMMAND_NAME)
+        self.add_device_description(self.SKYCOMMAND_SERVICE, self.CUBEAN_NAME)
         self.add_notify(self.SKYCOMMAND_NOTIFY, self.notify_callback)
         self.add_write(self.SKYCOMMAND_SERVICE, self.SKYCOMMAND_WRITE)
         # poll READ on the ClientBLE heartbeat (no-op while disconnected)
@@ -183,9 +186,11 @@ class SkyCommand(ClientBLE):
 
     # ── ClientBLE hooks ───────────────────────────────────────────────────────
     def on_connect(self) -> None:
-        # init the TC4 channel map, then assert burner OFF (safety: connecting
-        # alone leaves the burner at a default high duty)
+        # init the TC4 channel map, then start the drum: the box boots, and stops everything after
+        # 10 s without a command, with the drum stopped; a reconnection mid-roast restarts it too
         self.send_command(self.CHAN_INIT)
+        self.send_command(self.DRUM_ON)
+        # asserting the burner OFF here is not needed on the V1: the box boots with the heat at 0
 #        self.send_command(f'OT{self.OT_BURNER},0')
         if self._connected_handler is not None:
             self._connected_handler()

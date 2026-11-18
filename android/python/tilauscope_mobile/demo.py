@@ -41,7 +41,7 @@ from tilaucore.alarms import (ANCHORS, NEW_ALARM, Alarm, TurningPoint, append_ro
                               write_alrm)
 from tilaucore.artisan_compat import events_internal_to_external_value
 from tilaucore.ror import RoRSettings, rate_now
-from tilaucore.roasters import RoasterManager
+from tilaucore.roasters import RoasterManager, roaster_display_name
 from .energy import TabletEnergy, bill as energy_bill, sheet as energy_sheet
 from tilaucore.energy_model import EnergySession, PhaseBounds, phase_bounds
 from tilaucore.artisan_setup import read_setup
@@ -645,7 +645,7 @@ class Demo:
     def _machine_name(self) -> str:
         """The configured roaster, as a roast names it ("Skywalker V2"); '' when none is set."""
         entry = catalogue.MACHINES.get((self.config or {}).get("machine") or "")
-        return f"{entry['manufacturer']} {entry['model']}" if entry else ""
+        return roaster_display_name(entry['manufacturer'], entry['model']) if entry else ""
 
     def coffee_preview(self, path: str) -> str:
         """What a .tilaucoffee staged by the app would add, before it does (`path` is the app's, never the page's)."""
@@ -919,7 +919,7 @@ class Demo:
         machine = catalogue.MACHINES.get(config["machine"]) if config["machine"] else None
         return alog.profile(self.session, levers=configuration.levers(config) if config["machine"] else self.lever_setup,
                             operator=config["operator"],
-                            roaster=f'{machine["manufacturer"]} {machine["model"]}' if machine else "")
+                            roaster=roaster_display_name(machine["manufacturer"], machine["model"]) if machine else "")
 
     def roast_label(self, data: str = "") -> str:
         """The lines of the desktop's 30 mm label: of a listed roast ({origin, name}), else of the roast just over.
@@ -1271,6 +1271,7 @@ class Demo:
         if state.get("recovered"):
             self.link["recovered"] = True
             self._burner_held()
+            self._send(machine.start(self._machine())) # a drum that only runs or stops: the dropout stopped it
             if self.preheat is not None:
                 self.preheat.pause() # heat is never re-applied by itself: the operator re-arms the preheat
             if self.playback is not None:
@@ -1279,7 +1280,7 @@ class Demo:
             self._burner_held()
             setup = machine.setup(self._machine())
             self._send([setup.levers[k].command_for(self.levers[k]) for k in ("air", "drum")
-                        if k in self.levers and k in setup.levers])
+                        if k in self.levers and k in setup.levers] + machine.start(self._machine()))
         return self.snapshot()
 
     def _live_after_roast(self) -> dict:
@@ -1789,7 +1790,7 @@ class Demo:
 
     def _roast_context(self):
         entry = catalogue.MACHINES.get(self._machine() or "")
-        return RoasterManager().get_roast_context(f"{entry['manufacturer']} {entry['model']}") if entry else None
+        return RoasterManager().get_roast_context(roaster_display_name(entry['manufacturer'], entry['model'])) if entry else None
 
     def roast_time(self) -> float:
         """Seconds since CHARGE, 0 before it."""
@@ -1999,7 +2000,7 @@ class Demo:
 
     def _roaster_name(self) -> str:
         entry = catalogue.MACHINES[self._machine()]
-        return f"{entry['manufacturer']} {entry['model']}"
+        return roaster_display_name(entry['manufacturer'], entry['model'])
 
     def _engage_follow(self) -> None:
         """At CHARGE: the followed roast moves onto this one's CHARGE. A CHARGE found is marked a few seconds

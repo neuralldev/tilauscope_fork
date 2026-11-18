@@ -240,7 +240,7 @@ function renderGeneral() {
   var m = draft.machine ? setup.catalogue.machines[draft.machine] : null;
   $("main").innerHTML = '<div><h1>General</h1><div class="lede">Your machine, the name on your roasts and the temperature unit.</div></div><div class="panel">' +
     '<div class="row"><span class="k"><b>Machine</b><small>From the first setup</small></span><span class="field" style="display:flex;align-items:center">' +
-    esc(m ? m.manufacturer + " " + m.model : "Not chosen yet") + '</span><button class="btn" id="redo">Change</button></div>' +
+    esc(m ? [m.manufacturer, m.model].filter(Boolean).join(" ") : "Not chosen yet") + '</span><button class="btn" id="redo">Change</button></div>' +
     '<div class="row"><span class="k"><b>Your name</b><small>Shown on roast records</small></span><input class="field" id="operator" maxlength="40" value="' + esc(draft.operator) + '"></div>' +
     '<div class="row"><span class="k"><b>Temperature unit</b><small>Readings, curves, targets and alarms. Roast files stay in °C</small></span><div class="seg" id="unit">' +
     '<button data-u="C"' + (draft.unit !== "F" ? ' class="on"' : "") + '>°C</button><button data-u="F"' + (draft.unit === "F" ? ' class="on"' : "") + ">°F</button></div></div>" +
@@ -316,7 +316,7 @@ function renderDevices() {
   var html = '<div><h1>Devices</h1><div class="lede">The tablet looks for them while this page is open. Nothing is sent to them here.</div></div>';
   if (scanState === "denied") html += '<div class="note">The tablet needs permission to look for Bluetooth devices. <button class="btn" id="retry">Allow</button></div>';
   if (scanState === "bluetooth_off") html += '<div class="note">Bluetooth is off. Turn it on, then try again. <button class="btn" id="retry">Try again</button></div>';
-  html += '<div class="panel"><div class="row"><span class="k"><b>Roaster</b><small>' + esc(m ? m.manufacturer + " " + m.model : "No machine chosen") + "</small></span>" +
+  html += '<div class="panel"><div class="row"><span class="k"><b>Roaster</b><small>' + esc(m ? [m.manufacturer, m.model].filter(Boolean).join(" ") : "No machine chosen") + "</small></span>" +
     '<span class="field" style="display:flex;align-items:center">' + esc(draft.roaster ? draft.roaster.name + " · " + draft.roaster.address.slice(-5) : "Not linked") + "</span>" +
     (draft.roaster ? '<button class="btn primary" id="test"' + (heardNow("machine", draft.roaster.address) ? "" : " disabled") + '>Test</button><button class="btn" id="forget">Forget</button>' : "") + "</div>";
   if (m) {

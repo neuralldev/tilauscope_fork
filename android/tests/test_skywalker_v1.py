@@ -26,6 +26,24 @@ class SetupTests(unittest.TestCase):
         self.assertTrue(machine.has_et("skywalker-v2"))
         self.assertTrue(machine.has_et(None))
 
+    def test_only_the_v1_is_started_with_a_drum_command(self):
+        self.assertEqual(machine.start("skywalker-v1"), ["DRUM,100"])
+        self.assertEqual(machine.start("skywalker-v2"), [])
+        self.assertEqual(machine.start(None), [])
+
+    def test_the_cubean_runs_as_the_v1(self):
+        levers = machine.setup("skywalker-cubean").levers
+        self.assertEqual((levers["burner"].command, levers["air"].command), ("OT1,{}", "OT2,{}"))
+        self.assertFalse(machine.has_et("skywalker-cubean"))
+        self.assertEqual(machine.start("skywalker-cubean"), ["DRUM,100"])
+        self.assertEqual(machine.end_roast("skywalker-cubean")[-1], "OFF")
+        self.assertNotIn("drum", catalogue.MACHINES["skywalker-cubean"]["levers"])
+
+    def test_cooling_runs_from_drop_to_cool_end(self):
+        for key in ("skywalker-v1", "skywalker-cubean"):
+            marks = machine.setup(key).on_milestone
+            self.assertEqual((marks["drop"], marks["cool_end"]), (["COOL,100"], ["COOL,0"]), key)
+
     def test_no_drum_lever_on_the_v1(self):
         self.assertNotIn("drum", catalogue.MACHINES["skywalker-v1"]["levers"])
 
@@ -52,6 +70,16 @@ class LinkTests(unittest.TestCase):
         self.assertEqual([s.et_c for s in self.demo.session.samples], [None, None])
         self.assertEqual([s.bt_c for s in self.demo.session.samples], [150.0, 151.0])
         self.assertIsNone(json.loads(self.demo.snapshot())["et_c"])
+
+    def test_the_drum_starts_with_the_link_and_again_after_a_dropout(self):
+        self.demo.start()
+        self.demo.link_state(json.dumps({"state": "connected"}))
+        sent = json.loads(self.demo.take_commands())
+        self.assertIn("DRUM,100", sent)
+        self.assertFalse(any(c.startswith("OT3") for c in sent)) # no drum lever on the V1
+        self.demo.link_state(json.dumps({"state": "reconnecting"}))
+        self.demo.link_state(json.dumps({"state": "connected", "recovered": True}))
+        self.assertEqual(json.loads(self.demo.take_commands()), ["DRUM,100"])
 
     def test_the_roast_screen_is_told_there_is_no_et(self):
         self.assertFalse(json.loads(self.demo.snapshot())["has_et"])

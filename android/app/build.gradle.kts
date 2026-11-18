@@ -20,7 +20,7 @@ val copyLabelFonts by tasks.registering(Copy::class) {
 // as the Python package machine_setups (tilauscope_mobile/machine.py).
 val machineSetups = layout.buildDirectory.dir("generated/machineSetups")
 val copyMachineSetups by tasks.registering(Copy::class) {
-    from("../../src/includes/Machines") { include("Skywalker/skywalkerv2-ble.aset", "Skywalker/skywalkerv1-skycommand.aset") }
+    from("../../src/includes/Machines") { include("Skywalker/skywalkerv2-ble.aset", "Skywalker/skywalkerv1-skycommand.aset", "Skywalker/cubean-skycommand.aset") }
     into(machineSetups.map { it.dir("machine_setups") })
     doLast { machineSetups.get().file("machine_setups/__init__.py").asFile.writeText("") }
 }

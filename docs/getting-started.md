@@ -100,7 +100,7 @@ roaster later.
 - **Bluetooth** — switch the roaster on: once it is found nearby, it is selected for you.
   Keep it within a few metres of the computer.
 - **An add-on box** — a roaster that reaches the computer only through a box you add to it,
-  such as the Skywalker V1 and its SkyCommand box, shows one card per box instead: pick the one
+  such as the Skywalker V1 or the Cubean and their ESP32 box, shows one card per box instead: pick the one
   you built. Each card says what TilauScope sees of it right now — *Found nearby* or
   *Searching…* for the Bluetooth box, *Port found* or *No port* for the USB box. The Bluetooth
   box is chosen for you once it is found; the USB box then works as the USB cable above.
