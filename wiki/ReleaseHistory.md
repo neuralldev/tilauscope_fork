@@ -1,7 +1,8 @@
 ## [4.4] 2026-11-14
+build 3
 build 2
 * ⚡ [feat(skywalker)] : the Cubean (200 g) is supported, on the desktop and the Android prototype, through its ESP32 box over Bluetooth or USB, as the Skywalker V1; the first-time setup offers its two boxes
-* ⚡ [feat(skywalker)] : on the Skywalker V1 and the Cubean the drum starts as soon as the box is linked, and again after a dropout; the cooling starts at DROP and stops at COOL END
+* ⚡ [feat(skywalker)] : on the Skywalker V1 and the Cubean the drum starts with monitoring (over Bluetooth as soon as the box is linked, and again after a dropout); the cooling starts at DROP and stops at COOL END; over Bluetooth, OFF turns the box off before the link is let go
 * ⚡ [feat(onboarding)] : the USB box card also names the Bluetooth bridge plugged into the computer, and says "Pick a port" when several USB ports are found and none is chosen yet
 * ⚡ [feat(android)] : the Android prototype drives the Skywalker V1 and the Cubean over Bluetooth: burner and air, no drum lever, no ET shown, and the preheat reads the bean probe
 build 1

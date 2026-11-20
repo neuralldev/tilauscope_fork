@@ -61,8 +61,14 @@ above its command, is also reported on screen.
       bridge: a second ESP32 plugged into the computer that talks to the box over Bluetooth.
 
     Either way the burner and air sliders and their buttons drive the roaster. The drum only runs
-    or stops: TilauScope starts it as soon as the box is linked, and again after a dropout. The
-    cooling starts at DROP and stops at COOL END. There is no environment probe, so no ET is shown.
+    or stops: TilauScope starts it with monitoring (over Bluetooth as soon as the box is linked,
+    and again after a dropout). The cooling starts at DROP and stops at COOL END, and OFF turns
+    the box off. There is no environment probe, so no ET is shown.
+
+    Unlike the V2 and the V1 (whose box stops everything 10 s after the link drops), the Cubean's
+    box keeps its heat, drum and air when the Bluetooth link drops: nothing cuts the burner until
+    the link is back. Keep the roaster close to the computer, or
+    roast over USB.
     The Cubean's roast plan uses general values until roasts on it are measured.
 
 <!-- CAPTURE 9.1 — the roaster model picker, list open. -->

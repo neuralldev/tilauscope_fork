@@ -195,6 +195,16 @@ class SkyCommand(ClientBLE):
         if self._connected_handler is not None:
             self._connected_handler()
 
+    def stop(self) -> None:
+        # burner off then the whole box off before the link is let go: the Cubean's box keeps
+        # its heat, drum and air when the link drops (the V1's would only stop after 10 s)
+        for cmd in (f'OT{self.OT_BURNER},0', 'OFF'):
+            try:
+                self.send_command(cmd)   # written before returning (ble.write waits for it)
+            except Exception:  # pylint: disable=broad-except
+                _log.exception('Skycommand: %s not sent before disconnecting', cmd)
+        super().stop()
+
     def on_disconnect(self) -> None:
         with self._lock:
             self._buf = bytearray()

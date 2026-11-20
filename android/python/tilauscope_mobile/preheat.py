@@ -23,6 +23,7 @@ from tilaucore.preheat import (PREHEAT_BAND_C, PREHEAT_NEAR_C, AmbientConditions
 from tilaucore.preheat_controller import PreheatController
 from tilaucore.preheat_learning import AlogScanner
 from tilaucore.preheat_safety import SensorSafetyLimits
+from tilaucore.roasters import roaster_display_name
 
 from .catalogue import MACHINES
 from .roasts import Roasts
@@ -108,7 +109,7 @@ class TabletPreheat(PreheatController):
         self._ror_span = ror_span_s
         self._store = JsonSettings(store_path)
         entry = MACHINES[machine]
-        self._machine = f'{entry["manufacturer"]} {entry["model"]}'
+        self._machine = roaster_display_name(entry["manufacturer"], entry["model"])
         self._pid_source = INPUTS[input_probe]
         self._roasts = roasts
         self._to_c = lambda value: value # the tablet is in °C throughout
