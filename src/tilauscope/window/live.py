@@ -139,7 +139,7 @@ class LiveMixin:
             # and fixed. Do
             # this on every state mismatch, not only when resuming a pause:
             # simulator auto-CHARGE may transition directly idle → roasting.
-            expected = "roasting" if qmc.timeindex[0] > -1 else "preheat"
+            expected = "roasting" if self._milestone_marked(0) else "preheat"
             if current_state != expected:
                 self._update_timer_style(expected)
             self.p_timer.setInterval(600)
@@ -221,7 +221,7 @@ class LiveMixin:
         tokens: list[str] = []
 
         # Artisan PID piloting the heat — only meaningful once CHARGE is marked
-        if self.is_pid_active and qmc.timeindex and qmc.timeindex[0] > -1:
+        if self.is_pid_active and self._milestone_marked(0):
             tokens.append(self.str_automation_pid)
 
         # Background playback modes — same flags as check_playback_before_start()

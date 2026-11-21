@@ -409,6 +409,20 @@ class Roaster:
     # stable physical machine signature.
     maillard_ror_decay: float | None = None
 
+    ## Values of the machine the plan, its alarms, the preheat and the tablet's
+    ## simulation read (audit 2026-11-21, P4-44). None → the "defaults" block of
+    ## roasters.json (MACHINE_DEFAULT_KEYS), measured on the Skywalker V2.
+    ambient_dry_min_per_10k: float | None = None
+    ambient_dry_reference_g: float | None = None
+    charge_neutral_c: float | None = None
+    charge_process_offset_c: dict[str, float] | None = None
+    charge_ceiling_by_process_c: dict[str, float] | None = None
+    charge_floor_c: float | None = None
+    charge_modulation_max_c: float | None = None
+    plan_model_version: str | None = None
+    plan_alarms: dict[str, float] | None = None
+    lever_response: dict | None = None
+
     ## Time rule of this roaster model (RoastPlan-Timing-Review-2026-10-29):
     ## drying = base + per_load × (charge / optimal batch), in minutes, and
     ## Maillard = maillard_time_base_min + maillard_per_drying × drying — the
@@ -547,6 +561,44 @@ class Roaster:
 # ROASTER CONTEXT  — flat, plan-friendly view of a Roaster
 # ============================================================
 
+## The machine values a roaster may declare, and their common default in the
+## "defaults" block of roasters.json (audit 2026-11-21, P4-44: nothing of one
+## machine in the code). A roaster that declares none reads those defaults.
+MACHINE_DEFAULT_KEYS: Final[tuple[str, ...]] = (
+    "ambient_dry_min_per_10k", "ambient_dry_reference_g", "charge_neutral_c", "charge_process_offset_c",
+    "charge_ceiling_by_process_c", "charge_floor_c", "charge_modulation_max_c", "plan_model_version",
+    "preheat_max_burner_pct", "plan_alarms", "lever_response")
+
+
+def _roaster_entries(data: "list | dict") -> list:
+    """The roasters of a roasters.json: {"defaults", "roasters"}, or the older bare list."""
+    return data if isinstance(data, list) else list(data.get("roasters") or [])
+
+
+_defaults_cache: "dict | None" = None
+
+
+def machine_defaults() -> dict:
+    """roasters.json's "defaults" block, read once. Raises if a key is missing: a
+    default no file states is a value of one machine written in the code again."""
+    global _defaults_cache  # noqa: PLW0603  # read once per process
+    if _defaults_cache is None:
+        with ROASTERS_JSON.open("r", encoding="utf-8-sig" if _IS_WINDOWS else "utf-8") as f:
+            data = json.load(f)
+        block = data.get("defaults", {}) if isinstance(data, dict) else {}
+        missing = [key for key in MACHINE_DEFAULT_KEYS if key not in block]
+        if missing:
+            raise KeyError(f"roasters.json defaults lack {missing}")
+        _defaults_cache = {key: block[key] for key in MACHINE_DEFAULT_KEYS}
+    return _defaults_cache
+
+
+def machine_value(ctx: "RoasterContext | None", key: str):
+    """A machine value of MACHINE_DEFAULT_KEYS: the roaster's, else roasters.json's default."""
+    value = getattr(ctx, key, None) if ctx is not None else None
+    return value if value is not None else machine_defaults()[key]
+
+
 @dataclass
 class RoasterContext:
     """
@@ -653,6 +705,21 @@ class RoasterContext:
     # Cooling at drop (Roaster.cooling); None = only the burner is cut.
     cooling: "CoolingSettings | None" = None
 
+    # The machine values of MACHINE_DEFAULT_KEYS, resolved by from_roaster (the
+    # roaster's own, else roasters.json's defaults). Read them through
+    # machine_value(), which also answers without a roaster context.
+    ambient_dry_min_per_10k: "float | None" = None
+    ambient_dry_reference_g: "float | None" = None
+    charge_neutral_c: "float | None" = None
+    charge_process_offset_c: "dict[str, float] | None" = None
+    charge_ceiling_by_process_c: "dict[str, float] | None" = None
+    charge_floor_c: "float | None" = None
+    charge_modulation_max_c: "float | None" = None
+    plan_model_version: "str | None" = None
+    plan_alarms: "dict[str, float] | None" = None
+    lever_response: "dict | None" = None
+    preheat_max_burner_pct: "float | None" = None   # the declared heater_max_pct, else the default
+
     @classmethod
     def from_roaster(cls, roaster: "Roaster") -> "RoasterContext":
         """Build a RoasterContext from a Roaster dataclass instance."""
@@ -753,6 +820,10 @@ class RoasterContext:
                                             and getattr(dc, 'smooth_speed_transition', False)),
             burner_reaction_time_s   = roaster.burner_reaction_time_s,
             cooling                  = roaster.cooling,
+            preheat_max_burner_pct   = (roaster.heater_max_pct if roaster.heater_max_pct is not None
+                                        else machine_defaults()["preheat_max_burner_pct"]),
+            **{key: (getattr(roaster, key) if getattr(roaster, key) is not None else machine_defaults()[key])
+               for key in MACHINE_DEFAULT_KEYS if key != "preheat_max_burner_pct"},
         )
 
     # ── helpers ──────────────────────────────────────────────
@@ -958,7 +1029,7 @@ class RoasterManager:
         with path.open("r", encoding="utf-8-sig" if _IS_WINDOWS else "utf-8") as f:
             data = json.load(f)
 
-        self._roasters = [from_dict(Roaster, item) for item in data]
+        self._roasters = [from_dict(Roaster, item) for item in _roaster_entries(data)]
         self._loaded = True   # mark loaded whether called directly or via _ensure_loaded
 
     def get_display_names(self) -> list[str]:

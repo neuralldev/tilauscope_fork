@@ -306,7 +306,8 @@ stays.
 
 **To another of my computers** packs the coffee as it is here: the record with stock, bags and
 price, every roast of it, their tastings, the brewing settings and the brewing journal. Nothing is
-removed, and nothing is deleted from this computer.
+removed, and nothing is deleted from this computer. A coffee with too many roasts for one package
+is refused with a message rather than written into a file that could not be opened again.
 
 **Save package…** writes the file, by default in your Downloads folder; **Show in folder** then
 finds it for sending.

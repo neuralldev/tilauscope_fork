@@ -273,7 +273,7 @@ class _TilauMqttTransport(_mqttport_base):
             except json.JSONDecodeError:
                 data = payload_str
             if message.topic == self.owner.poll_response_topic:
-                self.owner.on_poll_response(data)
+                self.owner._poll_answer_signal.emit(data)   # handled on the main thread
                 return
             self.owner.db.update(message.topic, data)
             # First message of a topic is logged once: until it arrives the channel
@@ -334,9 +334,12 @@ class TilauscopeMQTTClient(QObject):
     """
     connected_signal = pyqtSignal()
     disconnected_signal = pyqtSignal()
+    # a poll answer, from paho's network thread to the main one, which owns the poll list
+    _poll_answer_signal = pyqtSignal(object)
 
     def __init__(self, config: MQTTConfig, aw: 'ApplicationWindow') -> None:
         super().__init__()
+        self._poll_answer_signal.connect(self._on_poll_answer)
         self.config = config
         self.db = MQTTDatabase()
         self.is_connected: bool = False
@@ -514,8 +517,13 @@ class TilauscopeMQTTClient(QObject):
     def stop_polling(self) -> None:
         if self._poll_timer is not None:
             self._poll_timer.stop()
+            self._poll_timer.deleteLater()   # start_polling makes a new one each time
             self._poll_timer = None
         self._poll_targets = []
+
+    @pyqtSlot(object)
+    def _on_poll_answer(self, data: Any) -> None:
+        self.on_poll_response(data)
 
     @pyqtSlot()
     def _poll_tick(self) -> None:
@@ -541,15 +549,19 @@ class TilauscopeMQTTClient(QObject):
             return
         args = data.get("args") or []
         node = args[0].get("nodeId") if args and isinstance(args[0], dict) else None
+        if node is None:   # a generic error names no sensor: none is dropped for it
+            _logd.warning("TilauMQTT: gateway refused a poll without naming a sensor: %s", data.get("message", ""))
+            return
         message = data.get("message", "")
         for target in list(self._poll_targets):
-            if node is not None and target.request["args"][0]["nodeId"] != node:
+            if target.request["args"][0]["nodeId"] != node:
                 continue
             self._drop_poll_target(target, f"gateway refused the request: {message}")
 
     def _drop_poll_target(self, target: _PollTarget, reason: str) -> None:
-        if target in self._poll_targets:
-            self._poll_targets.remove(target)
+        if target not in self._poll_targets:
+            return   # polling restarted meanwhile: this target is not polled any more
+        self._poll_targets.remove(target)
         _logd.warning("TilauMQTT: stopped polling %s — %s", target.topic, reason)
 
     # -- publish (alarm commands) -------------------------------------------

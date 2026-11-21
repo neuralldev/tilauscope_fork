@@ -60,7 +60,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Final, Optional
 
-from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
 
 try:
     import serial
@@ -78,6 +78,7 @@ _LINE_TERM: Final[bytes] = b"\n"
 _HELLO: Final[str] = "HELLO TRP/1.0"
 _READ_CHUNK: Final[int] = 256
 _SERIAL_READ_TIMEOUT_S: Final[float] = 0.2   # bounds the reader thread's poll loop
+_HANDSHAKE_TIMEOUT_MS: Final[int] = 5000       # HELLO unanswered past this: the device is not a TRP one
 
 _FIELD_SPLIT_RE: Final[re.Pattern] = re.compile(r"[;\s]+")
 _DOMAINS: Final[set[str]] = {"SERIAL","BLE", "TCP", "WEBSERIAL"}  # valid transport domains
@@ -268,6 +269,7 @@ class TRPClient(QObject):
         self._identity = TRPIdentity()
         self._roaster_context: Optional[RoasterContext] = None
         self._handshake_pending = False
+        self._handshake_attempt = 0   # a timeout from an earlier connect never ends this one
         self._streaming = False
         self._connected = False
 
@@ -285,8 +287,12 @@ class TRPClient(QObject):
         Non-blocking beyond the serial port open itself: the handshake
         completes asynchronously as INFO/OK lines arrive on the reader
         thread, ending in an identityReady + stateChanged('connected') pair
-        (or stateChanged('error') if the port fails to open).
+        (or stateChanged('error') if the port fails to open, or if the device
+        has not answered HELLO within _HANDSHAKE_TIMEOUT_MS).
         """
+        # A second connect replaces the first: its reader thread must stop, not be
+        # dropped running (Qt aborts when a running QThread is destroyed).
+        self.disconnect()
         try:
             self._ser = serial.Serial(port, baudrate=baud, timeout=_SERIAL_READ_TIMEOUT_S)
         except Exception as e:  # noqa: BLE001
@@ -305,7 +311,18 @@ class TRPClient(QObject):
         self._reader.errorOccurred.connect(self._on_reader_error)
         self._reader.start()
 
+        self._handshake_attempt += 1
+        attempt = self._handshake_attempt
         self._write(_HELLO)
+        QTimer.singleShot(_HANDSHAKE_TIMEOUT_MS, lambda: self._handshake_timed_out(attempt))
+
+    def _handshake_timed_out(self, attempt: int) -> None:
+        if attempt != self._handshake_attempt or not self._handshake_pending or self._ser is None:
+            return   # answered, closed meanwhile, or a later connect owns the handshake
+        self._handshake_pending = False
+        _logd.error("TRPClient: no answer to HELLO")
+        self.stateChanged.emit("error")
+        self.errorReceived.emit("no answer to HELLO")
 
     @pyqtSlot()
     def disconnect(self) -> None:

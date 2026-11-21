@@ -84,7 +84,7 @@ var CaveEdit = (function () {
     }
     if (has("category")) {
       section("Characteristics");
-      add(row("N", "is_blend", '<span class="ce-seg"><button data-b="0"' + (ed.v.is_blend ? "" : ' class="on"') + '>Single origin</button><button data-b="1"' +
+      var top = add(row("N", "is_blend", '<span class="ce-seg"><button data-b="0"' + (ed.v.is_blend ? "" : ' class="on"') + '>Single origin</button><button data-b="1"' +
         (ed.v.is_blend ? ' class="on"' : "") + ">Blend</button></span>"));
       if (ed.v.is_blend) {
         add(row("N", "bean1_ratio", numInput("bean1_ratio")));
@@ -93,11 +93,12 @@ var CaveEdit = (function () {
       }
       add(row("N", "category", pickInput("category"))); add(row("N", "process", pickInput("process")));
       add(row("N", "species", pickInput("species"))); add(row("N", "varieties", pickInput("varieties")));
-      var dens = add(row("N", "density", numInput("density") + '<button class="ce-mini" id="ce-measure">⚖ Measure</button>'));
+      add(row("N", "density", numInput("density") + '<button class="ce-mini" id="ce-measure">⚖ Measure</button>'));
       add(row("N", "last_humidity", numInput("last_humidity")));
-      var aw = add(row("N", "water_activity", numInput("water_activity")));
+      add(row("N", "water_activity", numInput("water_activity")));
       add(row("N", "screen_size", pickInput("screen_size")));
-      cards.push(ed.density ? [dens, ["density", "aw"]] : [aw, ["aw"]]);
+      // From the section's top: started at its own field, a measuring card ran past the bottom of the screen.
+      cards.push([top, ed.density ? ["density", "aw"] : ["aw"]]);
     }
     if (has("sca")) {
       section("Sensory & notes");

@@ -77,6 +77,8 @@ def _rows(data: dict, names: int) -> list[Alarm]:
         values = data.get(keys[names - 1])
         if values is None: # as Artisan's import: absent negative guards and beeps read as 0
             values = [0] * count
+        if len(values) < count: # one row would have no value there: not an alarm table
+            raise ValueError(f"{keys[names - 1]} has {len(values)} values for {count} alarms")
         columns[field] = values
     return [Alarm(**{field: columns[field][i] for field in columns}) for i in range(count)]
 

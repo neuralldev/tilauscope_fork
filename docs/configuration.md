@@ -360,7 +360,7 @@ refused with an explanation instead, and works normally once the roast is over.
 weather of the [roast setup sheet](preparing-a-roast.md#what-the-coffee-and-the-room-are-doing),
 offered when no ambient probe is configured. It reads the temperature, humidity, pressure and
 altitude of your town. Finding your town means handing your internet address to a lookup service outside the
-European Union, so the first time you use it TilauScope says so and lets you choose between
+European Union, over a connection that is not encrypted, so the first time you use it TilauScope says so and lets you choose between
 looking it up and typing the three values yourself — choosing to type them puts the cursor in the
 first of the three.
 
@@ -464,6 +464,10 @@ BeanCave goes back with the roasts when it lived in the same folder.
 **Restore and restart** checks the file, makes the safety copy, then closes TilauScope and opens it
 again with the backup in place. A message confirms the date of the backup restored; enter your
 passwords and API keys again (AI assistant, MQTT) from **Open settings**.
+
+The restore happens only if TilauScope really closes. Answering **Cancel** when it asks to save
+the roast on screen, or starting a roast while the safety copy is being made, cancels it: nothing
+is restored, and the roasts made since are kept. Restore again once the roast is over.
 
 A file that is damaged or incomplete is refused, as is a backup made by a newer version of
 TilauScope: update first. In both cases nothing is changed.

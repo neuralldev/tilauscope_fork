@@ -170,7 +170,11 @@ function toast(text) { var t = $("toast"); t.textContent = text; t.style.display
 
 window.onSnapshot = function (method, d) {
   if (d && d.unit) setUnit(draft && draft.unit || d.unit); // the unit being chosen, until saved
-  if (!d) { if (leaving) { leaving = false; toast("Settings change only between roasts"); } return; }
+  if (!d) {
+    if (method === "cave_import") toast("The BeanCave could not be imported");
+    else if (leaving) { leaving = false; toast("Settings change only between roasts"); }
+    return;
+  }
   if (!asked) { asked = true; send("get_setup"); if (tab === "cave") { send("get_cave"); send("get_roasts"); } }
   if (method === "get_setup" && d.reply) {
     setup = d.reply; draft = JSON.parse(JSON.stringify(setup.config)); splashDone(); render();

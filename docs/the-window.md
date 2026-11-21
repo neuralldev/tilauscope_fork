@@ -472,6 +472,11 @@ Until monitoring is switched on, the levers are greyed out and do not respond: w
 the machine closed, a setting sent from here would reach nothing. They come to life with the
 **ON** button, at the same moment as the milestone buttons.
 
+For the same reason, on a Skywalker V2 linked over Bluetooth, the burner, air and drum levers
+and the **SV** row are greyed out from the moment the link opens until the roaster answers,
+and again whenever the link drops; they come back as soon as it does. The extractor lever stays
+usable throughout: it drives another machine.
+
 On a read-only machine, these controls are absent entirely — see
 [Preparing a roast](preparing-a-roast.md#machines-tilauscope-cannot-drive).
 

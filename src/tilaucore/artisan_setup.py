@@ -127,7 +127,7 @@ def parse_ini(text: str) -> dict[str, dict[str, str]]:
 def _int(value: str | None, default: int) -> int:
     try:
         return int(float(value)) if value is not None else default
-    except ValueError:
+    except (ValueError, OverflowError):  # not a number, or an infinite one
         return default
 
 

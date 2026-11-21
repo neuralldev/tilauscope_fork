@@ -24,7 +24,7 @@ from pathlib import Path
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout,
                              QLabel, QTextEdit, QPushButton, QStyle, QFileDialog)
-from PyQt6.QtCore import QStandardPaths, QUrl
+from PyQt6.QtCore import QStandardPaths, QUrl, qVersion
 from PyQt6.QtGui import QFont, QDesktopServices
 
 from tilauscope.theme_qss import apply_tilau_theme
@@ -209,7 +209,7 @@ def export_logs_to_zip():
                             )
 
                 # Add a system info file
-                sys_info = f"OS: {platform.system()} {platform.release()}\nPython: {sys.version}\nQt: 6.11"
+                sys_info = f"OS: {platform.system()} {platform.release()}\nPython: {sys.version}\nQt: {qVersion()}"
                 zipf.writestr("system_info.txt", sys_info)
             return True
         except Exception as e:

@@ -40,7 +40,11 @@ _GRACE_S = 10.0          # deadman: keep control this long after a controller dr
 _SLIDER_DEBOUNCE = 0.3   # s — coalesce non-final set_slider per channel (§6)
 _DRUM_DEBOUNCE = 1.0     # s — drum is slower / more disruptive (§6)
 _MAX_CLIENTS = 8          # LAN UI: bound sockets and per-client broadcast work
+_MAX_HANDSHAKES_PER_PEER = 2   # sockets one device holds before authenticating: never enough to keep the phone out
 _WS_MAX_MSG_SIZE = 64 * 1024
+_TAKEOVER_GIVE_UP_S = 30.0  # the desktop's confirmation denies itself at 20 s; past this, no answer is coming
+_SEND_TIMEOUT_S = 2.0      # a phone that cannot take a message within this is let go
+_HEARTBEAT_S = 5.0
 _COMMAND_BURST = 20       # commands accepted per rolling second, per socket
 
 
@@ -180,6 +184,7 @@ class TilauWebControl:
         self._controller_lease: Optional[Event] = None  # cleared to cancel queued Qt jobs
         self._grace_handle = None     # asyncio TimerHandle for the deadman grace
         self._takeover_pending = False  # a desktop takeover confirmation is open
+        self._takeover_gen = 0          # which request an answer belongs to
         # per-channel set_slider coalescing (loop thread only)
         self._pending_slider: dict = {}
         self._slider_timers: dict = {}
@@ -196,6 +201,7 @@ class TilauWebControl:
         self._zc_info = None
         self._clients: Set[web.WebSocketResponse] = set()
         self._connection_count = 0  # includes sockets still in hello/auth handshake
+        self._handshaking: dict[str, int] = {}  # sockets not authenticated yet, by device address
         self._seq = 0
         self._hb_task: Optional[asyncio.Task] = None
         # strong refs to in-flight broadcast sends: asyncio keeps only a weak ref
@@ -223,8 +229,8 @@ class TilauWebControl:
         # Before anything is served: the plain-ws trade in protocol §7 is only
         # sound while the other end is on the home network. Checked here rather
         # than assumed from the bind address, which is every interface.
-        from tilauscope.weblan import reject_remote_peer  # noqa: PLC0415
-        if reject_remote_peer(request, 'control'):
+        from tilauscope.weblan import reject_foreign_host, reject_remote_peer  # noqa: PLC0415
+        if reject_remote_peer(request, 'control') or reject_foreign_host(request, 'control'):
             return web.Response(status=403, text='forbidden',
                                 content_type='text/plain')
         try:
@@ -268,22 +274,49 @@ class TilauWebControl:
         if lock is None:
             lock = asyncio.Lock()
             ws._tilau_send_lock = lock
-        with suppress(Exception):
+        try:
             async with lock:
-                await ws.send_str(self._envelope(mtype, payload))
+                await asyncio.wait_for(ws.send_str(self._envelope(mtype, payload)), _SEND_TIMEOUT_S)
+        except TimeoutError:
+            # Gone off Wi-Fi without closing: its buffer never drains. Closing ends its
+            # session, which lets control go; nobody else waits behind it any more.
+            _log.warning("control: a phone stopped taking messages, closing it")
+            with suppress(Exception):
+                await asyncio.wait_for(ws.close(), _SEND_TIMEOUT_S)
+        except Exception:  # noqa: BLE001  a socket closing meanwhile
+            pass
 
     # ---- WebSocket ----------------------------------------------------------
 
     async def _ws_handler(self, request: web.Request) -> web.WebSocketResponse:
         # Increment before the first await so concurrent slow handshakes cannot all
         # pass the limit while `_clients` is still empty.
-        if self._connection_count >= _MAX_CLIENTS:
+        # Sockets still in their hello/auth handshake are bounded per device: one that never
+        # authenticates (any device of the LAN) cannot take the phone's place, which comes
+        # from another address.
+        peer = str(getattr(request, 'remote', '') or '')
+        if (self._handshaking.get(peer, 0) >= _MAX_HANDSHAKES_PER_PEER
+                or self._connection_count >= 2 * _MAX_CLIENTS):
             raise web.HTTPServiceUnavailable(text='too many clients')
         self._connection_count += 1
+        self._handshaking[peer] = self._handshaking.get(peer, 0) + 1
+        request['tilau_handshaking'] = peer
         try:
             return await self._ws_session(request)
         finally:
             self._connection_count -= 1
+            self._authenticated(request)
+
+    def _authenticated(self, request: web.Request) -> None:
+        """The socket has left its handshake: it no longer holds its device's handshake slot."""
+        peer = request.get('tilau_handshaking')
+        if peer is not None:
+            request['tilau_handshaking'] = None
+            left = self._handshaking.get(peer, 1) - 1
+            if left:
+                self._handshaking[peer] = left
+            else:
+                self._handshaking.pop(peer, None)
 
     async def _ws_session(self, request: web.Request) -> web.WebSocketResponse:
         # Cross-origin upgrades are refused: a page served by any other site must not
@@ -331,7 +364,7 @@ class TilauWebControl:
                 await ws.close()
                 return ws
             if ap.get('token'):  # first pairing (PT, one-time)
-                aid = str(ap.get('device_id') or device_id)
+                aid = self._pairing.free_device_id(str(ap.get('device_id') or device_id))
                 # Prefer an explicit client name; otherwise derive a readable one
                 # from the User-Agent so devices aren't all labelled "Web".
                 client_name = str(ap.get('display_name') or '').strip()
@@ -385,6 +418,7 @@ class TilauWebControl:
                     "reason": "reconnected_elsewhere",
                 })
             _log.info("control: controller %s (re)attached", device_id)
+        self._authenticated(request)
         self._clients.add(ws)
         with self._cross_thread_lock:
             self._published_client_count += 1
@@ -523,16 +557,25 @@ class TilauWebControl:
                                          "reason": "RATE_LIMITED"})
             return
         self._takeover_pending = True
+        self._takeover_gen += 1
+        gen = self._takeover_gen
         loop = self._loop
 
         def _done(allowed):  # runs on the Qt main thread -> marshal to the loop
             if loop is not None:
                 loop.call_soon_threadsafe(
-                    lambda: asyncio.ensure_future(self._resolve_takeover(ws, did, ref, bool(allowed))))
+                    lambda: asyncio.ensure_future(self._resolve_takeover(ws, did, ref, bool(allowed), gen)))
         bridge.submit({'kind': 'confirm_takeover',
                        'requester_name': self._device_name(did), 'done': _done})
+        # A bridge gone with the request still queued never answers: give it up,
+        # denied, rather than refusing every later request as busy.
+        if loop is not None:
+            loop.call_later(_TAKEOVER_GIVE_UP_S, lambda: asyncio.ensure_future(
+                self._resolve_takeover(ws, did, ref, False, gen)))
 
-    async def _resolve_takeover(self, ws, did, ref, allowed) -> None:
+    async def _resolve_takeover(self, ws, did, ref, allowed, gen) -> None:
+        if gen != self._takeover_gen or not self._takeover_pending:
+            return  # already answered, or given up: a late answer changes nothing
         self._takeover_pending = False  # confirmation resolved (all paths)
         if getattr(ws, 'closed', False):
             # the requester left during the confirmation — abort, keep the
@@ -736,14 +779,14 @@ class TilauWebControl:
 
     async def _heartbeat_loop(self) -> None:
         while True:
-            await asyncio.sleep(5)
+            await asyncio.sleep(_HEARTBEAT_S)
             if not self._clients:
                 continue
             clock = 0.0
             with suppress(Exception):
                 clock = float(self._snapshot_provider().get('clock', 0.0))
-            for ws in list(self._clients):
-                await self._send(ws, 'heartbeat', {"clock": clock})
+            # all at once: a slow phone never delays the heartbeat of the others
+            await asyncio.gather(*(self._send(ws, 'heartbeat', {"clock": clock}) for ws in list(self._clients)))
 
     def broadcast(self, mtype: str, payload: dict) -> None:
         """Thread-safe fan-out (call from the Qt thread for telemetry)."""
@@ -931,7 +974,8 @@ class TilauWebControl:
             "payload:{token:PT,device_id:CID,display_name:DN()}}));}"
             "else{p('no pairing code — open the link from TilauScope > Pair a phone');}};"
             "ws.onmessage=function(e){var m=JSON.parse(e.data),d=m.payload||{};"
-            "if(m.type==='paired'){localStorage.setItem('tdt',d.device_token);p('paired OK');}"
+            "if(m.type==='paired'){localStorage.setItem('tdt',d.device_token);"
+            "if(d.device_id){CID=d.device_id;localStorage.setItem('tcid',CID);}p('paired OK');}"
             "else if(m.type==='welcome'){buildSliders(d.channels);}"
             "else if(m.type==='telemetry'||m.type==='snapshot'){var s=m.type==='snapshot'?'(snap) ':'';"
             "if(d.sliders){for(var k in d.sliders)S[k]=d.sliders[k];refresh();}"

@@ -23,6 +23,7 @@ from tilaucore.artisan_compat import events_internal_to_external_value
 from tilaucore.artisan_setup import LEVERS, MachineSetup
 
 from .alog import EXTRA_DEVICES
+from .files import write_text_atomic
 from .session import Session
 
 # The tablet's channels of each desktop device, by the stable key the desktop writes in tilau_name_map.
@@ -129,12 +130,11 @@ class AlarmLists:
         except (ValueError, KeyError, TypeError) as error:
             raise ValueError("This file is not an Artisan alarm list") from error
         name = _NAME.sub("", Path(name).stem).strip()[:60] or "Alarms"
-        self.folder.mkdir(parents=True, exist_ok=True)
-        self._path(name).write_text(text, encoding="utf-8")
+        write_text_atomic(self._path(name), text)
         return name
 
     def save(self, name: str, rows: list[Alarm]) -> None:
-        self._path(name).write_text(write_alrm(rows), encoding="utf-8")
+        write_text_atomic(self._path(name), write_alrm(rows))
 
     def remove(self, name: str) -> None:
         self._path(name).unlink(missing_ok=True)

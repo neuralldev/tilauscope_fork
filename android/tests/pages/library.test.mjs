@@ -288,7 +288,9 @@ test("the send pictogram on a coffee writes a package for the share sheet; the z
   await page.settle();
   assert.deepEqual(page.sent("coffee_send").map((c) => c[1]), ["c0c0c0c0-0000-0000-0000-000000000001"]);
   assert.equal(page.$("ce"), null, "the editor did not open under the pictogram");
-  assert.deepEqual(readdirSync(join(page.folder, "cache", "coffee-share")), ["Cortes.tilaucoffee"]);
+  const sent = readdirSync(join(page.folder, "cache", "coffee-share")); // one folder per package, kept an hour (P4-39)
+  assert.equal(sent.length, 1);
+  assert.deepEqual(readdirSync(join(page.folder, "cache", "coffee-share", sent[0])), ["Cortes.tilaucoffee"]);
   assert.deepEqual(page.errors, []);
   void made;
 });

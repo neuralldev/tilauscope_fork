@@ -735,6 +735,18 @@ class _InstallReadyDialog(QDialog):
 # Public class
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _file_sha256(path: Path) -> str:
+    """SHA-256 of a file on disk, '' when it cannot be read."""
+    sha = hashlib.sha256()
+    try:
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                sha.update(chunk)
+    except OSError:
+        return ""
+    return sha.hexdigest()
+
+
 class TilauUpdater(QObject):
     """
     Non-blocking startup update checker for TilauScope, or for BeanCave alone.
@@ -875,6 +887,8 @@ class TilauUpdater(QObject):
             QStandardPaths.StandardLocation.DownloadLocation
         )
         self._dest_path = str(Path(downloads_dir) / filename)
+        # checked again at launch: the installer waits in Downloads until the user accepts
+        self._expected_sha256 = digest[len("sha256:"):].lower() if digest.startswith("sha256:") else ""
 
         self._dl_dialog = _DownloadProgressDialog(self._dest_path, self._parent)
         self._dl_dialog.cancelled.connect(self._on_download_cancelled)
@@ -991,6 +1005,27 @@ class TilauUpdater(QObject):
                 QApplication.translate("tilauscope_updates",
                     "The downloaded installer could not be found:\n{0}\n\n"
                     "Please download it again.").format(file_path),
+                QMessageBox.Icon.Warning,
+            )
+            return
+
+        # The installer waited in Downloads, writable by anything the user runs,
+        # since its download was checked: it is checked again before it runs.
+        if _file_sha256(p) != getattr(self, "_expected_sha256", ""):
+            _log.error("[TilauUpdater] Installer changed since its download; deleted, not launched.")
+            try:
+                p.unlink()
+            except OSError:
+                pass
+            from PyQt6.QtWidgets import QMessageBox
+            from tilauscope.tilauscope_types import show_styled_message
+            show_styled_message(
+                self._parent,
+                QApplication.translate("tilauscope_updates", "Download Failed"),
+                QApplication.translate(
+                    "tilauscope_updates",
+                    "The downloaded installer does not match the checksum published "
+                    "with the release. It was deleted; try again later."),
                 QMessageBox.Icon.Warning,
             )
             return

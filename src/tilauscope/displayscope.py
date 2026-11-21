@@ -429,7 +429,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
     def _minmax_open(self) -> bool:
         """The min/max trackers follow the roast, not the cooling: they close at
         DROP even though the recording is still running."""
-        return self.is_roasting and self.aw.qmc.timeindex[0] > -1 and not self._drop_done
+        return self.is_roasting and self._milestone_marked(0) and not self._drop_done
 
 
 

@@ -367,6 +367,7 @@ var gen=0,sock=null;    // connection generation + the live socket (see connect(
 var ptUsed=false;       // the URL pairing token has been presented at least once
 var dragCh=null;        // channel id currently under the finger (see attachDrag)
 var monitorOn=true;     // desktop still sampling? (false = frozen, not live)
+var lockedCh={};        // slider ids the desktop greys now (ingestLocked)
 var chans=[],chById={},S={},advis={};              // slider values / advisory by channel id
 var series={t:[],bt:[],et:[],ror:[]};
 var markers=[],phase='idle',chargeT=null,clock=0,haveData=false;
@@ -559,8 +560,12 @@ function refresh(){chans.forEach(function(ch){
 function paintHint(){$('hint').textContent=(!monitorOn?tr('desktop_off')
  :(role==='controller'?tr('hint_controller')
  :(haveData?tr('hint_observer'):tr('connecting'))));}
+/* a slider is usable here exactly when it is on the desktop: greyed for an
+   observer, while the desktop does not monitor, and for each slider the desktop
+   greys itself (`locked`: a lost roaster link — the extractor stays free). */
 function applyRole(){var ctl=role==='controller';
- chans.forEach(function(ch){var c=$('c_'+ch.id);if(c)c.classList.toggle('locked',!ctl);});
+ chans.forEach(function(ch){var c=$('c_'+ch.id);
+  if(c)c.classList.toggle('locked',!ctl||!monitorOn||!!lockedCh[ch.id]);});
  $('takeover').style.display=ctl?'none':'block';
  $('release').style.display=ctl?'block':'none';
  paintHint();}
@@ -685,6 +690,8 @@ $('st_cancel').onclick=closeStop;
    mid-drag would jump the bar away and then be silently overwritten by the value
    we commit on release. The finger wins until it lets go. */
 function ingestSliders(sl){if(!sl)return;for(var k in sl)if(k!==dragCh)S[k]=sl[k];refresh();}
+function ingestLocked(list){if(!list)return;lockedCh={};
+ list.forEach(function(id){lockedCh[id]=true;});applyRole();}
 function setSnapshot(d){
  series={t:(d.series&&d.series.t)||[],bt:(d.series&&d.series.bt)||[],
   et:(d.series&&d.series.et)||[],ror:(d.series&&d.series.ror)||[]};
@@ -699,7 +706,7 @@ function setSnapshot(d){
  if(d.axes){axes=d.axes;applyUnit(axes.unit);}
  applyColors(d.colors);
  ltime=(d.ltime!=null?d.ltime:null);
- ingestSliders(d.sliders);haveData=true;
+ ingestSliders(d.sliders);ingestLocked(d.locked);haveData=true;
  paintHeader();paintReads({bt:lastVal('bt'),et:lastVal('et'),ror:lastVal('ror')});
  drawChart();applyRole();render4b();}
 function lastVal(k){var a=series[k];for(var i=a.length-1;i>=0;i--)if(a[i]!=null&&a[i]===a[i])return a[i];return null;}
@@ -719,7 +726,7 @@ function applyEt(d){if('has_et' in d)document.body.classList.toggle('noet',d.has
 function pushTele(d){
  applyEt(d);
  // data flowing again is proof the desktop resumed, even if we missed the event
- if(!monitorOn){monitorOn=true;setDot('on');paintHint();}
+ if(!monitorOn){monitorOn=true;setDot('on');applyRole();}
  if(d.phase)phase=d.phase;if(d.clock!=null)clock=d.clock;
  if('ltime' in d)ltime=d.ltime;
  // reconcile the recorder state every tick rather than trusting a single event:
@@ -737,7 +744,7 @@ function pushTele(d){
  if(lt!=null&&x<lt-1){resetSeries();render4b();}
  series.t.push(x);series.bt.push(d.bt);series.et.push(d.et);series.ror.push(d.ror);
  if(series.t.length>1400){['t','bt','et','ror'].forEach(function(k){series[k].shift();});}
- ingestSliders(d.sliders);haveData=true;
+ ingestSliders(d.sliders);ingestLocked(d.locked);haveData=true;
  paintHeader();paintReads(d);drawChart();}
 
 /* ---------- events ---------- */
@@ -747,7 +754,7 @@ function onEvent(d){
  // and no stale timer running against a clock that no longer advances.
  if(d.kind==='monitor'){
   monitorOn=(d.state!=='off');
-  setDot(monitorOn?'on':'grace');paintHint();
+  setDot(monitorOn?'on':'grace');applyRole();
   if(!monitorOn){ltime=null;phase='idle';paintHeader();
    toast(tr('desktop_off'),'warn');}
   return;}
@@ -873,7 +880,7 @@ function connect(){
    giveup=true;try{ws.close();}catch(e){}}};
  ws.onmessage=function(e){var m;try{m=JSON.parse(e.data);}catch(x){return;}var d=m.payload||{};
   switch(m.type){
-   case 'paired':localStorage.setItem('tdt',d.device_token);if(d.role)role=d.role;break;
+   case 'paired':localStorage.setItem('tdt',d.device_token);if(d.device_id){CID=d.device_id;localStorage.setItem('tcid',CID);}if(d.role)role=d.role;break;
    case 'welcome':
     if(d.roaster)$('roaster').textContent=d.roaster;
     applyUnit(d.unit);

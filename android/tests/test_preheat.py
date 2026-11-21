@@ -104,6 +104,56 @@ class PreheatTests(unittest.TestCase):
         self.assertEqual(self.demo.machine_log[-6:], ["CLDN,ON", "OT2,75", "OT3,80", "UNTIL_BT_BELOW,50", "EVT,9", "OFF"]) # cooled first
         self.assertIsNone(self.demo.session.preheat_sv_c) # not a guided preheat for the learning
 
+    def test_nothing_is_queued_behind_the_safety_stop_of_a_faulted_preheat(self):
+        """Audit 2026-11-21, P1-09: the link runs its commands in order, the stop's wait among them: a lever
+        moved after the fault went out once the roaster was already stopped (OT1,70 to a machine off)."""
+        self.start()
+        self.run_seconds(40)
+        self.run_seconds(6, readings=False)
+        self.assertEqual(self.preheat()["state"], "fault")
+        sent = len(self.demo.machine_log)
+        self.demo.set_lever("burner", 70)
+        self.demo.set_lever("air", 40)
+        self.assertEqual(self.demo.machine_log[sent:], [])
+
+    def test_a_failing_part_of_the_second_does_not_silence_the_preheat_safety(self):
+        """Audit 2026-11-21, P1-11: one exception in the second's readers skipped the preheat watchdog."""
+        def broken():
+            raise RuntimeError("a reader failing every second")
+        self.demo._crack_step = broken
+        self.start()
+        self.run_seconds(40)
+        self.run_seconds(6, readings=False)
+        self.assertEqual(self.preheat()["state"], "fault")
+        self.assertEqual(self.burner, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PreheatCeilingTests(unittest.TestCase):
+    """Audit 2026-11-21, P4-44: the preheat burner ceiling is the roaster's (heater_max_pct in roasters.json),
+    else the file's common default — not 80 % written in the code for every machine."""
+
+    def _ceiling(self, declared):
+        from unittest import mock
+        from tilaucore.roasters import RoasterManager
+        from tilauscope_mobile.preheat import TabletPreheat
+        real = RoasterManager.get_by_name
+        def patched(manager, manufacturer, model):
+            roaster = real(manager, manufacturer, model)
+            roaster.heater_max_pct = declared
+            return roaster
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(RoasterManager, "get_by_name", patched):
+            from tilauscope_mobile.roasts import Roasts
+            preheat = TabletPreheat(roasts=Roasts(folder), machine="skywalker-v2", input_probe="BT", store_path=None,
+                                    clock=lambda: 0.0, burner=lambda _p: None, mark=lambda _t: None, fault=lambda _r: None,
+                                    simulated=True, room=lambda: None, ror_span_s=15.0)
+        return preheat.cfg.max_burner
+
+    def test_the_roaster_s_ceiling_caps_the_preheat(self):
+        self.assertEqual(self._ceiling(70.0), 70.0)
+
+    def test_a_roaster_declaring_none_uses_the_common_default(self):
+        self.assertEqual(self._ceiling(None), 80.0)

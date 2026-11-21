@@ -177,7 +177,9 @@ def apply_import(package: core.Package, *, beans: list[GreenBean], preview: Impo
             roast["tilau_exclude_learning"] = True
         target = _roast_file(folder, package.bean.name, roast, uuid, shared)
         if not target.exists():
-            target.write_text(repr(roast), encoding="utf-8")
+            # whole or not at all: a roast cut short would exist, and never be written again
+            from tilauscope.cave.common import _atomic_write_text  # noqa: PLC0415
+            _atomic_write_text(target, repr(roast), "utf-8")
 
     held = tasting_log.load(cave_directory).entries
     for uuid, tasting in package.tastings.items():

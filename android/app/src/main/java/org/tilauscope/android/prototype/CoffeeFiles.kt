@@ -45,13 +45,15 @@ object CoffeeFiles {
         return null to -1L
     }
 
-    /** The copy in the cache, or null: not a .tilaucoffee by its display name, over the cap, or unreadable. */
-    fun copy(context: Context, uri: Uri): File? {
+    /** The copy in the cache, or null: not a .tilaucoffee by its display name, over the cap, or unreadable.
+     *  Earlier copies go, except `keep`: the one an import is still reading. */
+    fun copy(context: Context, uri: Uri, keep: File? = null): File? {
         val (name, size) = described(context.contentResolver, uri)
         val shown = name ?: uri.lastPathSegment ?: ""
         if (!shown.lowercase().endsWith(EXTENSION) || size > MAX_BYTES) return null // refused before a byte is read
-        val folder = File(context.cacheDir, FOLDER).apply { deleteRecursively(); mkdirs() }
-        val target = File(folder, "opened$EXTENSION")
+        val folder = File(context.cacheDir, FOLDER).apply { mkdirs() }
+        folder.listFiles()?.filter { it != keep }?.forEach { it.deleteRecursively() }
+        val target = File(folder, "opened-${System.nanoTime()}$EXTENSION") // never the name of the one kept
         return try {
             val input = context.contentResolver.openInputStream(uri) ?: return null
             input.use { source ->

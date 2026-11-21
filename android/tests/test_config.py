@@ -59,6 +59,23 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             demo.save_setup(json.dumps({"machine": "skywalker-v2"}))
 
+    def test_one_field_an_update_no_longer_takes_costs_only_that_field(self):
+        """Audit 2026-11-21, P2-11: one device or value an update stopped accepting set the whole file aside;
+        the tablet started unconfigured, its roaster link, devices, MQTT and operator lost."""
+        saved = config.validate({"machine": "skywalker-v2", "roaster": {"name": "SW", "address": "AA:BB"},
+                                 "devices": {key: {"address": "11:22"} for key in list(catalogue.DEVICES)[:1]},
+                                 "operator": "Tilau", "unit": "F", "currency": "EUR"})
+        written = {**saved, "devices": {**saved["devices"], "gone-device": {"address": "33:44"}}, "currency": "euro"}
+        Path(self.path).write_text(json.dumps(written), encoding="utf-8")
+        demo = Demo(config_path=self.path)
+        self.assertTrue(json.loads(demo.get_setup())["configured"])
+        kept = config.load(self.path)
+        self.assertEqual((kept["machine"], kept["roaster"]["address"], kept["operator"], kept["unit"]),
+                         ("skywalker-v2", "AA:BB", "Tilau", "F"))
+        self.assertEqual(kept["devices"], saved["devices"])           # the known device stays, the unknown goes
+        self.assertEqual(kept["currency"], "")                        # the one bad value back to its default
+        self.assertEqual(json.loads(Path(self.path + ".unreadable").read_text(encoding="utf-8")), written)
+
     def test_an_unreadable_configuration_is_set_aside_and_the_app_starts_unconfigured(self):
         """A machine the catalogue no longer knows made every session operation fail, for good."""
         for text in ('{"machine": "gone-machine"}', "{not json"):

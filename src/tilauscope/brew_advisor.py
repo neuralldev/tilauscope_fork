@@ -49,7 +49,7 @@ from typing import Optional
 
 # Single shared roast-colour → Agtron converter, re-exported for callers that
 # import it from here (e.g. roast_timeline).
-from tilaucore.roast_colour import roast_agtron
+from tilaucore.roast_colour import agtron_scale_for, roast_agtron
 from tilauscope.tilauscope_types import AGTRON_SCALES, to_agtron, weight_loss_target  # noqa: F401
 # Water activity is judged in one place: the Storage tab owns the aw doctrine,
 # so the brew advisor reads the same zones instead of a second hardcoded opinion.
@@ -699,8 +699,7 @@ def _mod_weight_loss(inp: BrewInput) -> RecipeDelta:
     if wl <= 0:
         return RecipeDelta()
     agtron = round(roast_agtron(inp.ground_color, inp.whole_color, inp.color_system)[0], 1)
-    category = next((s.name for s in AGTRON_SCALES
-                     if s.agtron_range.min_value <= agtron <= s.agtron_range.max_value), None)
+    category = getattr(agtron_scale_for(agtron), 'name', None)
     target = weight_loss_target(category, moisture_pct=inp.green_moisture,
                                 dev_time_min=inp.dev_time_s / 60.0) if agtron > 0 else None
     if target is None:

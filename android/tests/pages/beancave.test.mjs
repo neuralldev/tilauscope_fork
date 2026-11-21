@@ -31,3 +31,27 @@ test("a decimal comma typed in the editor survives a redraw and is saved (W02)",
   await page.settle();
   assert.deepEqual(page.errors, []);
 });
+
+test("a roast that cannot be deleted between roasts is not blamed on a roast on screen (P4-40)", async (t) => {
+  const page = await openPage("beancave.html", { beans: [GUJI] });
+  t.after(page.close);
+  page.window.onSnapshot("delete_roast", null); // the session's call failed: the service hands null
+  const said = page.$("toast").textContent;
+  assert.ok(!/finish the roast on screen/.test(said), said);
+  assert.match(said, /could not be deleted/);
+});
+
+test("the coffee the operator picked stays picked when the list is read again (P4-41)", async (t) => {
+  const HUILA = { ...GUJI, name: "Huila", uuid: "0f8e6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6" };
+  const page = await openPage("beancave.html", { beans: [GUJI, HUILA] });
+  t.after(page.close);
+  await page.settle();
+  const doc = page.window.document;
+  const pick = (uuid) => doc.querySelector('#list .it[data-u="' + uuid + '"]');
+  const other = [GUJI, HUILA].find((c) => !pick(c.uuid).classList.contains("sel"));
+  pick(other.uuid).click();
+  page.window.send("get_coffees"); // as after a roast is deleted
+  await page.settle();
+  assert.ok(pick(other.uuid).classList.contains("sel"), "the operator's pick was dropped");
+  assert.deepEqual(page.errors, []);
+});

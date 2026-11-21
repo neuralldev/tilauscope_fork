@@ -44,10 +44,16 @@ sliders, guidance becomes advice rather than a control to move.
 
 **If the Bluetooth link drops.** The roaster cuts its own burner when it loses the link.
 TilauScope records the missing readings as gaps in the curve rather than repeating the last
-value, keeps reconnecting on its own, and says so on screen. Once the link is back, heat is not
+value, keeps reconnecting on its own, and says so on screen. On the Skywalker V2, the burner,
+air and drum sliders and the setpoint are greyed out while the link is down, since nothing they
+send can reach the roaster; the extractor slider stays usable. Once the link is back, heat is not
 re-applied: the burner slider shows the roaster's actual output, and resuming heat or pressing
 STOP is your decision. A burner that does not confirm it is off when the link opens, or that runs
 above its command, is also reported on screen.
+
+A roaster switched on after monitoring has started is found on its own: TilauScope keeps trying
+to connect and says once that the roaster does not answer. Its sliders stay greyed out until it
+does.
 
 !!! note "Skywalker V1 and Cubean"
     The Skywalker V1 and the Cubean (200 g) have no link of their own: each reaches the computer

@@ -92,6 +92,11 @@ def profile_detail(profile: dict, unit: str = "C") -> dict:
             "tiles": tiles, "curve": curve, "marks": marks, "points": sorted(points, key=lambda p: p["t"]), "lanes": lanes}
 
 
+
+def _same_roast(roast_uuid: str) -> str:
+    """A roast id as two files of the same roast share it: dashes and case ignored, as the desktop's import."""
+    return roast_uuid.replace("-", "").lower()
+
 class Roasts:
     def __init__(self, files_directory: str) -> None:
         self.base = Path(files_directory)
@@ -118,7 +123,7 @@ class Roasts:
 
     def held(self) -> set[str]:
         """The roastUUIDs held in any folder, dashes and case ignored as the desktop's import does."""
-        return {m.roast_uuid.replace("-", "").lower() for _, m in self.records() if m.roast_uuid}
+        return {_same_roast(m.roast_uuid) for _, m in self.records() if m.roast_uuid}
 
     def store(self, origin: str, name: str, profile: dict) -> bool:
         """A roast file written into `origin`'s folder; False when that name is taken: nothing is overwritten."""
@@ -146,15 +151,15 @@ class Roasts:
 
     def _sorted(self, paths: list[str]):
         """(path, metadata, verdict) of each file: 'new', 'already' (same roast held, or twice in the lot) or 'invalid'."""
-        held = {m.roast_uuid for _, m in self.records() if m.roast_uuid}
+        held = self.held()
         for source in map(Path, paths):
             meta = read_alog_metadata(source) if source.suffix.lower() == ".alog" else None
             if meta is None or not meta.roast_uuid:
                 yield source, meta, "invalid"
-            elif meta.roast_uuid in held:
+            elif _same_roast(meta.roast_uuid) in held:
                 yield source, meta, "already"
             else:
-                held.add(meta.roast_uuid)
+                held.add(_same_roast(meta.roast_uuid))
                 yield source, meta, "new"
 
     def preview(self, paths: list[str]) -> dict:

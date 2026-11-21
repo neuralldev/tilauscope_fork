@@ -122,11 +122,49 @@ def levers(config: dict) -> dict:
 
 
 def load(path: str) -> dict | None:
-    """The saved configuration, or None before the first setup."""
+    """The saved configuration, or None before the first setup.
+
+    A field an update no longer accepts costs that field only (salvage): the file is kept clean, the
+    original beside it as .unreadable. ValueError when nothing can be kept: not JSON, or a machine the
+    catalogue no longer knows, the setup then being made again."""
     target = Path(path)
     if not target.exists():
         return None
-    return validate(json.loads(target.read_text(encoding="utf-8")))
+    text = target.read_text(encoding="utf-8")
+    data = json.loads(text)
+    try:
+        return validate(data)
+    except ValueError:
+        clean = salvage(data)
+    try:
+        Path(path + ".unreadable").write_text(text, encoding="utf-8")
+        return save(path, clean)
+    except OSError: # the salvaged setup still serves this session; the file is cleaned at the next save
+        return clean
+
+
+def salvage(data) -> dict:
+    """What validate keeps of data, each part checked alone: an unknown device or lever goes by itself,
+    any other field the checks refuse takes its default. ValueError without an object or a known machine."""
+    if not isinstance(data, dict):
+        raise ValueError("Configuration must be an object")
+    if data.get("machine") is not None and data["machine"] not in MACHINES:
+        raise ValueError("Unknown machine")
+    kept: dict = {}
+    for key, value in data.items():
+        if key in ("devices", "levers") and isinstance(value, dict): # each entry on its own
+            value = {name: item for name, item in value.items() if _accepted({key: {name: item}})}
+        if _accepted({**kept, key: value}):
+            kept[key] = value
+    return validate(kept)
+
+
+def _accepted(data: dict) -> bool:
+    try:
+        validate(data)
+    except ValueError:
+        return False
+    return True
 
 
 def save(path: str, data: dict) -> dict:

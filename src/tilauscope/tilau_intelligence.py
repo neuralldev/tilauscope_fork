@@ -152,29 +152,14 @@ class FirstCrackDetector:
         _log.info(f"FC_Detector: FIRED @ t={current_time:.0f}s (BT={current_bt:.1f}), first crack at {fired_at:.0f}s")
         return fired_at
 
-    def _get_value_by_cache(self, idx: int, channel: int) -> float | None:
-        """Récupère la dernière valeur d'un périphérique extra mis en cache."""
-        if not hasattr(self, 'aw_qmc') or self.aw_qmc is None:
-            return None
-        if idx == -1:
-            return None
-        try:
-            if self.aw_qmc.flagstart:
-                series = self.aw_qmc.extratemp1[idx] if channel == 1 else self.aw_qmc.extratemp2[idx]
-                return float(series[-1]) if series else None
-            else:
-                series = self.aw_qmc.RTextratemp1[idx] if channel == 1 else self.aw_qmc.RTextratemp2[idx]
-            return float(series) if series else None
-        except (IndexError, TypeError, ValueError):
-            return None
-
     def _read_counter(self, idx: int, channel: int) -> int | None:
-        """Single counter channel as int, filtering the -1 'no data' sentinel."""
-        val = self._get_value_by_cache(idx, channel)
-        if val is None:
-            return None
-        count = int(val)
-        return count if count >= 0 else None
+        """Single counter channel: its last answer within the lookback, like the display.
+
+        The last sample alone missed most ticks (-1): a channel silent on the
+        tick BT entered the window banked 0, and its next answer brought every
+        pop of the roast in at once. A NaN is no answer either.
+        """
+        return self._read_recent(idx, channel)
 
     def _read_fc_raw(self) -> int | None:
         return self._read_counter(self._cached_crack_device_idx,

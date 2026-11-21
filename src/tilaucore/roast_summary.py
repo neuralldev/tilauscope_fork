@@ -20,7 +20,7 @@ from datetime import datetime
 
 from tilaucore.alog_index import _to_grams
 from tilaucore.bean_qualifiers import QT_TRANSLATE_NOOP
-from tilaucore.roast_colour import AGTRON_SCALES, agtron_text, get_agtron_color, roast_agtron
+from tilaucore.roast_colour import agtron_scale_for, agtron_text, get_agtron_color, resolve_color_system, roast_agtron
 
 DASH = '—'
 
@@ -54,6 +54,7 @@ class RoastFacts:
     unit: str               # the profile's own, 'C' or 'F'
     ground: float
     whole: float
+    color_system: str = ''  # the meter the readings come from; '' reads as Agtron
 
     @property
     def has_result(self) -> bool:
@@ -78,15 +79,14 @@ def roast_facts(profile: Mapping) -> RoastFacts:
         unit='F' if str(profile.get('mode') or 'C').upper() == 'F' else 'C',
         ground=_number(profile.get('ground_color')),
         whole=_number(profile.get('whole_color')),
+        color_system=str(profile.get('color_system') or ''),
     )
 
 
 def colour_category(value: float) -> str:
     """The roast level a colour reading falls in, or '' outside the scale."""
-    for scale in AGTRON_SCALES:
-        if scale.agtron_range.min_value <= value <= scale.agtron_range.max_value:
-            return scale.name
-    return ''
+    scale = agtron_scale_for(value)
+    return scale.name if scale is not None else ''
 
 
 @dataclass(frozen=True)
@@ -161,13 +161,15 @@ def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[Til
     else:
         drop = _not_recorded(_DROP_TEMPERATURE)
 
-    if facts.ground > 0:
-        category = colour_category(facts.ground)
+    # On the Agtron scale whatever the meter; a whole bean shows its estimated
+    # ground colour when the roaster declares the gap, with a hollow dot.
+    agtron, basis = roast_agtron(facts.ground, facts.whole,
+                                 resolve_color_system(facts.color_system, facts.ground, facts.whole))
+    if basis == 'ground':
+        category = colour_category(agtron)
         sub = ((_GROUND_LEVEL, (category,)),) if category else ((_GROUND, ()),)
-        colour = Tile(_COLOUR, f'{facts.ground:.0f}', sub, get_agtron_color(facts.ground))
-    elif facts.whole > 0:
-        # Its estimated ground colour when the roaster declares the gap; hollow dot.
-        agtron, basis = roast_agtron(0.0, facts.whole, 'Agtron')
+        colour = Tile(_COLOUR, f'{agtron:.0f}', sub, get_agtron_color(agtron))
+    elif agtron > 0:
         category = colour_category(agtron)
         if basis == 'estimated':
             sub = ((_GROUND_EST_LEVEL, (category,)),) if category else ((_GROUND_EST, ()),)

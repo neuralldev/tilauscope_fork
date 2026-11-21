@@ -25,7 +25,7 @@ from tilaucore.alog_index import AlogMetadata, burner_events, phase_heater, scan
 from tilaucore.artisan_compat import (convertTemp, convertWeight, events_internal_to_external_value, fromCtoFstrict,
                                       fromFtoCstrict)
 from tilaucore.ror import RoRSettings, rate_of_rise
-from tilaucore.bean_energy import FloorProfile, match_variety_family
+from tilaucore.bean_energy import DENSITY_REF_G_L, FloorProfile, match_variety_family
 from tilaucore.coffee_share import adopted
 from tilaucore.bean_qualifiers import QT_TRANSLATE_NOOP
 from tilaucore.beans import BeanCaveContainer, GreenBean, from_json
@@ -35,11 +35,11 @@ from tilaucore.roast_analysis import (DEV_EVENT_PROMINENCE_C, GREEN_MOISTURE_NEU
                                       estimate_ror_dt, find_flicks_crashes, find_turning_point_index,
                                       get_ror_ideal_band, learned_fc_burner, marked, normalize_timeindex, weight_loss_target,
                                       which_roast_phase)
-from tilaucore.roast_colour import AGTRON_SCALES, AgtronScale, to_agtron
+from tilaucore.roast_colour import AgtronScale, agtron_scale_for, in_agtron_scale, to_agtron
 from tilaucore.roast_levels import ROASTING_BASIC_BASE, RoasterBasicPlan, RoasterBasicPlanPerPhase
 from tilaucore.roast_memory import roast_batch_tag
 from tilaucore.roast_plan_snapshot import complete_prediction_snapshot, summarize_prediction_errors
-from tilaucore.roasters import RoasterContext
+from tilaucore.roasters import RoasterContext, machine_value
 
 Text = tuple[str, str]  # (context, English source)
 
@@ -74,25 +74,12 @@ _DEV_BURNER_DROP_CAP: Final[float] = 6.0
 ## encodé de sécurité : charger plus froid n'est jamais dangereux, c'est seulement
 ## plus lent. La garder fermée écrasait toute intention de conduite plus lente sur
 ## un lavé, dont la borne basse valait déjà le neutre (arbitrage Tilau 2026-09-01).
-_CHARGE_NEUTRAL_C: float = 185.0
-## Décalage de surface par process, depuis le neutre. Reproduit les milieux des
-## anciennes bandes au degré près : 185 / 175 / 165.
-_CHARGE_PROCESS_OFFSET_C: dict[str, float] = {
-    "washed":    0.0,
-    "natural": -10.0,
-    "decaf":   -20.0,
-}
-## Plafond de surface par process — les anciennes bornes HAUTES, inchangées.
-_CHARGE_CEILING_BY_PROCESS: dict[str, float] = {
-    "washed":  190.0,
-    "natural": 180.0,
-    "decaf":   170.0,
-}
-## Plancher unique, physique et non plus lié au process : sous ce niveau un lot
-## ne retourne pas proprement sur un radiant. C'est l'ancienne borne basse la plus
-## basse du jeu, donc rien de ce qui était atteignable ne cesse de l'être.
-_CHARGE_FLOOR_C: float = 160.0
-_CHARGE_MODULATION_MAX_C: float = 5.0
+## Les valeurs sont celles de la machine (roasters.json, sinon son bloc "defaults",
+## mesuré sur le Skywalker V2 — audit 2026-11-21, P4-44) : charge_neutral_c,
+## charge_process_offset_c (décalage de surface depuis le neutre : 185 / 175 / 165),
+## charge_ceiling_by_process_c (plafond de surface), charge_floor_c (plancher unique :
+## sous ce niveau un lot ne retourne pas proprement sur un radiant) et
+## charge_modulation_max_c.
 
 ## ── Pression du lieu (WaterActivity-Altitude-Spec §8bis, Tilau 2026-10-29) ──
 ## Altitude et pression vont de pair : la pression du lieu est le pivot,
@@ -224,10 +211,10 @@ _CHARGE_ABSOLUTE_MAX_C: Final[float] = 210.0
 _HEATER_DRY_PCT_PER_STRUCTURE_INDEX: Final[float] = 1.5
 
 ## Température ambiante = température de DÉPART du grain (spec §7). Sur 400 g,
-## 1,7 J/g·K × 10 K = 6,8 kJ ≈ 19 s de séchage aux ~350 W délivrés à la charge.
-## C'est la même classe d'effet qu'un point d'eau du grain — pas un modificateur
-## d'appoint. Mis à l'échelle de la masse chargée au point d'usage.
-_AMBIENT_DRY_MIN_PER_10K: Final[float] = 0.19
+## 1,7 J/g·K × 10 K = 6,8 kJ de plus à fournir à la charge : la même classe
+## d'effet qu'un point d'eau du grain. Minutes par 10 K et masse de référence
+## sont celles de la machine (ambient_dry_min_per_10k, ambient_dry_reference_g ;
+## roasters.json, P4-44), mises à l'échelle de la masse chargée au point d'usage.
 ## Ouverture d'air par index d'aw, côté eau libre seulement (chasse la vapeur).
 _AIRFLOW_PCT_PER_AW_INDEX: Final[float] = 1.5
 ## Structure sur la durée de séchage : un grain dense retient sa vapeur plus
@@ -380,6 +367,60 @@ class _GreenPairValue:
         return self.source != _SRC_ABSENT
 
 
+def _process_key(process_type_lower: str) -> str:
+    """The plan's one reading of a bean's process: "decaf", "natural" or "washed".
+
+    Decaf is tested first: it can co-occur with a process word ("decaf washed").
+    Honey, pulped natural, wet hulled and the fermented/anaerobic processes group
+    with the naturals: they carry the same surface sugars from extended contact
+    with the mucilage/fruit. Anything else, an empty process included, is washed.
+    The charge and the burner both read it (Tilau, 2026-11-21, audit P3-03).
+    """
+    if "decaf" in process_type_lower or "decaffeinated" in process_type_lower:
+        return "decaf"
+    if any(word in process_type_lower for word in (
+            "honey", "pulped natural", "wet hulled", "natural", "dry process", "anaerobic",
+            "fermentation", "fermented", "carbonic", "maceration", "yeast")):
+        return "natural"
+    return "washed"
+
+
+def _apply_burner_notch(lever: str, delta: float, *, heater_dry: float, heater_maillard: float,
+                        heater_pre_fc: float, floor_pct: float, heater_max_pct: float,
+                        dev_heater_max_pct: float) -> "tuple[float, float, float, tuple[float, float] | None]":
+    """The step a tasting asks of the burner: (dry, Maillard, pre-FC, (before, after) of the lever moved).
+
+    Each setpoint keeps its own ceiling: the pre-FC burner, set for development, stays under
+    dev_heater_max_pct as the plan bounds it (audit 2026-11-21, P3-04); dry and Maillard under heater_max.
+    """
+    lo = min(floor_pct, heater_max_pct)
+
+    def _notch(value: float, ceiling: float = heater_max_pct) -> float:
+        return _clamp(value + delta, min(lo, ceiling), ceiling)
+
+    if lever == "burner_start_pct":
+        before_after = (heater_dry, _notch(heater_dry))
+        return before_after[1], heater_maillard, heater_pre_fc, before_after
+    if lever == "burner_before_fc_pct":
+        before_after = (heater_pre_fc, _notch(heater_pre_fc, min(heater_max_pct, dev_heater_max_pct)))
+        return heater_dry, _notch(heater_maillard), before_after[1], before_after
+    return heater_dry, heater_maillard, heater_pre_fc, None
+
+
+_DENSITY_RANGE_G_L: tuple[float, float] = (250.0, 1000.0)   # a bean density within physical reason
+
+
+def _density_or_reference(density_g_l: "float | None") -> float:
+    """The bean density the plan's formulas read: the measured one, else the reference bean.
+
+    Unmeasured is 0.0 (the bean fields' sentinel); read as 0 g/L it set the drum
+    to a fifth of its range and lowered the RoR at drop (audit 2026-11-21, P3-01).
+    Tilau: without a measure, an average density, DENSITY_REF_G_L.
+    """
+    density = _plausible_reading(density_g_l, *_DENSITY_RANGE_G_L, "bean density")
+    return DENSITY_REF_G_L if density is None else density
+
+
 def _plausible_reading(value: "float | None", lo: float, hi: float,
                        label: str) -> "float | None":
     """A reading, or None when it is absent OR outside physical reason.
@@ -444,7 +485,7 @@ def _resolve_green_structure(density_g_l: "float | None",
     given a fifth of a measurement's voice: enough to lean the plan, never
     enough to invert it. See `_STRUCTURE_PROXY_WEIGHT`.
     """
-    _density = _plausible_reading(density_g_l, 250.0, 1000.0, "bean density")
+    _density = _plausible_reading(density_g_l, *_DENSITY_RANGE_G_L, "bean density")
     if _density is not None:
         if _density < _STRUCTURE_DEAD_BAND_LOW:
             _index = ((_density - _STRUCTURE_DEAD_BAND_LOW)
@@ -545,13 +586,21 @@ def _learning_log_is_eligible(data: dict) -> bool:
         return False
     if data.get("tilau_exclude_learning") is True:
         return False
-    computed = data.get("computed") or {}
+    return _room_is_plausible(data.get("computed") or {}, str(data.get("mode", "C")) == "F")
+
+
+def _room_is_plausible(computed: dict, log_is_f: bool) -> bool:
+    """The roast's room readings are real ones: the temperature judged in °C whatever the
+    file's unit (computed values carry the LOG's unit), the humidity in its own range."""
     try:
         temp = float(computed.get("ambient_temperature", 0.0) or 0.0)
         humidity = float(computed.get("ambient_humidity", 0.0) or 0.0)
     except (TypeError, ValueError):
         return False
-    return -10.0 <= temp <= 60.0 and 0.0 < humidity <= 100.0 and temp != 0.0
+    if temp == 0.0:
+        return False
+    temp_c = fromFtoCstrict(temp) if log_is_f else temp
+    return -10.0 <= temp_c <= 60.0 and 0.0 < humidity <= 100.0
 
 
 def _selected_roast_color(data: dict) -> "tuple[float | None, str | None]":
@@ -583,7 +632,13 @@ def _fit_fc_charge_regression(charges: "list[float]", fcs: "list[float]",
     validation rewards it instead of refusing it. Should such an artefact ever
     need excluding again, detect it on the roast itself — never presume it from
     the batch weight.
+
+    A roast whose charge BT was not recorded reads 0: it is not a charge, and
+    its pair is left out.
     """
+    if len(charges) == len(fcs):
+        kept = [i for i, charge in enumerate(charges) if float(charge) > 0.0]
+        charges, fcs = [charges[i] for i in kept], [fcs[i] for i in kept]
     result = {"n": min(len(charges), len(fcs)), "charge_range_c": 0.0,
               "charge_min_c": None, "charge_max_c": None,
               "regression_mae_c": None, "baseline_mae_c": None,
@@ -1152,12 +1207,7 @@ class RoastPlanEngine:
         """Index-side mirror of _learning_log_is_eligible()."""
         if meta.simulated or meta.exclude_learning:
             return False
-        try:
-            temp = float(meta.computed.get("ambient_temperature", 0.0) or 0.0)
-            humidity = float(meta.computed.get("ambient_humidity", 0.0) or 0.0)
-        except (TypeError, ValueError):
-            return False
-        return -10.0 <= temp <= 60.0 and 0.0 < humidity <= 100.0 and temp != 0.0
+        return _room_is_plausible(meta.computed or {}, meta.mode == "F")
 
     def _prefilter_logs(self, logs, *, charge_weight_g: float = 0.0,
                         weight_tol_ratio: "float | None" = None,
@@ -1302,7 +1352,10 @@ class RoastPlanEngine:
             "drop":     timex_shifted[ti[RoastingPhase.DROP]],
         }
 
-        delta_bt_input = clean_delta_bt(self.evaldeltas(self.lastprofiledata, "temp2"))
+        _delta_bt = self.evaldeltas(self.lastprofiledata, "temp2")
+        if _delta_bt is None:
+            return None, None, None, None, None  # ten readings or fewer: no RoR to read
+        delta_bt_input = clean_delta_bt(_delta_bt)
         bt_input       = self.lastprofiledata.get("temp2", [])
         # Align the BT series on the CURRENT display unit, like evaldeltas does
         # for the RoR series — otherwise the master curve mixes log units.
@@ -1735,7 +1788,7 @@ class RoastPlanEngine:
         """
         key = (getattr(bean, "uuid", "") or bean.name,
                target_agtron.name, round(charge_weight_g),
-               getattr(bean, "reference_roast_uuid", "") or "")
+               getattr(bean, "reference_roast_uuid", "") or "", self.mode)
         if key not in self._history_cache:
             self._history_cache[key] = self._analyze_historical_roasts(
                 bean, target_agtron, charge_weight_g)
@@ -2063,11 +2116,6 @@ class RoastPlanEngine:
                 _logd.debug(f"_analyze_historical_roasts: skipping {log.name} — learning flag or ambient data")
                 continue
 
-            # ── Data quality filter 1: ambient conditions ──────────────────
-            _ambient_temp = self.lastprofiledata.get("computed", {}).get("ambient_temperature", 0.0) or 0.0
-            _ambient_hum  = self.lastprofiledata.get("computed", {}).get("ambient_humidity",    0.0) or 0.0
-            # Validity bounds were checked by _learning_log_is_eligible above.
-
             # ── Data quality filter 2: charge BT plausibility ──────────────
             # computed values live in the LOG's own unit — normalise to °C
             # before applying the °C-doctrine thresholds.
@@ -2144,8 +2192,7 @@ class RoastPlanEngine:
                 try:
                     _snapshot_target = float(
                         (_snapshot.get("predicted") or {}).get("target_color_agtron"))
-                    if (target_agtron.agtron_range.min_value <= _snapshot_target
-                            <= target_agtron.agtron_range.max_value):
+                    if in_agtron_scale(_snapshot_target, target_agtron):
                         prediction_snapshots.append(complete_prediction_snapshot(
                             _snapshot, self.lastprofiledata))
                 except (TypeError, ValueError):
@@ -2156,8 +2203,7 @@ class RoastPlanEngine:
             _drop_log  = self.lastprofiledata.get("computed", {}).get("DROP_BT", 0.0) or 0.0
             _color_log, _color_basis = self._learning_agtron(self.lastprofiledata)
             if (_drop_log > 0.0 and _color_basis is not None
-                    and target_agtron.agtron_range.min_value <= _color_log
-                    <= target_agtron.agtron_range.max_value):
+                    and in_agtron_scale(_color_log, target_agtron)):
                 _drop_c = (fromFtoCstrict(float(_drop_log)) if _log_is_f else float(_drop_log))
                 drop_color_samples_c[_color_basis].append(_drop_c)
 
@@ -2185,7 +2231,7 @@ class RoastPlanEngine:
             agtron_plan, _ = self._learning_agtron(self.lastprofiledata)
             if _reference_uuid and self.lastprofiledata.get("roastUUID") == _reference_uuid:
                 _reference_agtron = agtron_plan
-            if (agtron_plan >= target_agtron.agtron_range.min_value and agtron_plan <= target_agtron.agtron_range.max_value):
+            if in_agtron_scale(agtron_plan, target_agtron):
                 relevant_logs_data.append({
                     "delta_bt": delta_bt,
                     "timex": timex,
@@ -2388,8 +2434,7 @@ class RoastPlanEngine:
         if _reference_status == "not_eligible":
             if _reference_agtron is None:
                 _reference_reason = "excluded" if _reference_seen.get("excluded") else "filtered"
-            elif (target_agtron.agtron_range.min_value <= _reference_agtron
-                  <= target_agtron.agtron_range.max_value):
+            elif in_agtron_scale(_reference_agtron, target_agtron):
                 _reference_reason = "incomplete"
             else:
                 _reference_reason = "level"
@@ -2419,7 +2464,8 @@ class RoastPlanEngine:
                            "%d roast(s) without logged controls; heater and airflow "
                            "stay on the grid", _s_n)
 
-        _prediction_error_summary = summarize_prediction_errors(prediction_snapshots)
+        _prediction_error_summary = summarize_prediction_errors(
+            prediction_snapshots, machine_value(self._roaster_ctx, "plan_model_version"))
 
         # Count the plan adopts by: a reference is taken as-is, never blended.
         _adopt_n = max(_profile_n, _REFERENCE_ADOPTION_N) if _operator_ref else _profile_n
@@ -2744,9 +2790,9 @@ class RoastPlanEngine:
             return agtron_input.name
         try:
             val = float(agtron_input)
-            for a in reversed(AGTRON_SCALES):
-                if a.agtron_range.min_value <= val <= a.agtron_range.max_value:
-                    return a.name
+            scale = agtron_scale_for(val)
+            if scale is not None:
+                return scale.name
         except (ValueError, TypeError):
             pass
         return ""
@@ -2858,7 +2904,7 @@ class RoastPlanEngine:
         weight_adj = ((charge_weight - nominal_weight_g) / 500.0) * 0.27 * heat_retention
 
         # Density adjustment (denser beans have more thermal inertia)
-        density_adj = ((density - NOMINAL_DENSITY) / 50.0) * 0.08
+        density_adj = ((_density_or_reference(density) - NOMINAL_DENSITY) / 50.0) * 0.08
 
         drop_ror += weight_adj + density_adj
 
@@ -3210,7 +3256,7 @@ class RoastPlanEngine:
                        ambient_temp_c: "float | None",
                        minutes_since_last_drop: "float | None",
                        thermal_mass_idx: float, heat_retention_idx: float,
-                       pressure_k: float = 1.0) -> "_ChargeSetup":
+                       pressure_k: float = 1.0, ctx: "RoasterContext | None" = None) -> "_ChargeSetup":
         """Charge band by PROCESS, bean/ambient modulation, and inter-batch
         heat-soak correction (banc 2026-08-05) — owner ruling 2026-08-04 on
         the doctrine (process sets the band, batch weight is deliberately
@@ -3225,20 +3271,10 @@ class RoastPlanEngine:
         # history do not touch the charge; bean/ambient modulation is capped below
         # at ±_CHARGE_MODULATION_MAX_C. Decaf is tested first (can co-occur with a
         # process word, e.g. "decaf washed").
-        if "decaf" in process_type_lower or "decaffeinated" in process_type_lower:
-            _process_key = "decaf"
-        elif ("honey" in process_type_lower or "pulped natural" in process_type_lower
-              or "wet hulled" in process_type_lower or "natural" in process_type_lower
-              or "dry process" in process_type_lower or "anaerobic" in process_type_lower
-              or "fermentation" in process_type_lower or "fermented" in process_type_lower
-              or "carbonic" in process_type_lower or "maceration" in process_type_lower
-              or "yeast" in process_type_lower):
-            # Fermented/anaerobic processes group with the naturals: they carry
-            # the same surface sugars from extended contact with the mucilage/fruit.
-            _process_key = "natural"
-        else:
-            _process_key = "washed"
-        _charge_band = (_CHARGE_FLOOR_C, _CHARGE_CEILING_BY_PROCESS[_process_key])
+        _process = _process_key(process_type_lower)
+        # the roaster's (roasters.json), else the common default (P4-44)
+        _charge_band = (float(machine_value(ctx, "charge_floor_c")),
+                        float(machine_value(ctx, "charge_ceiling_by_process_c")[_process]))
 
         ## ── Équation double : process ET famille (Hoos 2026) ────────────────
         ## charge = neutre + Δprocess + w · Δfamille (+ modulations, plus bas)
@@ -3266,7 +3302,8 @@ class RoastPlanEngine:
         ## la régression est APPRISE sur des charges réellement pratiquées, et la
         ## décaler d'un prior ferait bouger une prédiction apprise au nom d'une
         ## variété saisie à la main.
-        _charge_nominal: float = _CHARGE_NEUTRAL_C + _CHARGE_PROCESS_OFFSET_C[_process_key]
+        _charge_nominal: float = (float(machine_value(ctx, "charge_neutral_c"))
+                                  + float(machine_value(ctx, "charge_process_offset_c")[_process]))
         _charge_temperature: float = _charge_nominal
         _family_name: str = ""
         _family_delta: float = 0.0
@@ -3316,9 +3353,9 @@ class RoastPlanEngine:
         # a hotter charge and a drier one a gentler charge, symmetrically.
         _mod_moisture = _CHARGE_C_PER_MOISTURE_POINT * moisture.value if moisture.known else 0.0
         _mod_ambient = (20.0 - _ambient_ok) * 0.2 if _ambient_ok is not None else 0.0
+        _modulation_max_c = float(machine_value(ctx, "charge_modulation_max_c"))
         _charge_modulation = _clamp(
-            _mod_moisture + _mod_ambient,
-            -_CHARGE_MODULATION_MAX_C, _CHARGE_MODULATION_MAX_C)
+            _mod_moisture + _mod_ambient, -_modulation_max_c, _modulation_max_c)
         charge_bt_temperature: float = _clamp(
             _charge_temperature + _charge_modulation, _charge_band[0], _charge_band[1])
 
@@ -4238,12 +4275,9 @@ class RoastPlanEngine:
             HDB_NATURAL = -10.0
             HDB_DECAF = -15.0
 
-        if "washed" in process_type_lower or "honey" in process_type_lower:
-            heater_dry_process = HDB_WASHED
-        elif "decaf" in process_type_lower or "decaffeinated" in process_type_lower:
-            heater_dry_process = HDB_DECAF
-        else: # Naturals/Other
-            heater_dry_process = HDB_NATURAL
+        # The charge's classification (_process_key): one reading of the process for the whole plan.
+        heater_dry_process = {"washed": HDB_WASHED, "natural": HDB_NATURAL,
+                              "decaf": HDB_DECAF}[_process_key(process_type_lower)]
 
         # Use roast_constraints to cap power usage based on category
         HEATER_C, HEATER_M, HEATER_FC = roast_constraints.heater_cmfc[0], roast_constraints.heater_cmfc[1], roast_constraints.heater_cmfc[2]
@@ -4565,7 +4599,7 @@ class RoastPlanEngine:
             _dmin_rpm = drum_min_rpm
             _dmax_rpm = drum_max_rpm
             _w_ratio = charge_weight / max(1.0, nominal_charge)
-            _frac = 0.625 + (_w_ratio - 1.0) + ((density - 700.0) / 100.0) * 0.06
+            _frac = 0.625 + (_w_ratio - 1.0) + ((_density_or_reference(density) - DENSITY_REF_G_L) / 100.0) * 0.06
             _frac = _clamp(_frac, 0.10, 0.95)
             rpm_setup:float = _dmin_rpm + _frac * max(1.0, _dmax_rpm - _dmin_rpm)
             _drum_pct = self._calculate_rpm_percentage(rpm_setup, _dmin, _dstep)
@@ -4983,6 +5017,8 @@ class RoastPlanEngine:
         # La destination appartient au café, et peut avoir changé depuis la
         # construction du moteur (mis en cache par ses appelants) : on la relit ici.
         self.roast_destination = self._destination_for(bean)
+        # The unit too: the operator can switch °C/°F during the session.
+        self.mode = self._current_mode()
 
         _is_fahrenheit = (self.mode == "F")
 
@@ -5218,7 +5254,7 @@ class RoastPlanEngine:
             moisture=_moisture, structure=_structure,
             ambient_temp_c=_ambient_measured_c, minutes_since_last_drop=minutes_since_last_drop,
             thermal_mass_idx=_thermal_mass_idx, heat_retention_idx=_heat_retention_idx,
-            pressure_k=_pressure_k)
+            pressure_k=_pressure_k, ctx=ctx)
         _charge_temperature = _charge.nominal_temperature_c
 
         # FC regression adjustment by charge temperature
@@ -5318,8 +5354,8 @@ class RoastPlanEngine:
         # charge — a winter and a summer roast of the same coffee differ.
         if _ambient_measured_c is not None:
             _ambient_dry_min: float = (
-                _AMBIENT_DRY_MIN_PER_10K * (20.0 - _ambient_measured_c) / 10.0
-                * (charge_weight / 400.0))
+                float(machine_value(ctx, "ambient_dry_min_per_10k")) * (20.0 - _ambient_measured_c) / 10.0
+                * (charge_weight / float(machine_value(ctx, "ambient_dry_reference_g"))))
             dry_time_min += _ambient_dry_min
             _logd.debug(
                 f"Ambient {_ambient_measured_c:.1f}°C on {charge_weight:.0f} g → "
@@ -5691,16 +5727,11 @@ class RoastPlanEngine:
         heater_dev = _burner.heater_dev
         heater_pre_fc = _burner.heater_pre_fc
         if _tasting_lever.startswith("burner_"):
-            _lo = min(_tech.burner_floor_pct, _burner.heater_max_pct)
-            def _notch(value: float) -> float:
-                return _clamp(value + _tasting["delta"], _lo, _burner.heater_max_pct)
-            if _tasting_lever == "burner_start_pct":
-                _tasting_before_after = (heater_dry, _notch(heater_dry))
-                heater_dry = _tasting_before_after[1]
-            elif _tasting_lever == "burner_before_fc_pct":
-                _tasting_before_after = (heater_pre_fc, _notch(heater_pre_fc))
-                heater_maillard = _notch(heater_maillard)
-                heater_pre_fc = _tasting_before_after[1]
+            heater_dry, heater_maillard, heater_pre_fc, _tasting_before_after = _apply_burner_notch(
+                _tasting_lever, _tasting["delta"], heater_dry=heater_dry, heater_maillard=heater_maillard,
+                heater_pre_fc=heater_pre_fc, floor_pct=_tech.burner_floor_pct,
+                heater_max_pct=_burner.heater_max_pct,
+                dev_heater_max_pct=(ctx.dev_heater_max_pct if ctx is not None else 100.0))
         heater_tp = _burner.heater_tp
         heater_source = _burner.heater_source
         heater_fc_source = _burner.heater_fc_source
@@ -5870,8 +5901,9 @@ class RoastPlanEngine:
             "dev_window_min":  (float(roast_constraints.development_time[0]),
                                 float(roast_constraints.development_time[1])),
             "dev_time_min":    float(dev_time_min),   # post-FC duration held by the re-fit (owner ruling 2026-08-04)
-            "mai_window_min":  (float(roast_constraints.maillard_time[0]),
-                                float(roast_constraints.maillard_time[1])),
+            # the Maillard window the plan itself was drawn with: the envelope's under the roaster's
+            # time rule, the style grid's otherwise (audit 2026-11-21, P3-05)
+            "mai_window_min":  (float(_maillard_band[0]), float(_maillard_band[1])),
             "fc_anticipation_sec": fc_anticipation_sec,
             "has_heater":      _has_heater,
             "heater_res":      _heater_res,

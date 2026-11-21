@@ -179,13 +179,19 @@ def write_package(target: Path, *, mode: str, bean: GreenBean, roasts: Sequence[
                 "counts": {"roasts": len(roasts), "tastings": len(carried), "dial_ins": len(bean.dial_ins),
                            "brews": len(brews) if mode == MOVE else 0},
                 "files": {name: _digest(data) for name, data in files.items()}}
+    files[MANIFEST_NAME] = json.dumps(manifest, ensure_ascii=False, indent=1).encode("utf-8")
+    # The reader's bounds, checked before anything is written: a package it would refuse is never made.
+    sizes = [len(data) for data in files.values()]
+    if len(sizes) > MAX_MEMBERS or max(sizes, default=0) > MAX_MEMBER_BYTES or sum(sizes) > MAX_TOTAL_BYTES:
+        raise ArchiveError(ArchiveError.TOO_LARGE, f"{len(roasts)} roasts")
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(target.name + ".tmp")
     try:
         with zipfile.ZipFile(partial, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for name, data in files.items():
                 archive.writestr(name, data)
-            archive.writestr(MANIFEST_NAME, json.dumps(manifest, ensure_ascii=False, indent=1))
+        if partial.stat().st_size > MAX_PACKAGE_BYTES:
+            raise ArchiveError(ArchiveError.TOO_LARGE, f"{len(roasts)} roasts")
         os.replace(partial, target)
     finally:
         partial.unlink(missing_ok=True)

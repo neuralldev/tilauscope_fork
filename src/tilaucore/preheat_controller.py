@@ -14,6 +14,7 @@ Standard library only.
 from __future__ import annotations
 
 import logging
+import math
 import threading
 from collections import deque
 from typing import Final
@@ -161,6 +162,21 @@ class PreheatController(PreheatLearning, PreheatLaw):
         """
         return float(self._to_native(self.cfg.target_sv))
 
+    def valid_sv_c(self, sv: float) -> float | None:
+        """A set point in the current unit, as °C — or None when it cannot be one.
+
+        A target the sensor guard would itself reject as implausible (not finite,
+        at or beyond its temperature limits) would drive the burner at its ceiling
+        until the guard trips: 1000 is a typo or a °F value read as °C.
+        """
+        if not math.isfinite(sv):
+            return None
+        sv_c = float(self._to_c(sv))
+        limits = self._sensor_guard.limits
+        if not limits.min_temp_c < sv_c < limits.max_temp_c:
+            return None
+        return sv_c
+
     def start(self, sv: float | None = None) -> None:
         # START can arrive both from the initial guided command and an
         # Artisan alarm a moment later. Treat it as idempotent while active: a
@@ -173,9 +189,14 @@ class PreheatController(PreheatLearning, PreheatLaw):
 
         if sv is not None:
             # sv is received in the current Artisan unit; store internally in °C
-            self.cfg.target_sv = self._to_c(sv)
-            self._precompute_targets()
-            self._announce_target(sv)
+            sv_c = self.valid_sv_c(sv)
+            if sv_c is None:
+                _logd.error("TilauPID START: set point %s refused, keeping %.1f °C",
+                            sv, self.cfg.target_sv)
+            else:
+                self.cfg.target_sv = sv_c
+                self._precompute_targets()
+                self._announce_target(sv)
 
         # Stamp the preheat SV (°C) on the roast: the roast file carries it as
         # `tilau_preheat_sv_c`, the source the corpus reader trusts.
@@ -301,22 +322,30 @@ class PreheatController(PreheatLearning, PreheatLaw):
         CHARGE is a bumpless hand-off to roast control and may learn, and so is
         `handover`, which passes a settled machine to the PID calibration with
         the burner left where it holds. Every other reason commands a safe
-        burner zero; aborted or degraded sessions never train the persistent law.
+        burner zero while the preheat runs; aborted or degraded sessions never
+        train the persistent law.
         """
         with self._output_lock:
             was_active = self.active
             self._stop_watchdog()
+            # The zero first: nothing that may fail below stands between a stop
+            # and the burner. Only a running preheat owns the burner. Once handed
+            # over (CHARGE, handover) or already stopped, the burner is the
+            # roast's: a late STOP (an alarm during the roast) must not cut it.
+            if was_active and reason not in {"charge", "handover"}:
+                self._force_safe_output(reason)
+                self._after_safe_zero()
             if was_active:
-                self._record_event(0.0, f"TilauPID Preheat stopped ({reason})")
+                try:
+                    self._record_event(0.0, f"TilauPID Preheat stopped ({reason})")
+                except Exception:  # noqa: BLE001 - logging must not interfere with the stop
+                    _logd.exception("TilauPID could not record its stop event")
                 if reason in _BUMPLESS_STOP_REASONS and self._learning_allowed:
                     # CHARGE calls us with qmc.profileDataSemaphore held: learning ends in two
                     # full QSettings flushes, which would stall the sampling thread at the most
                     # timing-critical moment. Nothing it reads is protected by that semaphore
                     # (session state is PID-owned), so defer it one event-loop turn.
                     self._schedule_learning()
-            if reason not in {"charge", "handover"}:
-                self._force_safe_output(reason)
-                self._after_safe_zero()
             if reason not in _BUMPLESS_STOP_REASONS or not self._learning_allowed:
                 self._clear_preheat_sv_marker()
             self.active = False
@@ -341,13 +370,17 @@ class PreheatController(PreheatLearning, PreheatLaw):
             _logd.exception("Deferred preheat learning failed")
 
     def _force_safe_output(self, reason: str) -> None:
-        """Command burner zero immediately, bypassing all output smoothing."""
+        """Command burner zero immediately, bypassing all output smoothing.
+
+        Always sent, never deduplicated against `prev_power`: that is the PID's
+        last command, not the burner's state — the operator may have raised the
+        heater by hand, or a write may have been lost.
+        """
         integrator = getattr(self, "_hold_integrator", None)
         if integrator is not None:
             integrator.reset()
         try:
-            if self.prev_power != 0:
-                self._command_output(self.cfg.heater_slider, 0)
+            self._command_output(self.cfg.heater_slider, 0)
             self.prev_power = 0
         except Exception:  # noqa: BLE001 - a failed safe-off must not hide the original fault
             self.prev_power = -1

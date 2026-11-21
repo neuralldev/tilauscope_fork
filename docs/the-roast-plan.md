@@ -36,7 +36,8 @@ Two things take the plan off the screen:
 - **📄 PDF** — saves the plan as **a PDF**: everything described below is in it. With a plan
   pinned for comparison, the document opens with a page setting the two plans side by side. The
   plan's alarm set is saved as an alarm file next to the PDF, to reload later from the alarm
-  editor.
+  editor. Its fixed settings are those of the roaster the plan was made for, even when another
+  roaster is selected in Devices.
 - **Load the plan's alarms at start** — at the Expert level, loads the plan's alarm set in place
   of the current alarms when the roast starts, so the roast is set up before it begins.
 
@@ -100,6 +101,10 @@ applied: the process sets the limit, the family moves the charge a few degrees i
 the limit always wins. A Typica charges hotter than a Bourbon of the same process, but a Typica
 that is also a natural still charges cooler than a washed one, because the risk of burning the
 surface outranks the preference for a quicker roast.
+
+The plan reads the process once, for the charge and the burner alike. A decaf counts as a decaf
+whatever else its process says; honey, pulped natural, wet hulled and the fermented processes
+count with the naturals; any other process, an empty one included, counts as washed.
 
 The move is deliberately small — about four degrees, worth roughly fifteen seconds of drying —
 and it is weighted by how much the variety can be trusted: full weight for a single named

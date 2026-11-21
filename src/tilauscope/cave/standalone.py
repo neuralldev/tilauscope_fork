@@ -373,8 +373,14 @@ class StandaloneWindow(QWidget):
 
     def fileQuit(self) -> None:  # noqa: N802  (Artisan's name)
         """Quit, as Artisan's menu does: BeanCave's window closes, then the program."""
-        if self.beancaveWindow is not None:
-            self.beancaveWindow.close()
+        self.closeApp()
+
+    def closeApp(self) -> bool:  # noqa: N802  (Artisan's name)
+        """Quit, and say whether it happened, as Artisan's closeApp does: False when the
+        window's own question was answered Cancel."""
+        if self.beancaveWindow is None:
+            return True
+        return bool(self.beancaveWindow.close())
 
     def tilauscope_config(self) -> None:
         """TilauScope's Configuration: BeanCave's settings here."""
@@ -451,7 +457,8 @@ class StandaloneWindow(QWidget):
         folder = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / 'prepared roast.alog'
-        path.write_text(repr(prepared_profile(base, self.qmc.properties(), reference)), encoding='utf-8')
+        from tilauscope.cave.common import _atomic_write_text  # noqa: PLC0415
+        _atomic_write_text(path, repr(prepared_profile(base, self.qmc.properties(), reference)), 'utf-8')
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
             return False
         if reference:

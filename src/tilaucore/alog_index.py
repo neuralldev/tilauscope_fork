@@ -331,6 +331,10 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
         epoch_val = 0
     if epoch_val <= 0:
         epoch_val = int(stat.st_mtime)
+    try:   # a file edited by hand must not stop the indexing of the whole folder
+        batch_nr = int(values.get('roastbatchnr') or 0)
+    except (TypeError, ValueError, OverflowError):
+        batch_nr = 0
 
     def _num(key: str) -> float:
         try:
@@ -378,7 +382,7 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
         filepath_str=str(path),
         mtime=stat.st_mtime,
         batch_prefix=str(values.get('roastbatchprefix') or ""),
-        batch_nr=int(values.get('roastbatchnr') or 0),
+        batch_nr=batch_nr,
         title=str(values.get('title') or ""),
         bean_field=bean_field,
         uuid=uuid_match.group(1) if uuid_match else "",

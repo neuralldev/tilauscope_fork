@@ -29,6 +29,7 @@ from tilaucore.flavour_wheel import FLAVOR_WHEEL_DATA
 from tilaucore.roast_colour import get_agtron_color, roast_agtron
 from tilaucore.roast_memory import last_roast
 from tilaucore.roast_plan_view import english
+from tilaucore.stock_from_roasts import recount_roasts
 from tilaucore.roast_colour import AGTRON_SCALES
 from tilaucore.roast_label import label_data, lines_30mm
 
@@ -181,6 +182,7 @@ class Demo:
         self.setup: dict | None = None # its Roast Setup, kept from roast to roast
         self.choice_path = str(Path(config_path).with_name(CHOICE_FILE)) if config_path else None
         self.machine_log: list[str] = [] # what the roaster was told, in order
+        self._stopped_by_fault = False # a preheat fault's stop is under way: nothing more is sent (_preheat_fault)
         # The real roaster (MACHINE-SPEC §7): its link's state for the screen, its last reading,
         # and the commands not yet handed to the link (they leave with the next snapshot).
         self.link: dict | None = None
@@ -210,6 +212,7 @@ class Demo:
         self.pilot: Pilot | None = None # AUTO, chosen at START
         self._bubble: dict | None = None
         self._cracks: tuple[float, int] | None = None # the crack counter's last count and when it came
+        self._cracks_cancelled = False # the probe had a trouble during this roast's counting (ambient_lost)
         # The drop door's contact on TilauAmbient (wiki/Drop-Door-Contact-Spec.md): armed for the app's life,
         # through dropped links; the last frame not yet applied, and when it was read on the roast clock.
         self._door = DropDoor()
@@ -223,6 +226,7 @@ class Demo:
         self._alarm_extractor: tuple[int, int] | None = None # (speed, alarm number) until the extractor confirms it
         self._alarm_undo: tuple[str, list] | None = None # the list before the last deleted alarm, for Undo
         self._live: tuple[float, Reading] | None = None
+        self._sampled_frame: float | None = None # clock() of the roaster frame the last sample took
         self._outbox: list[str] = []
         # Simulation (SIM-SPEC S2): a recorded roast replayed in place of every device, at 1×, 2× or 8×
         self.replay: Replay | None = None
@@ -371,6 +375,7 @@ class Demo:
         elif mode != "hand":
             raise ValueError("Start by hand, with the plan, on AUTO or following a roast")
         self.session.start(self.now)
+        self._stopped_by_fault = False # a new roast: the roaster is the operator's again
         self._origin = self.real_clock() - self.now if self.replay is None else None
         self._late = None
         self._follow, self._plan_targets = mode, targets
@@ -396,12 +401,13 @@ class Demo:
         self._take_stock()
         self._slowed_for_charge = False
         self._tp = TurningPoint()
-        self.response = LeverResponse(self._replay_moves) if self.replay is not None else None
+        self.response = LeverResponse(self._replay_moves, machine.lever_response(self._machine())) if self.replay is not None else None
         self._start_energy()
         self._start_preheat()
         self._start_follow()
         self._started_s = self.now
         self._crack_sent = {} if self._crack_listening() else None
+        self._cracks_cancelled, self._cracks = False, None # a new roast counts afresh
         self._start_auto()
         self._start_alarms()
         if self.pilot is not None:
@@ -548,8 +554,10 @@ class Demo:
         records = [meta for _, meta in self.roasts.records()] if self.roasts else []
         tastings = tasting_log.load(self.cave.directory).entries
         shared = {(m.uuid or "").lower() for m in records if m.shared} # coffees that came with another roaster's roast
+        beans = self.cave.beans() if state["present"] else []
+        recount_roasts(beans, records) # shown only: the cave may be the computer's, the folder counts
         coffees = [{**view(bean), "memory": _memory(last_roast(bean.uuid, records, tastings)), "shared": bean.uuid.lower() in shared}
-                   for bean in self.cave.beans()] if state["present"] else []
+                   for bean in beans]
         config = self.config or configuration.default()
         return json.dumps({"present": state["present"], "coffees": coffees,
                            "chosen": self.coffee["uuid"] if self.coffee else None, "currencies": CURRENCIES,
@@ -780,7 +788,10 @@ class Demo:
     def _lever(self, lever: str, value: int, alarm: int | None = None) -> None:
         """The operator's gesture on a lever; an alarm (its number) makes the very same one (ALARM-SPEC decision 7)."""
         if lever != "extractor" and self._link_away(): # the extractor is another machine, still reachable
-            return
+            # Locked for the operator. An alarm's air or drum is kept for the return, as on the desktop
+            # (Tilau 2026-11-21): the link holds it until it is back. Heat never, whoever asks.
+            if alarm is None or lever == "burner":
+                return
         self.levers[lever] = value
         self.pending.add(lever) # confirmed by the machine at the next tick
         if self.session.state == "recording":
@@ -857,7 +868,7 @@ class Demo:
                 for channel, value in zip((first, second), self.replay.read_extra(slot, self.now)):
                     if value != -1 and math.isfinite(value):
                         self._extras[channel] = (now, value)
-            if self._replay_cracks is not None:
+            if self._replay_cracks is not None and not self._cracks_cancelled:
                 count = self.replay.read_extra(self._replay_cracks, self.now)[0]
                 if count >= 0:
                     self._cracks = (now, int(count))
@@ -880,6 +891,10 @@ class Demo:
         reading = self._reading()
         if reading is None: # the link is down: the curve has a gap
             return
+        if self.link is not None and self._live is not None: # a frame stays fresh 3 s: it is one sample
+            if self._live[0] == self._sampled_frame:
+                return
+            self._sampled_frame = self._live[0]
         now = self.clock()
         extras = {key: value for key, (at, value) in self._extras.items() if now - at <= ROOM_MAX_AGE_S} or None
         self.session.ingest(reading, self.now, extras)
@@ -978,30 +993,46 @@ class Demo:
             self.pending.clear()
 
     def _step(self) -> None:
-        """One second of the roast at `now`: a sample and what reads it, the preheat, the alarms."""
-        self._door_step()
+        """One second of the roast at `now`: a sample and what reads it, the preheat, the alarms.
+
+        Each part is isolated (`_guarded`): one failing every second must not skip the ones after
+        it, the preheat's watchdog among them, nor freeze the screen while the roast goes on."""
+        self._guarded("drop door", self._door_step)
         if self.signal:
             count = len(self.session.samples)
-            self._respond()
-            self._sample()
-            self._crack_step()
+            self._guarded("response", self._respond)
+            self._guarded("sample", self._sample)
+            self._guarded("crack", self._crack_step)
             if len(self.session.samples) > count:
-                self._tp_step()
+                self._guarded("turning point", self._tp_step)
             if self.playback is not None and not self._follow_paused and len(self.session.samples) > count:
-                self._follow_step()
+                self._guarded("follow", self._follow_step)
             if self.auto is not None and len(self.session.samples) > count:
-                self._auto_step()
+                self._guarded("AUTO", self._auto_step)
             if self.guide is not None and len(self.session.samples) > count:
-                self._guide_step()
+                self._guarded("guide", self._guide_step)
         if self.preheat is not None and (self.link is None or self.session.samples):
-            self.preheat.tick(self._preheat_reading()) # from the roaster's first reading (2-3 s after connecting)
+            # from the roaster's first reading (2-3 s after connecting)
+            self._guarded("preheat", lambda: self.preheat.tick(self._preheat_reading()))
         if self.alarms is not None and self.session.state == "recording":
-            for act in self.alarms.step(self.session, self.now, self._tp.index):
-                self._run_alarm(act)
+            self._guarded("alarms", self._alarms_step)
         if self.energy is not None and self.session.state == "recording":
-            m = self.session.milestones
-            self.energy.step(self.now, *(float(self.echo.get(k, -1)) for k in ("burner", "air", "extractor")),
-                             roasting="charge" in m and "drop" not in m)
+            self._guarded("energy", self._energy_step)
+
+    def _alarms_step(self) -> None:
+        for act in self.alarms.step(self.session, self.now, self._tp.index):
+            self._run_alarm(act)
+
+    def _energy_step(self) -> None:
+        m = self.session.milestones
+        self.energy.step(self.now, *(float(self.echo.get(k, -1)) for k in ("burner", "air", "extractor")),
+                         roasting="charge" in m and "drop" not in m)
+
+    def _guarded(self, part: str, step) -> None:
+        try:
+            step()
+        except Exception as error: # noqa: BLE001 - the rest of the second must still run
+            print(f"TilauScope {part} failed at {self.now:.1f} s: {error!r}")
 
     def set_weight(self, kind: str, grams: int) -> str:
         """Green before the roast (kept for the next start), roasted once it is over."""
@@ -1117,6 +1148,8 @@ class Demo:
             reply["state"] = "no_weight"
         else:
             temperature, humidity, altitude, probe = self._plan_room()
+            if self.roasts:
+                recount_roasts([bean], [meta for _, meta in self.roasts.records()]) # the plan's confidence counts the folder
             reply.update(plan_view(self._plan_engine(), bean, settings["plan_level"], green,
                                    (temperature, humidity, altitude, (self.room() or {}).get("pressure_hpa")),
                                    (self.config or {}).get("unit", "C")))
@@ -1140,6 +1173,9 @@ class Demo:
 
     def _send(self, commands: list[str]) -> None:
         """Commands for the roaster, in order; the real link sends them, the simulated machine only logs them."""
+        if self._stopped_by_fault:
+            print(f"TilauScope: {commands} not sent, the roaster is being stopped after a preheat fault")
+            return
         self.machine_log.extend(commands)
         if self.link is not None:
             self._outbox.extend(commands)
@@ -1209,8 +1245,12 @@ class Demo:
         return AmbientConditions(room["temperature_c"], room["humidity_pct"], room["pressure_hpa"])
 
     def _preheat_fault(self, reason: str) -> None:
-        """A safety stop of the preheat: burner off, the roaster cooled, then stopped (operator, 2026-10-16)."""
+        """A safety stop of the preheat: burner off, the roaster cooled, then stopped (operator, 2026-10-16).
+
+        Nothing is sent after it until the next START: the link runs commands in order, its cooling wait
+        among them, so a lever moved now would reach the roaster once it is already stopped."""
         self._send(machine.end_roast(self._machine()))
+        self._stopped_by_fault = True
 
     def _mark_preheat(self, target_c: float | None) -> None:
         self.session.preheat_sv_c = target_c
@@ -1689,7 +1729,18 @@ class Demo:
         """The crack counter's cumulative count, as TilauAmbient sends it."""
         if type(count) is not int or count < 0:
             raise ValueError("A crack count is a whole number")
+        if self._cracks_cancelled: # counted after a trouble: not trusted
+            return
         self._cracks = (self.clock(), count)
+
+    def ambient_lost(self) -> None:
+        """The ambient probe went away, or a step of its sequence could not reach it (Tilau, 2026-11-21: on any
+        trouble the roast's crack counting is cancelled, never replayed). AUTO's First crack then follows the
+        temperature rule; the next Start counts afresh."""
+        if self._crack_sent is None:
+            return
+        self._crack_sent, self._cracks, self._cracks_cancelled = None, None, True
+        print("TilauScope: the ambient probe had a trouble, crack counting cancelled for this roast")
 
     def door_frame(self, data: str, seq: int, age_ms: int) -> None:
         """A drop door frame read by the probe link (hex), its read number, and how long ago it was read."""

@@ -88,7 +88,7 @@ class CoffeeFilesTest {
         Provider.size = CoffeeFiles.MAX_BYTES + 1
         assertNull(CoffeeFiles.copy(context, uri))
         assertFalse("the file was never opened", Provider.opened)
-        assertFalse(File(context.cacheDir, CoffeeFiles.FOLDER + "/opened" + CoffeeFiles.EXTENSION).exists())
+        assertTrue(File(context.cacheDir, CoffeeFiles.FOLDER).listFiles().orEmpty().isEmpty())
     }
 
     @Test
@@ -97,7 +97,7 @@ class CoffeeFilesTest {
         val endless = object : InputStream() { override fun read() = 0 }
         shadowOf(context.contentResolver).registerInputStream(uri, endless) // Robolectric hands this stream before the provider's
         assertNull(CoffeeFiles.copy(context, uri))
-        assertFalse(File(context.cacheDir, CoffeeFiles.FOLDER + "/opened" + CoffeeFiles.EXTENSION).exists())
+        assertTrue(File(context.cacheDir, CoffeeFiles.FOLDER).listFiles().orEmpty().isEmpty())
     }
 
     @Test
@@ -107,7 +107,7 @@ class CoffeeFilesTest {
             val copy = CoffeeFiles.copy(context, uri)
             assertNotNull(name, copy)
             assertEquals(File(context.cacheDir, CoffeeFiles.FOLDER).canonicalFile, copy!!.canonicalFile.parentFile)
-            assertEquals("opened" + CoffeeFiles.EXTENSION, copy.name) // the app names its copy
+            assertTrue(copy.name, copy.name.startsWith("opened-") && copy.name.endsWith(CoffeeFiles.EXTENSION)) // the app names its copy
         }
         assertFalse(File(context.cacheDir.parentFile, "escape.tilaucoffee").exists())
         assertFalse(File(context.cacheDir.parentFile, "evil.tilaucoffee").exists())
@@ -120,5 +120,15 @@ class CoffeeFilesTest {
             assertNull(name, CoffeeFiles.copy(context, uri))
         }
         assertFalse(Provider.opened)
+    }
+
+    @Test
+    fun aCoffeeOpenedDuringAnImportLeavesTheImportedFileInPlace() { // audit 2026-11-21, P4-38
+        val first = CoffeeFiles.copy(context, uri)!!
+        val second = CoffeeFiles.copy(context, uri, keep = first)!!
+        assertTrue("the file being imported was deleted", first.exists())
+        assertTrue(second.exists())
+        CoffeeFiles.copy(context, uri)
+        assertFalse("an earlier copy no import reads is cleared", second.exists())
     }
 }

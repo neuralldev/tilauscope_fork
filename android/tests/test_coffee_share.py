@@ -4,6 +4,8 @@
 
 """A coffee in one file on the tablet: opened from a .tilaucoffee, browsed in the library, sent to the computer."""
 import ast
+import os
+import time
 import json
 from pathlib import Path
 import sys
@@ -281,7 +283,7 @@ class SendTests(Base):
         self.demo.cave.add_brews(UUID, [BrewSample(method_id="v60", iso_date="2026-11-01", dose_g=15.0)])
         out = Path(self.demo.coffee_send(UUID, str(self.dir / "cache" / "coffee-share")))
         self.assertEqual(out.suffix, ".tilaucoffee")
-        package = core.read_package(out, version="4.3", build=59) # the desktop's own reader, at the desktop's own version
+        package = core.read_package(out, version=coffee_share.VERSION, build=59) # the desktop's own reader, at the desktop's own version
         self.assertEqual(package.mode, core.MOVE)
         self.assertEqual(set(package.roasts), {OWN, THEIRS}) # its own, and the shared reference; not the simulated, the computer's or another coffee's
         self.assertEqual(set(package.tastings), {OWN})
@@ -290,12 +292,19 @@ class SendTests(Base):
         self.assertTrue(package.roasts[THEIRS]["tilau_shared"]) # still marked shared on the computer
         self.assertFalse((self.files / "roasts-computer" / out.name).exists())
 
-    def test_only_the_last_package_is_kept(self):
+    def test_a_package_sent_stays_an_hour(self):
+        """Audit 2026-11-21, P4-39 (Tilau: one hour). The app a package went to may read it later — a draft,
+        an upload — and the next package sent deleted it."""
         self.demo.cave.replace(json.dumps({"green_beans": [{"name": "Catuai", "uuid": UUID}, {"name": "Huila", "uuid": "h-1"}]}), "x")
         folder = self.dir / "cache" / "coffee-share"
+        first = Path(self.demo.coffee_send(UUID, str(folder)))
+        second = Path(self.demo.coffee_send("h-1", str(folder)))
+        self.assertTrue(first.exists() and second.exists())
+        old = time.time() - coffee_share.SHARE_KEPT_S - 60
+        os.utime(first.parent, (old, old))
         self.demo.coffee_send(UUID, str(folder))
-        self.demo.coffee_send("h-1", str(folder))
-        self.assertEqual([p.name for p in folder.iterdir()], ["Huila.tilaucoffee"])
+        self.assertFalse(first.exists(), "a package over an hour old is cleared")
+        self.assertTrue(second.exists())
 
     def test_an_unknown_coffee_is_refused(self):
         self.demo.cave.replace(json.dumps({"green_beans": []}), "x")

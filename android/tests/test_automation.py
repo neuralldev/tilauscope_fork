@@ -162,6 +162,26 @@ class AutoMarksTests(unittest.TestCase):
         self.assertEqual(json.loads(self.demo.take_device_commands()), []) # a replay sends nothing to a probe
 
 
+    def test_a_probe_trouble_ends_the_crack_counting_of_the_roast_without_replay(self):
+        """Audit 2026-11-21, P2-19 (Tilau: cancel the counting on any trouble, never replay): a step sent while
+        the probe was away was taken as done, and the count went on as if the probe had calibrated."""
+        self.demo.start("plan")
+        self.run_to(30) # CAL1 went out at Start + 20 s
+        self.assertIn("cal1", self.demo._crack_sent)
+        self.demo.ambient_lost()
+        self.demo.crack_count(12) # a count arriving after the trouble is not taken
+        self.run_to(599)
+        self.assertIsNone(self.demo._crack_sent) # no CAL2, START or STOP: nothing replayed either
+        self.assertIsNone(self.demo._cracks)
+        self.assertIsNone(json.loads(self.demo.snapshot())["crack_detection"])
+
+    def test_a_probe_trouble_before_the_roast_changes_nothing_for_the_next_one(self):
+        self.demo.ambient_lost() # idle: no sequence yet
+        self.demo.start("plan")
+        self.run_to(30)
+        self.assertIn("cal1", self.demo._crack_sent)
+
+
 class AutoDropGateTests(unittest.TestCase):
     """The tablet's auto DROP asks the desktop's gate (tilaucore.milestones.drop_looked_for)."""
 

@@ -24,6 +24,7 @@ class RoastFiles : ContentProvider() {
     override fun onCreate() = true
 
     private fun file(uri: Uri): File {
+        coffeeFile(uri)?.let { return it }
         val sub = if (uri.pathSegments.size == 2) uri.pathSegments[0] else ""
         val folder = (if (sub == "coffee") File(context!!.cacheDir, COFFEE_FOLDER) else File(context!!.filesDir, when (sub) {
             "computer" -> COMPUTER_FOLDER
@@ -35,6 +36,17 @@ class RoastFiles : ContentProvider() {
         })).canonicalFile
         val target = File(folder, uri.lastPathSegment ?: "").canonicalFile
         if (target.parentFile != folder || !target.isFile) throw FileNotFoundException(uri.toString())
+        return target
+    }
+
+    /** A coffee package: "coffee/<its folder>/<name>", one folder per package under the cache's share folder. */
+    private fun coffeeFile(uri: Uri): File? {
+        val path = uri.pathSegments
+        if (path.size != 3 || path[0] != "coffee") return null
+        val root = File(context!!.cacheDir, COFFEE_FOLDER).canonicalFile
+        val folder = File(root, path[1]).canonicalFile
+        val target = File(folder, path[2]).canonicalFile
+        if (folder.parentFile != root || target.parentFile != folder || !target.isFile) throw FileNotFoundException(uri.toString())
         return target
     }
 
@@ -67,7 +79,16 @@ class RoastFiles : ContentProvider() {
             Uri.parse("content://$packageName.roasts/${if (sub.isEmpty()) "" else "$sub/"}${Uri.encode(file.name)}")
         fun caveUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/cave/${Uri.encode(file.name)}")
         fun alarmsUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/alarms/${Uri.encode(file.name)}")
-        fun coffeeUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/coffee/${Uri.encode(file.name)}")
+        fun coffeeUri(packageName: String, file: File): Uri =
+            Uri.parse("content://$packageName.roasts/coffee/${Uri.encode(file.parentFile?.name ?: "")}/${Uri.encode(file.name)}")
+        const val SHARE_KEPT_MS = 3_600_000L // a package sent stays an hour: the app it went to may read it later (Tilau, 2026-11-21)
+
+        /** A folder of its own for a new package; the packages sent over an hour ago go (as the session's pack()). */
+        fun shareFolder(cacheDir: File, now: Long = System.currentTimeMillis()): File {
+            val root = File(cacheDir, COFFEE_FOLDER).apply { mkdirs() }
+            root.listFiles()?.filter { now - it.lastModified() > SHARE_KEPT_MS }?.forEach { it.deleteRecursively() }
+            return File(root, System.nanoTime().toString()).apply { mkdirs() }
+        }
         fun logUri(packageName: String, file: File): Uri = Uri.parse("content://$packageName.roasts/log/${Uri.encode(file.name)}")
     }
 }

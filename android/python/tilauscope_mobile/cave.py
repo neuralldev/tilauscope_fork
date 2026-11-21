@@ -32,6 +32,8 @@ NOTE = "beancave.note.json"
 EMPTY = to_json(BeanCaveContainer()) # the desktop's empty container
 COMPANIONS = {tasting_log.TASTINGS_FILE_NAME: TastingLog, "brewlog.json": BrewLog} # beside beancave.json; absent until first used
 FILES = (FILE, *COMPANIONS)
+# Left beside a staged folder by the app (MainActivity.listFolder) for a file it could not copy.
+NOT_COPIED = ".not-copied"
 
 
 def parse(text: str) -> list[GreenBean]:
@@ -47,6 +49,9 @@ def parse(text: str) -> list[GreenBean]:
 
 def read_folder(folder: str) -> dict[str, str]:
     """The BeanCave files of a folder, each checked as the desktop reads it, or ValueError saying which is not."""
+    for name in FILES: # a file the app failed to copy is not a file the folder lacks: the tablet's must not go
+        if (Path(folder) / (name + NOT_COPIED)).exists():
+            raise ValueError(f"{name} cannot be read")
     if not (Path(folder) / FILE).is_file():
         raise ValueError("No BeanCave in this folder")
     texts = {}
@@ -152,12 +157,13 @@ class Cave:
     def replace_folder(self, folder: str, source: str) -> dict:
         """The tablet's cave and its files become the folder's, all checked first; a file the folder lacks goes."""
         texts = read_folder(folder)
-        for name in COMPANIONS:
-            if name in texts:
-                self._write(name, texts[name])
-            else:
-                (self.directory / name).unlink(missing_ok=True) # it belonged to the cave being replaced
-        return self.replace(texts[FILE], source)
+        parse(texts[FILE])
+        # one replacement: the cave, its note and its files together; a file the folder lacks belonged
+        # to the cave being replaced
+        self._write_all({**{name: texts[name] for name in COMPANIONS if name in texts}, FILE: texts[FILE],
+                         NOTE: json.dumps({"source": source, "since": time.time()})},
+                        remove=tuple(name for name in COMPANIONS if name not in texts))
+        return self.state()
 
     def replace(self, text: str, source: str) -> dict:
         """The tablet's cave becomes this file, unchanged."""
@@ -239,16 +245,25 @@ class Cave:
         return True
 
     def _write(self, name: str, text: str) -> None:
+        self._write_all({name: text})
+
+    def _write_all(self, files: dict[str, str], remove: tuple[str, ...] = ()) -> None:
+        """Every file written whole beside its place first, then all put in place, then `remove` gone:
+        a write cut short (the app killed, the disk full) leaves the cave as it was, never half replaced."""
         self.directory.mkdir(parents=True, exist_ok=True)
-        temporary = None
+        staged: dict[str, Path] = {}
         try:
-            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
-                                             prefix=".cave-", delete=False, newline="") as stream:
-                temporary = Path(stream.name)
-                stream.write(text)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, self.directory / name)
+            for name, text in files.items():
+                with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
+                                                 prefix=".cave-", delete=False, newline="") as stream:
+                    staged[name] = Path(stream.name)
+                    stream.write(text)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            for name, temporary in staged.items():
+                os.replace(temporary, self.directory / name)
+            for name in remove:
+                (self.directory / name).unlink(missing_ok=True)
         finally:
-            if temporary is not None:
+            for temporary in staged.values():
                 temporary.unlink(missing_ok=True)

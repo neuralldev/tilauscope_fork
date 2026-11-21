@@ -487,10 +487,13 @@ def _verdict(out: Debrief, mode: str) -> None:
                         ).format(_sec(dry.time_s))
 
     # the gesture, tied to the écart just named
-    if (drop_t_off or drop_bt_off) and drop is not None and drop.planned_bt_c is not None:
-        out.next_time = QApplication.translate(
-            "tilauscope_review", "Next time: hold the drop to {0} °{1}, whatever the clock says."
-        ).format(f"{_temp_c_to_mode(drop.planned_bt_c, mode):.0f}", mode)
+    if drop_t_off or drop_bt_off:
+        # the drop's gesture is its planned temperature; without it, no advice
+        # rather than one about another milestone
+        if drop is not None and drop.planned_bt_c is not None:
+            out.next_time = QApplication.translate(
+                "tilauscope_review", "Next time: hold the drop to {0} °{1}, whatever the clock says."
+            ).format(f"{_temp_c_to_mode(drop.planned_bt_c, mode):.0f}", mode)
     elif fc_off and fc is not None and fc.time_s is not None:
         out.next_time = (
             QApplication.translate("tilauscope_review", "Next time: more heat through drying to reach first crack on time.")

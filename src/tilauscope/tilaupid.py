@@ -90,7 +90,11 @@ class TilauPreheatPID(AdaptivePIDMixin, PreheatController):
         self._to_native  = types.MethodType(_to_native,  self)
         self._unit       = types.MethodType(_unit,        self)
 
-        c = config or {}
+        # The burner ceiling is the roaster's (its heater_max_pct, else roasters.json's
+        # default — audit 2026-11-21, P4-44); an explicit config still wins.
+        from tilauscope.roasters import machine_value, roast_context_for  # noqa: PLC0415
+        c = {"max_burner": float(machine_value(roast_context_for(aw), "preheat_max_burner_pct")),
+             **(config or {})}
         tg = c.get("targets", {"target_sv": 200})
         if not isinstance(tg, Mapping):
             raise ValueError("PID config section 'targets' must be a mapping")
@@ -553,14 +557,25 @@ class TilauPreheatPID(AdaptivePIDMixin, PreheatController):
                 if value:
                     try:
                         sv_native = float(value)
-                        self.cfg.target_sv = self._to_c(sv_native)  # store in °C internally
-                        self._precompute_targets() # Crucial pour la réactivité du PID
-                        # A bias accumulated for one setpoint is invalid at another.
-                        self._hold_integrator.reset()
-                        # Resolve the continuous learned law immediately; keeping
-                        # the previous SV's P_ss/lead until the next START would defeat the
-                        # interpolation precisely when the operator adjusts the setpoint.
-                        self.p_ss, self.lead_sec = self.load_law_params()
+                        sv_c = self.valid_sv_c(sv_native)
+                        if sv_c is None:
+                            _logd.error(f"SV refusée (hors limites) : {value}")
+                            return
+                        # Under the output lock: cycle() reads the target on the sampling thread.
+                        with self._output_lock:
+                            # The session's measures (SV reached, its time, the highest BT, the
+                            # hold) belong to the set point they were taken at: a preheat changed
+                            # on the way is not a clean one and trains nothing (audit P3-06).
+                            if self.active and sv_c != self.cfg.target_sv:
+                                self._learning_allowed = False
+                            self.cfg.target_sv = sv_c  # store in °C internally
+                            self._precompute_targets() # Crucial pour la réactivité du PID
+                            # A bias accumulated for one setpoint is invalid at another.
+                            self._hold_integrator.reset()
+                            # Resolve the continuous learned law immediately; keeping
+                            # the previous SV's P_ss/lead until the next START would defeat the
+                            # interpolation precisely when the operator adjusts the setpoint.
+                            self.p_ss, self.lead_sec = self.load_law_params()
                         # Only a live preheat owns the marker: re-stamping it while
                         # stopped or faulted would re-declare a hand-driven session
                         # as guided in the saved profile.

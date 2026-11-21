@@ -125,8 +125,8 @@ def headline(rows: list[AdviceRow]) -> Headline | None:
     return Headline(row.kind, title, effect, next_step)
 
 
-def _safe_moisture(value: Any) -> float:
-    """Green moisture as a float; 0.0 when absent or unreadable (= not measured)."""
+def _safe_float(value: Any) -> float:
+    """A profile figure as a float; 0.0 when absent or unreadable (= not measured, unmarked)."""
     try:
         return float(value or 0.0)
     except (TypeError, ValueError):
@@ -258,9 +258,9 @@ class _Basis:
 def _basis(data: dict, ctx: Any, bean: Any) -> _Basis:
     computed = data.get("computed", {}) or {}
     mode = data.get("mode", "C")
-    t_dry = computed.get("DRY_time", 0)
-    t_fcs = computed.get("FCs_time", 0)
-    t_drop = computed.get("DROP_time", 0)
+    t_dry = _safe_float(computed.get("DRY_time"))
+    t_fcs = _safe_float(computed.get("FCs_time"))
+    t_drop = _safe_float(computed.get("DROP_time"))
     # An unmarked milestone reads 0: a phase bounded by one is unknown (0),
     # which every check below skips.
     maillard = t_fcs - t_dry if 0 < t_dry < t_fcs else 0
@@ -278,7 +278,7 @@ def _basis(data: dict, ctx: Any, bean: Any) -> _Basis:
     read_level, neighbour = measured_level(computed, mode, ctx)
     level, th = level_thresholds(
         read_level,
-        moisture_pct=_safe_moisture(data.get("moisture_greens")),
+        moisture_pct=_safe_float(data.get("moisture_greens")),
         dev_time_min=development / 60.0,
         drop_offset_c=probe_drop_offset_c(ctx))
     dtr_lo, dtr_hi = th['dtr']

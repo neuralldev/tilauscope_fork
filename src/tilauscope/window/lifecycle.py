@@ -99,7 +99,10 @@ class LifecycleMixin:
         if show:
             # Update and show the message
             status = self.get_pid_status()
-            self.msg_lbl.setText(self.str_preheating + status)
+            # as the live loop shows it (<br>, see live.py), and its cache now this
+            # text: the previous roast's last status must not pass for shown
+            self.prev_pidtext = status
+            self.msg_lbl.setText(f"{self.str_preheating}<br>{status}")
             self.msg_lbl.show()
             self.msg_lbl.raise_()  # Force the label to the top of the stack
             # Style the container to highlight preheating mode
@@ -168,6 +171,11 @@ class LifecycleMixin:
     def _disarm_cooling_detection(self) -> None:
         self._drop_done = False
         self._cooling_detected = False
+        self._end_cooling_detection()
+
+    def _end_cooling_detection(self) -> None:
+        """COOL END: nothing left to detect, and the roast stays dropped — the
+        min/max trackers and the phase blocks stay closed until the next CHARGE."""
         self._bt_at_drop = None
         self._bt_drop_timestamp = None
 
@@ -196,8 +204,7 @@ class LifecycleMixin:
             return   # Artisan ignores COOL END outside a recording
         self._show_cooled_face()
         self.aw.qmc.markCoolSignal.emit(False)
-        # Réinitialiser les flags de refroidissement
-        self._disarm_cooling_detection()
+        self._end_cooling_detection()
 
     def _roaster_supports_profile_replay(self) -> bool:
         """Return the selected roaster's declared Replay capability.
@@ -356,7 +363,7 @@ class LifecycleMixin:
             self._disable_roast_replay()
         else:
             try:
-                pre_charge = self.aw.qmc.timeindex[0] == -1
+                pre_charge = not self._milestone_marked(0)
                 has_background = self.aw.qmc.backgroundprofile is not None
             except Exception:  # pylint: disable=broad-except
                 pre_charge, has_background = False, False
@@ -370,7 +377,7 @@ class LifecycleMixin:
         eligibility, and any playback armed natively via Artisan's own
         Background dialog (see _replay_externally_active)."""
         try:
-            pre_charge = self.aw.qmc.timeindex[0] == -1
+            pre_charge = not self._milestone_marked(0)
             has_background = self.aw.qmc.backgroundprofile is not None
         except Exception:  # pylint: disable=broad-except
             pre_charge, has_background = False, False
@@ -718,7 +725,7 @@ class LifecycleMixin:
                 self._cooling_detected = False
                 phase = "COOL"
                 if _marked(7):
-                    self._disarm_cooling_detection()
+                    self._end_cooling_detection()
                 else:
                     # arm on the recorded DROP sample, not on the current one:
                     # the drum may already have been cooling for a while

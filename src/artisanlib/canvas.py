@@ -13174,6 +13174,7 @@ class tgraphcanvas(QObject):
                     self._on_skywalker_interrupted)
                 self.aw.bleSkywalkerDevice.stateChanged.connect(   ## TILAU ##
                     self._on_skywalker_state)
+                self._on_skywalker_state("connecting")   ## TILAU ## greyed until connected
                 self.aw.bleSkywalkerDevice.connect()
                 _logd.info('skywalker manager starting')
 
@@ -13184,6 +13185,9 @@ class tgraphcanvas(QObject):
         if self.aw.bleSkywalkerDevice is not None:
             self.aw.bleSkywalkerDevice.close()   # asserts OT1,0 then unlinks
             self.aw.bleSkywalkerDevice = None
+            # ## TILAU ## no roaster link to wait for any more: monitoring alone decides
+            if self.aw.tilauscope_main is not None:
+                self.aw.tilauscope_main.apply_machine_link(True)
             _logd.info('skywalker manager stopped')
 
     @pyqtSlot(str, float, int)
@@ -13224,10 +13228,28 @@ class tgraphcanvas(QObject):
         # panel reflects reality. moveslider() is UI-only (no controller write),
         # so no heat/airflow is re-asserted here. Reading the device's commanded
         # state (not constants) keeps a post-drop recovery truthful.
-        if state != "connected" or self.aw.bleSkywalkerDevice is None:
+        # Any other state means the link is down: nothing reaches the roaster,
+        # so its burner, air and drum sliders are greyed (the extractor is
+        # another machine and stays free). A late state from a device already
+        # closed is ignored: stopSkywalkerManager has released the controls.
+        if self.aw.bleSkywalkerDevice is None:
             return
         _SKYWALKER_AIRFLOW_SLIDER = 0
         _SKYWALKER_DRUM_SLIDER = 1
+        _SKYWALKER_BURNER_SLIDER = 3
+        tilauscope = self.aw.tilauscope_main
+        if tilauscope is not None:
+            tilauscope.apply_machine_link(
+                state == "connected",
+                (_SKYWALKER_AIRFLOW_SLIDER, _SKYWALKER_DRUM_SLIDER, _SKYWALKER_BURNER_SLIDER))
+        if state == "error" and not getattr(self, '_tilau_skywalker_unreached', False):   ## TILAU ##
+            # once per series of failed attempts: the link keeps retrying on its own
+            self._tilau_skywalker_unreached = True
+            self.aw.sendmessageSignal.emit(QApplication.translate("Message",
+                "The roaster does not answer: TilauScope keeps trying to connect."), True, None)
+        if state != "connected":
+            return
+        self._tilau_skywalker_unreached = False   ## TILAU ##
         self.aw.moveslider(_SKYWALKER_AIRFLOW_SLIDER,
                            self.aw.bleSkywalkerDevice.getCmdAirflow(), forceLCDupdate=True)
         self.aw.moveslider(_SKYWALKER_DRUM_SLIDER,

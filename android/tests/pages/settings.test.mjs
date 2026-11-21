@@ -43,3 +43,11 @@ test("a link check asked while the roaster cools waits, then starts by itself (B
   assert.equal(page.sent("link_connect").length, 2, "the check starts once the roast link is let go");
   assert.deepEqual(page.errors, []);
 });
+
+test("a BeanCave import that fails says so (P4-42)", async (t) => {
+  const page = await openPage("settings.html");
+  t.after(page.close);
+  await page.settle();
+  page.window.onSnapshot("cave_import", null); // the session's call failed: the service hands null
+  assert.match(page.$("toast").textContent, /BeanCave could not be imported/);
+});

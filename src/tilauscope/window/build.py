@@ -186,6 +186,8 @@ class BuildMixin:
         # because Qt widgets are born enabled — the flag tracks reality, and the
         # build-time call is what puts them at rest.
         self._controls_enabled: bool = True
+        # roaster sliders greyed while its link is down (see apply_machine_link)
+        self._link_lost_sliders: frozenset[int] = frozenset()
 
         # Main store, namespaced key; migration from the legacy Artisan-named file
         # is handled by settings_migration.

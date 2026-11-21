@@ -23,7 +23,7 @@ from tilaucore.preheat import (PREHEAT_BAND_C, PREHEAT_NEAR_C, AmbientConditions
 from tilaucore.preheat_controller import PreheatController
 from tilaucore.preheat_learning import AlogScanner
 from tilaucore.preheat_safety import SensorSafetyLimits
-from tilaucore.roasters import roaster_display_name
+from tilaucore.roasters import RoasterManager, machine_value, roaster_display_name
 
 from .catalogue import MACHINES
 from .roasts import Roasts
@@ -116,6 +116,10 @@ class TabletPreheat(PreheatController):
         self._to_native = lambda value: value
         self._unit = lambda: "C"
         self.cfg = PIDConfig()
+        # the roaster's burner ceiling: its heater_max_pct, else roasters.json's default (P4-44)
+        roaster = RoasterManager().get_by_name(entry["manufacturer"], entry["model"])
+        ceiling = roaster.heater_max_pct if roaster is not None and roaster.heater_max_pct is not None else None
+        self.cfg.max_burner = float(ceiling if ceiling is not None else machine_value(None, "preheat_max_burner_pct"))
         self._init_controller_state()
         self._watching = False
         self.paused = False

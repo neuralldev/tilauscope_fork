@@ -1394,6 +1394,8 @@ class TilauscopeLoggerWindow(QWidget):
     def _restore_layout(self) -> None:
         """Re-apply last-session collapsed zones, then splitter geometry."""
         saved = self._settings.value(_SETTINGS_KEY_COLLAPSED, []) or []
+        if isinstance(saved, str):  # a one-item list read back as its item: 'a' in 'alarms' is not a list test
+            saved = [saved]
         for s, p in self._panels.items():
             if s in saved:
                 p.set_collapsed(True)

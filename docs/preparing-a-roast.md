@@ -73,7 +73,8 @@ after the sheet is confirmed, so it is still live at the end of the roast.
 The **⚙ OPTIONS** tab holds *Physical properties*: [density](glossary.md#density),
 [moisture](glossary.md#moisture-content) and green bean temperature, pre-filled from the
 BeanCave record where they are known. These three feed the roast plan directly and shape the
-projected drying time — a humid, dense coffee does not dry like a dry, light one. The coffee's
+projected drying time — a humid, dense coffee does not dry like a dry, light one. Left empty, the
+density counts as an average bean, 700 g/L. The coffee's
 [screen size](glossary.md#screen-size), when the record has one, is written into the roast's
 properties at the same time; it is kept with the roast and does not change the plan.
 
@@ -465,7 +466,8 @@ teaches TilauPID nothing about the real machine.
 There is no calibration button and nothing to maintain. A completed preheat can benefit the
 next one once it contains enough trustworthy evidence: at least a minute of observation, a
 complete temperature window and, for holding power, a continuous stable hold around the
-setpoint. TilauPID uses filtered, robust measurements and limits how far one session may move
+setpoint. A preheat whose setpoint you change on the way teaches nothing: it never ran to one
+temperature. TilauPID uses filtered, robust measurements and limits how far one session may move
 either setting, so one probe spike or unusual start cannot dominate the model.
 
 Learning is kept separate for each machine and selected BT/ET input. Each qualified setpoint

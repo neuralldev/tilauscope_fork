@@ -41,6 +41,8 @@ import ipaddress
 import logging
 from typing import Final
 
+from tilauscope.tilau_privacy import _LOCAL_SUFFIXES
+
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 
@@ -74,4 +76,30 @@ def reject_remote_peer(request, server: str) -> bool:
         return False
     _log.warning('%s: refused a request from outside the local network: %s',
                  server, remote or '<unknown>')
+    return True
+
+
+def reject_foreign_host(request, server: str) -> bool:
+    """True when the page was asked under a name the phone never uses.
+
+    The peer check cannot see DNS rebinding: a page from anywhere, loaded in a
+    browser on the home network, asks again under its own domain once that
+    domain resolves to this machine — the peer is then local. The phone asks by
+    address, by tilauscope.local, by the machine's own .local name, or by the name
+    the home router gives it (a bare name, .lan, .home…); none of them is an
+    internet domain, so nobody can rebind one.
+    """
+    host = str(getattr(request, 'host', '') or '').strip().lower()
+    name = host[1:host.find(']')] if host.startswith('[') else host.rsplit(':', 1)[0] if host.count(':') == 1 else host
+    name = name.rstrip('.')
+    try:
+        ipaddress.ip_address(name)
+        return False
+    except ValueError:
+        pass
+    if name == 'localhost' or (name and '.' not in name):
+        return False   # a bare machine name: no internet domain is dotless
+    if any(name.endswith(suffix) and len(name) > len(suffix) for suffix in _LOCAL_SUFFIXES):
+        return False   # the home router's own names (.lan, .home…): never delegated, nobody can rebind one
+    _log.warning('%s: refused a request asked under a foreign name: %r', server, host)
     return True

@@ -260,19 +260,23 @@ what was sent. Charge, Drop and End roast send the machine's own commands. End r
 cools the roaster before stopping it: burner off, cooling on, air at 100 % and drum at
 80 %, then, once the bean temperature is under 50 °C, the cooling is ended as the desktop's
 **Cool end** does and the roaster is switched off. The pill
-reads **Cooling the roaster…** and the temperatures stay live meanwhile. Starting the next
+reads **Cooling the roaster…** and the temperatures stay live meanwhile; the tablet stays awake
+until the cooling is over, screen off included. Starting the next
 roast while it cools stops the cooling and takes the roaster back. If the link drops, the roaster stops its burner by itself, the
 tablet reconnects on its own and the recording goes on with a gap; once back, the
-burner stays at 0 and a banner asks you to raise it again. For a test with an empty
+burner stays at 0 and a banner asks you to raise it again. An alarm on air or drum that
+goes off meanwhile is applied once the link is back, as on the desktop; an alarm never
+raises the burner while the link is away. For a test with an empty
 drum, a long press on the roaster pill drops the link the same way.
 
 With **Preheat** on in Roast Setup (its target comes from the plan's charge; it follows
 the bean or the air probe), Start also starts the preheat: TilauPID drives the
-burner, never above 80 %, and the screen shows the target, the time to reach it, then
+burner, never above the roaster's burner ceiling (80 % on the Skywalker V2), and the screen shows the target, the time to reach it, then
 **CHARGE NOW**. Touching the burner pauses the preheat and keeps your value; **Resume
 preheat** gives the burner back to it. Touching a lever during the preheat never switches
 off the automatic milestones: they take over at Charge. What it learns is kept at Charge. If the roaster
-stops answering, the preheat stops it safely, cooling it first.
+stops answering, the preheat stops it safely, cooling it first; until the next Start, nothing
+else is sent to it, so a lever touched meanwhile does not reach a roaster already off.
 
 What the roast follows is drawn in the background, from Charge: the plan, or the roast
 you follow. Its bean temperature and rate of rise are dashed, its dry end, first crack and
@@ -345,8 +349,12 @@ roast (*Following off · the levers are yours*).
 With Crack detection on, or the plan's First crack on AUTO, TilauAmbient calibrates twice:
 on the empty drum 20 s after Start, then on the beans 1:30 after Dry end, then counts the
 cracks until Drop. A chip in the header shows each 30-second calibration
-(*Crack counter · empty drum · 26 s*). First crack needs the counter: without TilauAmbient
-it is not marked for you.
+(*Crack counter · empty drum · 26 s*). First crack is marked from the counter when it counts.
+Without TilauAmbient, or once its counting has stopped, it is still marked for you: when the
+bean temperature leaves the first crack window, 5 °C above the plan's first crack, or the top
+of the usual band without a plan. If TilauAmbient drops out during a roast, or a calibration
+cannot reach it, the counting stops for that roast: nothing is replayed, and the next Start
+counts afresh.
 
 ## Changing a setting
 
@@ -409,7 +417,10 @@ Touch it to weigh: the scale shows the weight live, rounded to the gram, with
 it is stable. **Enter by hand** opens the wheel instead, in whole grams from 50 to
 1000 g; without a scale the wheel opens directly.
 
-When the roast is over, the summary shows the weight: **Weigh roasted** takes the
+When the roast is over, a summary covers the curve: total time, first crack,
+development and drop on the top row; below, on the left, what is left to take (the
+weight, then the colour); on the right, the room at charge, the energy and any delay
+of the tablet. The summary shows the weight: **Weigh roasted** takes the
 roasted weight the same way, then the summary shows both weights and the weight
 lost in percent. **Weigh again** replaces the roasted weight.
 

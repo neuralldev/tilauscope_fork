@@ -1428,9 +1428,10 @@ class OnboardingWizard(QDialog):
     def _apply_and_finish(self) -> None:
         self._detect_timer.stop()
         self._unhook_scanner()
-        QSettings().setValue(_DONE_KEY, True)
         try:
             self._apply_settings()
+            # done only once applied: a failed apply brings the wizard back at the next start
+            QSettings().setValue(_DONE_KEY, True)
         except Exception as e:  # pylint: disable=broad-except
             _log.exception("onboarding apply failed: %s", e)
         self.accept()

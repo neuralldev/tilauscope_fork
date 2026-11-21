@@ -234,7 +234,8 @@ progress.
 
 Before it is offered, the downloaded installer is checked against the checksum published with
 the release. A file that does not match is deleted and the download is reported as failed —
-try again later rather than installing it.
+try again later rather than installing it. It is checked once more when you choose to install it,
+since it waits in your Downloads folder until then: a file that changed meanwhile is deleted, not run.
 An installer published without a checksum is not offered: download it from the releases page
 instead. The download is written under a temporary `.part` name and takes its real name only once
 verified, so an interrupted download never leaves a truncated installer in your Downloads folder.

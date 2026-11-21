@@ -205,6 +205,8 @@ class CommandBridge(QObject):
                 return {'status': 'rejected', 'reason': 'CHANNEL_READONLY', 'channel': channel}
         except Exception:  # noqa: BLE001
             pass
+        if self._machine_unreachable(idx):
+            return {'status': 'rejected', 'reason': 'CHANNEL_READONLY', 'channel': channel}
         try:
             requested = float(value)
         except (TypeError, ValueError):
@@ -218,6 +220,18 @@ class CommandBridge(QObject):
         advisory = 'drum_midroast' if (idx == _DRUM_IDX and self._midroast()) else None
         return {'status': status, 'channel': channel,
                 'applied_value': applied, 'advisory': advisory}
+
+    def _machine_unreachable(self, idx: int) -> bool:
+        """The desktop's own slider is greyed: the phone is refused it too.
+
+        One rule for every device: what the desktop window allows (monitoring on,
+        the roaster link up for the roaster's sliders, the extractor always free —
+        see SlidersMixin.machine_slider_enabled) is what the phone allows.
+        """
+        tm = getattr(self._aw, 'tilauscope_main', None)
+        if tm is None:
+            return False
+        return not tm.machine_slider_enabled(idx)
 
     def _midroast(self) -> bool:
         try:
@@ -259,9 +273,11 @@ class CommandBridge(QObject):
                 # the phone shows no guidance: Guided would silence the alarms and
                 # wait for desktop confirmations — Expert for this roast only
                 tm._borrow_expert_level()
-                tm.toggle_start_stop(True)   # guards no-meter + sets state (§ reuse)
-                if not bool(getattr(self._aw.qmc, 'flagstart', False)):
-                    tm._restore_replay_level()   # START refused: nothing borrowed
+                try:
+                    tm.toggle_start_stop(True)   # guards no-meter + sets state (§ reuse)
+                finally:   # START refused, or raised: nothing borrowed
+                    if not bool(getattr(self._aw.qmc, 'flagstart', False)):
+                        tm._restore_replay_level()
             if bool(getattr(tm, 'is_roasting', False)):
                 self._broadcast_event({'kind': 'recorder', 'state': 'started'})
                 return {'status': 'ok'}
@@ -343,20 +359,19 @@ class CommandBridge(QObject):
             return {'status': 'rejected', 'reason': 'NOTHING_TO_SAVE', 'saved': False}
 
     def _do_discard(self, confirm) -> dict:
-        """Throw away the current roast (destructive, §5 — requires confirm)."""
+        """Throw away the stopped roast (destructive, §5 — after STOP, requires confirm).
+
+        Never while recording: a roast in progress, beans in the drum, is stopped
+        at the desktop, not thrown away from the phone.
+        """
         if not confirm:
             return {'status': 'rejected', 'reason': 'CONFIRM_REQUIRED'}
         aw = self._aw
         qmc = aw.qmc
         tm = getattr(aw, 'tilauscope_main', None)
+        if tm is not None and bool(getattr(tm, 'is_roasting', False)):
+            return {'status': 'rejected', 'reason': 'RECORDING'}
         try:
-            if tm is not None and bool(getattr(tm, 'is_roasting', False)):
-                old = qmc.autosaveflag  # stop first, writing nothing
-                try:
-                    qmc.autosaveflag = 0
-                    tm.toggle_start_stop(False)
-                finally:
-                    qmc.autosaveflag = old
             # mark clean so reset() won't pop a desktop "save changes?" prompt —
             # the discard was already confirmed on the phone
             qmc.fileClean()

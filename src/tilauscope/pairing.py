@@ -111,6 +111,17 @@ class PairingManager:
         except Exception as e:  # noqa: BLE001
             _log.warning("pairing: cannot save devices: %s", e)
 
+    def free_device_id(self, device_id: str) -> str:
+        """*device_id*, or one of its own when a paired device already holds it.
+
+        The phone names itself; paired under a name on the list, it replaced
+        that device's entry and threw the other phone out.
+        """
+        with self._lock:
+            while device_id in self._devices:
+                device_id = f"{device_id.split('~')[0]}~{secrets.token_hex(3)}"
+            return device_id
+
     def pair(self, token: str, device_id: str, display_name: str) -> Optional[str]:
         """Validate a PT and issue a persistent DT for this device."""
         with self._lock:

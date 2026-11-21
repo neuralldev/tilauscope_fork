@@ -12,7 +12,7 @@ import unittest
 from tilaucore.bean_edit import ZONES
 from tilaucore.beans import BeanCaveContainer, from_json, to_json
 from tilauscope_mobile import config
-from tilauscope_mobile.cave import EMPTY, Cave, parse
+from tilauscope_mobile.cave import EMPTY, NOT_COPIED, Cave, parse
 from tilauscope_mobile.demo import Demo
 
 GUJI = {"name": "Guji Kurume", "country": "Ethiopia", "process": "Natural", "crop": 2025, "sca": 88.0,
@@ -57,6 +57,50 @@ class CaveTests(unittest.TestCase):
         self.assertEqual(cave.replace_folder(folder, "roasters")["tastings"], 1)
         self.assertEqual((cave.directory / "tastings.json").read_bytes(), tastings.encode("utf-8"))
         self.assertTrue((cave.directory / "brewlog.json").is_file())
+
+    def test_tastings_from_a_windows_desktop_are_counted_and_added_to(self):
+        """Audit 2026-11-21, P2-04: a tastings.json with its BOM read as empty, and refused every new tasting."""
+        from tilaucore import tasting_log
+        from tilaucore.beans import RoastTasting
+        tastings = '﻿{"version": 1, "entries": {"r1": {"bean_uuid": "x", "verdict": "yes"}}}\r\n'
+        cave = Cave(str(self.dir / "tablet"))
+        self.assertEqual(cave.replace_folder(self._folder(beancave_json=DESKTOP_FILE, tastings_json=tastings), "w")["tastings"], 1)
+        self.assertTrue(tasting_log.record(str(cave.directory), "r2", RoastTasting(bean_uuid="x", verdict="no")))
+        self.assertEqual(set(tasting_log.load(cave.directory).entries), {"r1", "r2"})
+
+    def test_a_file_the_app_could_not_copy_refuses_the_folder_and_keeps_the_tablet_s(self):
+        """Audit 2026-11-21, P2-08: a file that failed to copy (a cloud provider) read as absent from the
+        folder, and the tablet's own tastings were deleted with the replaced cave."""
+        cave = Cave(str(self.dir / "tablet"))
+        mine = '{"version": 1, "entries": {"r0": {"bean_uuid": "x", "verdict": "yes"}}}'
+        cave.replace_folder(self._folder(beancave_json=DESKTOP_FILE, tastings_json=mine), "a")
+        (self.dir / "from-desktop" / "tastings.json").unlink()
+        folder = self._folder(beancave_json=DESKTOP_FILE)
+        (Path(folder) / ("tastings.json" + NOT_COPIED)).touch()   # left by the app for a copy that failed
+        self.assertEqual(json.loads(Demo.cave_preview(folder, "x"))["reason"], "tastings.json cannot be read")
+        with self.assertRaises(ValueError):
+            cave.replace_folder(folder, "x")
+        self.assertEqual((cave.directory / "tastings.json").read_text(encoding="utf-8"), mine)
+
+    def test_a_replacement_cut_short_while_writing_leaves_the_tablet_s_cave_as_it_was(self):
+        """Audit 2026-11-21, P2-22: the tastings were put in place before the cave; the app killed in between
+        left the folder's tastings beside the tablet's former cave."""
+        from unittest import mock
+        cave = Cave(str(self.dir / "tablet"))
+        mine = '{"version": 1, "entries": {"r0": {"bean_uuid": "x", "verdict": "yes"}}}'
+        cave.replace_folder(self._folder(beancave_json=DESKTOP_FILE, tastings_json=mine), "a")
+        before = {p.name: p.read_bytes() for p in cave.directory.iterdir()}
+        theirs = '{"version": 1, "entries": {"r9": {"bean_uuid": "y", "verdict": "no"}}}'
+        folder = self._folder(beancave_json=DESKTOP_FILE.replace("1200", "900"), tastings_json=theirs)
+        writes = []
+        def fsync(fd):
+            writes.append(fd)
+            if len(writes) == 2:
+                raise OSError("the app was killed")
+        with mock.patch("os.fsync", side_effect=fsync):
+            with self.assertRaises(OSError):
+                cave.replace_folder(folder, "b")
+        self.assertEqual({p.name: p.read_bytes() for p in cave.directory.iterdir()}, before)
 
     def test_a_folder_is_refused_whole_when_a_file_cannot_be_read(self):
         cave = Cave(str(self.dir / "tablet"))

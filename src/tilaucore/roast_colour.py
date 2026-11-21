@@ -73,6 +73,24 @@ AGTRON_SCALES: list[AgtronScale] = [
 ]
 
 
+def in_agtron_scale(value: float, scale: AgtronScale) -> bool:
+    """True when *value* falls in *scale*, from its lower bound up to the next level's.
+
+    The levels are written x.00 to x.99: read inclusively, a converted figure
+    such as 60.995 fell between two and had no level at all.
+    """
+    rng = scale.agtron_range
+    names = [s.name for s in AGTRON_SCALES]
+    if scale.name in names and names.index(scale.name) + 1 < len(names):
+        return rng.min_value <= value < AGTRON_SCALES[names.index(scale.name) + 1].agtron_range.min_value
+    return rng.min_value <= value <= rng.max_value
+
+
+def agtron_scale_for(value: float) -> "AgtronScale | None":
+    """The roast level an Agtron figure falls in, or None off the scale."""
+    return next((s for s in AGTRON_SCALES if in_agtron_scale(value, s)), None)
+
+
 # ── Colour helpers ────────────────────────────────────────────────────────────
 # These functions are pure (no Qt dependency) so they can be imported at module
 # level in any consumer without triggering Qt initialisation.
@@ -204,7 +222,5 @@ def get_agtron_color(agtron: float) -> str:
     Falls back to a neutral grey when the value is out of range (e.g. -1
     sentinel or pre-stabilisation noise).
     """
-    for scale in AGTRON_SCALES:
-        if scale.agtron_range.min_value <= agtron <= scale.agtron_range.max_value:
-            return scale.color_map
-    return "#9E9E9E"  # grey — out of range / sensor not ready
+    scale = agtron_scale_for(agtron)
+    return scale.color_map if scale is not None else "#9E9E9E"  # grey — out of range / sensor not ready

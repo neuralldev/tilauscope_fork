@@ -42,8 +42,8 @@ from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, 
     get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, weight_loss_target_from_plan)
 from tilauscope.theme_qss import style_combo_popup, tint, tooltip_qss
-from tilaucore.roast_colour import roast_agtron
-from tilauscope.roasters import RoasterContext, roast_context_for
+from tilaucore.roast_colour import in_agtron_scale, roast_agtron
+from tilauscope.roasters import RoasterContext, machine_value, roast_context_for
 from tilauscope.probe_visibility import et_available_for
 from tilauscope.graph.common import DRY_END_WINDOW_C, FIRST_CRACK_WINDOW_C, NOW_WINDOW_C, delta_scale, preheat_arrived
 from tilauscope.roast_plan_model import (TilauScopeRoastPlan, heat_soak_correction,
@@ -505,14 +505,10 @@ def _plan_heater_pct(plan: "dict | None", phase: str) -> "float | None":
 # ticks AUTO consécutifs en échec tolérés avant de rendre la main (1 Hz) : un
 # raté isolé est rattrapable, trois d'affilée = le pilote ne pilote plus.
 _AP_TICK_FAIL_MAX: Final = 3
-# Fenêtre de grâce (s) après le CHARGE : le handoff PID préchauffe→roast bouge
-# transitoirement les sliders ; AUTO les suit sans se mettre en pause pendant cette fenêtre.
-_AP_CHARGE_SETTLE_S: Final = 8.0
 # AUTO user access. Re-enabled explicitly with the MANUAL/AUTO coach
 # switch; all runtime gates (active session, a plan, read-only roaster)
 # remain mandatory before arming.
 _AP_USER_ENABLED: Final = True
-_AP_PHASE_COL: Final = {"DRY": 0, "MAI": 1, "DEV": 2}
 
 
 
@@ -4300,7 +4296,7 @@ class _SetupBar(QFrame):
         if agtron_color is not None and agtron_color > 0:
             for i in range(self.combo_agtron.count()):
                 scale = self.combo_agtron.itemData(i)
-                if scale and scale.agtron_range.min_value <= agtron_color <= scale.agtron_range.max_value:
+                if scale and in_agtron_scale(agtron_color, scale):
                     self.combo_agtron.setCurrentIndex(i)
                     _logd.debug(f"RoastAssistant: auto-selected Agtron target {scale.name} for color {agtron_color}")
                     break
@@ -4895,8 +4891,17 @@ class _DesktopAutoHost:
             dev_mode=dev_mode, raise_burner=raise_burner)
 
     def mark(self, which: str) -> None:
+        # A mark is a toggle: pressed twice it undoes the milestone. Artisan's own detector
+        # may have queued the same mark already (Expert): AUTO's goes one event-loop turn
+        # later, behind it, and only for a milestone still unmarked then (audit P3-10).
         qmc = self.p.aw.qmc
-        {"DE": qmc.markDRYSignal, "FC": qmc.markFCsSignal, "DROP": qmc.markDropSignal}[which].emit(False)
+        signal = {"DE": qmc.markDRYSignal, "FC": qmc.markFCsSignal, "DROP": qmc.markDropSignal}[which]
+        index = {"DE": 1, "FC": 2, "DROP": 6}[which]
+
+        def _once() -> None:
+            if not milestone_marked(qmc.timeindex, index):
+                signal.emit(False)
+        QTimer.singleShot(0, _once)
 
     def beep(self) -> None:
         QApplication.beep()
@@ -5626,11 +5631,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_notice = None
         self._ap_last_action = None
         self._ap_lever_flash.clear()
-        self._ap_automark_done.clear()
-        self._ap_cool_end_c = None
-        self._ap_drop_deadline = None
-        self._ap_drop_confirm = 0
-        self._ap_drop_cancelled = False
+        self._ap.reset_session()   # the core's own reset, shared with the tablet
         # Nouveau roast → le veto d'apprentissage de la session précédente tombe
         # (il ne se reset PAS au stop : le toggle se pose au bilan EOR, après
         # l'arrêt de l'enregistrement, et doit survivre jusqu'au save).
@@ -5820,11 +5821,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_notice = None
         self._ap_last_action = None
         self._ap_lever_flash.clear()
-        self._ap_automark_done.clear()
-        self._ap_cool_end_c = None
-        self._ap_drop_deadline = None
-        self._ap_drop_confirm = 0
-        self._ap_drop_cancelled = False
+        self._ap.reset_session()   # the core's own reset, shared with the tablet
 
     # ── API publique appelée par TilauScope ────────────────────────────────────
 
@@ -5926,17 +5923,9 @@ class RoastAssistantPanel(QWidget):
 
         # AutoPilot : feedforward au jalon, APRÈS le replan (les valeurs
         # posées doivent être celles du plan vivant re-ancré). Événementiel.
-        if self._ap_state == "armed":
-            if phase_key in _AP_PHASE_COL:
-                # couture de jalon (CHARGE, DE, FC) : le marquage tire
-                # l'action de bouton Artisan, qui peut bouger un curseur. Sans
-                # cette fenêtre de grâce, l'AutoPilot lisait ce mouvement comme
-                # une reprise en main et se mettait en pause au jalon.
-                self._ap_settle_until = time.monotonic() + _AP_CHARGE_SETTLE_S
-                self._ap_apply_phase(phase_key)
-                self._ap_start_phase(phase_key)
-            elif phase_key in ("DROP", "COOL"):
-                self._ap_apply_cooling()   # refroidissement du torréfacteur, puis off
+        # Le cœur décide (armé seulement) : fenêtre de grâce au jalon, feedforward,
+        # puis refroidissement au DROP — la même règle que la tablette.
+        self._ap.milestone(phase_key)
 
         # En entrant en COOL, forcer la lecture directe de qmc pour peupler
         # _last_bt/et/ror immédiatement (le bridge peut avoir arrêté d'émettre après DROP)
@@ -6122,7 +6111,8 @@ class RoastAssistantPanel(QWidget):
         target_mid = (target.agtron_range.min_value + target.agtron_range.max_value) / 2.0
         qmc.tilau_roast_plan_snapshot = build_prediction_snapshot(
             plan, plan_id=qmc.roastUUID, target_color_agtron=target_mid,
-            expected_color_basis="ground", mode=qmc.mode)
+            expected_color_basis="ground", mode=qmc.mode,
+            model_version=machine_value(self.roast_context, "plan_model_version"))
 
     def _regenerate_plan(self, ambient_temp: float, ambient_hum: float) -> None:
         """Régénère le plan prédictif avec des valeurs ambiantes mises à jour.
@@ -6364,9 +6354,6 @@ class RoastAssistantPanel(QWidget):
         """Plafond brûleur déclaré par le torréfacteur (roasters.json), 100 sans plafond."""
         return self._ap.max_burner()
 
-    def _ap_start_phase(self, phase_key: str) -> None:
-        self._ap.start_phase(phase_key)
-
     def _ap_cockpit_active(self) -> bool:
         """Vue cockpit affichée : AUTO ARMÉ pendant une phase de roast.
         En PAUSE on revient aux pages détaillées : c'est la reprise en main —
@@ -6512,10 +6499,6 @@ class RoastAssistantPanel(QWidget):
 
     def _ap_plan_levers(self, phase_key: str) -> list[tuple[int, float]]:
         return self._ap.plan_levers(phase_key)
-
-    def _ap_apply_phase(self, phase_key: str) -> None:
-        """Feedforward au jalon (tilaucore.autopilot)."""
-        self._ap.apply_phase(phase_key)
 
     @pyqtSlot()
     def _ap_tile_tapped(self) -> None:
@@ -6666,10 +6649,6 @@ class RoastAssistantPanel(QWidget):
     def _ap_net_tick(self, crash_msg: "str | None", ror: float, raise_burner: bool = False) -> None:
         self._ap.net_tick(crash_msg, ror, self.aw.qmc.mode, raise_burner)
 
-    def _ap_apply_cooling(self) -> None:
-        """DROP marqué : le refroidissement du torréfacteur, puis AUTO désarmé (tilaucore.autopilot)."""
-        self._ap.apply_cooling()
-
     def _ap_tick(self, ctx: dict, bt: float, ror: "float | None",
                  dry_end_temp: float, fc_temp: float, drop_temp: float) -> None:  # noqa: ARG002
         """Appelé à chaque refresh (1 Hz) : le tick d'AUTO (tilaucore.autopilot), O(1)."""
@@ -6773,6 +6752,11 @@ class RoastAssistantPanel(QWidget):
             self._refresh_current_page_impl()
         except Exception:  # pylint: disable=broad-except
             _logd.exception("RoastAssistant: _refresh_current_page failed (tick skipped)")
+            # AUTO's tick runs at the end of the refresh: skipped with it, it counts as a
+            # failed tick, so repeated failures pause AUTO instead of leaving it armed
+            # and silent (audit P3-09).
+            if self._ap_state == "armed":
+                self._ap_tick_failed()
 
     def _refresh_current_page_impl(self) -> None:
         """

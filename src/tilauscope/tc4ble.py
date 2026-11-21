@@ -185,7 +185,14 @@ class TilauTC4BLE(QObject):
     # ── public Qt-thread API ────────────────────────────────────────────────
     @pyqtSlot()
     def connect(self) -> None:
-        self._ble.submit(self._connect())
+        self._ble.submit(self._start())
+
+    async def _start(self) -> None:
+        """The first connection, tried again as a dropped link is: the roaster may be
+        switched on a few seconds after ON. close() cancels it like any reconnect driver."""
+        self._closing = False
+        if self._reconnect_task is None or self._reconnect_task.done():
+            self._reconnect_task = asyncio.ensure_future(self._reconnect_loop())
 
     @pyqtSlot()
     def disconnect(self) -> None:
@@ -358,10 +365,7 @@ class TilauTC4BLE(QObject):
             _logd.info("TilauTC4BLE connected: %s", self._address)
             self.stateChanged.emit("connected")
             self._recovering = False               # link is back
-            if self._restore_pending:              # reconnected into a live roast
-                if self._guard_armed:
-                    await self._restore_after_drop()
-                self._restore_pending = False
+            await self._restore_if_pending()
         except Exception as e:  # noqa: BLE001
             _logd.exception(e)
             if not self._connected:
@@ -427,6 +431,18 @@ class TilauTC4BLE(QObject):
             self._mismatch = 0
 
     # ── link-recovery protocol ( ) ────────────────────────────────
+    async def _restore_if_pending(self) -> None:
+        """Restore once after a reconnect into a live roast.
+
+        The flag is consumed before the restore: a drop during it (~0.4 s) sets it
+        again for its own cycle, and must find it set when that cycle reconnects.
+        """
+        if not self._restore_pending:
+            return
+        self._restore_pending = False
+        if self._guard_armed:
+            await self._restore_after_drop()
+
     async def _restore_after_drop(self) -> None:
         """Re-assert mechanical state after a reconnect into a live roast.
 
@@ -517,7 +533,12 @@ class TilauTC4BLE(QObject):
                     pass
             if self._client and self._client.is_connected:
                 # SAFETY: re-assert burner off before handing control back.
-                await self._write(f"OT{OT_BURNER},0" + _CMD_TERM)
+                # Own try and a bound: a link dropping under this write must not
+                # skip the teardown below (half-open CoreBluetooth link).
+                try:
+                    await asyncio.wait_for(self._write(f"OT{OT_BURNER},0" + _CMD_TERM), 2.0)
+                except Exception:  # noqa: BLE001 - best effort, the teardown follows
+                    _logd.exception("TilauTC4BLE: burner OFF at close failed")
             self._connected = False
             if self._reconnect_task is not None:   # stop any reconnect driver
                 self._reconnect_task.cancel()
@@ -533,10 +554,14 @@ class TilauTC4BLE(QObject):
                     await self._client.stop_notify(FF01_NOTIFY)
                 except Exception:  # noqa: BLE001
                     pass
-                await self._client.disconnect()
         except Exception as e:  # noqa: BLE001
             _logd.exception(e)
         finally:
+            try:
+                if self._client is not None:
+                    await asyncio.wait_for(self._client.disconnect(), 3.0)
+            except Exception:  # noqa: BLE001
+                _logd.exception("TilauTC4BLE: disconnect at close failed")
             self.stateChanged.emit("disconnected")
 
     async def _poll(self, epoch: int) -> None:     # bound to its connection generation

@@ -163,6 +163,14 @@ class PairingDialog(QDialog):
 
     # ---- pairing token / QR -------------------------------------------------
 
+    def done(self, result: int) -> None:
+        """Closed, however: its pairing code ends with it instead of living out its two minutes."""
+        try:
+            self._host.clear_pairing_token()
+        except Exception:  # noqa: BLE001
+            _log.debug("pairing: could not clear the pairing code", exc_info=True)
+        super().done(result)
+
     def _new_token(self) -> None:
         minted = self._host.mint_pairing_token()
         if not minted:

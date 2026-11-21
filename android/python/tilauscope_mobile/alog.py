@@ -25,6 +25,10 @@ from tilaucore.units import weight_loss_pct as weight_loss
 
 from .session import Session
 
+# The TilauScope version whose files the tablet reads and writes: the desktop's current one.
+# It moves with each desktop version (test_version_follows_desktop fails until it does).
+TILAUSCOPE_VERSION = "4.4"
+
 # Desktop event types, as the operator's Skywalker setup numbers them.
 EVENT_TYPE = {"air": 0, "drum": 1, "extractor": 2, "burner": 3}
 TIMEINDEX = ("charge", "dry_end", "first_crack", "fc_end", "second_crack", "sc_end", "drop", "cool")
@@ -170,7 +174,7 @@ def profile(session: Session, *, levers: dict, operator: str = "", roaster: str 
     title = session.title or "TilauScope roast"
     greens = session.greens or {}
     data = {
-        "recording_version": "4.3", "version": "4.3", "artisan_os": "Android", "mode": "C",
+        "recording_version": TILAUSCOPE_VERSION, "version": TILAUSCOPE_VERSION, "artisan_os": "Android", "mode": "C",
         "title": title, "operator": operator, "roastertype": roaster, "machinesetup": roaster,
         "roastUUID": session.uuid, "roastepoch": epoch, "roasttzoffset": session.tz_offset,
         "roastisodate": local.strftime("%Y-%m-%d") if local else "",

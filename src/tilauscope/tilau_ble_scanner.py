@@ -94,12 +94,14 @@ class TilauBLEScanner(QObject):
         if self._running:
             _log.warning("TilauBLEScanner already running")
             return
-        self._stop_event.clear()
+        # A new flag per thread: clearing the shared one would wake a previous
+        # thread still leaving (stop() only waits so long) beside the new one.
+        self._stop_event = threading.Event()
         self._running = True
         with self._instances_lock:
             self._instances.add(self)
         self._thread = threading.Thread(
-            target=self._scan_loop,
+            target=self._scan_loop, args=(self._stop_event,),
             name="TilauBLEScanner",
             daemon=True,
         )
@@ -133,11 +135,11 @@ class TilauBLEScanner(QObject):
 
     # ── Boucle interne ────────────────────────────────────────────────────────
 
-    def _scan_loop(self) -> None:
-        while self._running and not self._stop_event.is_set():
+    def _scan_loop(self, stop_event: threading.Event) -> None:
+        while self._running and not stop_event.is_set():
             try:
                 devices = self._do_scan()
-                if devices and not self._stop_event.is_set():
+                if devices and not stop_event.is_set():
                     self.devices_found.emit(devices)
                     _log.debug("TilauBLEScanner: %d device(s) found", len(devices))
             except BleakBluetoothNotAvailableError:
@@ -152,13 +154,13 @@ class TilauBLEScanner(QObject):
                 break
             except BleakError as e:
                 _log.error("TilauBLEScanner: BLE error — %s", e)
-                self._stop_event.wait(timeout=5.0)
+                stop_event.wait(timeout=5.0)
             except Exception as e:  # pylint: disable=broad-except
                 _log.exception("TilauBLEScanner: unexpected error — %s", e)
-                self._stop_event.wait(timeout=5.0)
+                stop_event.wait(timeout=5.0)
 
-            if self._running and not self._stop_event.is_set():
-                self._stop_event.wait(timeout=SCAN_PAUSE)
+            if self._running and not stop_event.is_set():
+                stop_event.wait(timeout=SCAN_PAUSE)
 
         _log.info("TilauBLEScanner thread exited")
 
@@ -214,6 +216,9 @@ class TilauBLEScanner(QObject):
             # Arrêt demandé (stop()) : le discover a été annulé, scan stoppé.
             return []
         except TimeoutError:
+            # cancelled, or it goes on scanning in the BLE loop holding the lock
+            # a roaster connection waits for
+            fut.cancel()
             _log.warning("TilauBLEScanner: discover timeout")
             return []
         except Exception as e:

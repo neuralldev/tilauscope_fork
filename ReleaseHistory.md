@@ -1,4 +1,105 @@
 ## [4.4] 2026-11-14
+build 7
+* 🐛 [fix(beancave)] : a roast folder holding no roast of any coffee in the library (a new empty folder, a cloud folder not downloaded yet) no longer brings every coffee's roast count and roasted weight back to 0
+* 🐛 [fix(remote)] : with a VPN on, the pairing QR still carries the computer's address on the home network instead of the VPN's
+* 🐛 [fix(remote)] : the browser test page keeps its pairing when it reconnects
+* 🐛 [fix(plan)] : the plan's alarm file, saved with the PDF or loaded at start, carries the settings of the roaster the plan was made for, not of the one selected now
+* 🐛 [fix(trp)] : the TRP bench client connected again within 5 s is no longer reported as not answering by the earlier connection's timeout
+* 🐛 [fix(roaster)] : a roaster declaring only part of its lever response in roasters.json keeps the common default for the rest, instead of stopping the tablet's simulated roast
+* 🐛 [fix(android)] : on the Android prototype, an alarm on air or drum that goes off while the roaster link is away is applied once the link is back, as on the desktop; heat is never re-applied
+* 🐛 [fix(android)] : on the Android prototype, a coffee shared stays readable for an hour, so an app that reads it later (a draft, an upload) no longer loses it when the next coffee is sent
+* 🐛 [fix(roaster)] : the charge temperatures, the room's effect on drying, the plan alarms' fixed settings, the simulated lever response and the preheat burner ceiling come from the roaster's own values in roasters.json, or from the file's common defaults; at DROP the plan alarms set the roaster's declared cooling (air 75 % on the Skywalker V2, as AUTO does)
+* 🐛 [fix(beancave)] : each coffee's roast count and roasted weight follow the roast folder, so a roast copied in from the tablet or saved on the desktop counts at once instead of staying at 0
+* 🐛 [fix(android)] : on the Android prototype, a coffee's roast count and its plan's confidence count the roasts the tablet holds instead of a figure only the desktop's repair tool wrote
+* 🐛 [fix(android)] : on the Android prototype, the water activity and density cards of the characteristics editor stand at the top of the section, so the measuring card and its button no longer run past the bottom of the screen
+* 🐛 [fix(android)] : on the Android prototype, the end-of-roast summary fits the screen: the four figures on one row, the weight and colour still to take on the left, the room, energy and tablet delays on the right
+* 🐛 [fix(remote)] : the phone and record servers answer only pages asked by address, by a .local name or by the name the home router gives the computer (a bare name, .lan, .home…), so a web page elsewhere renamed to point at this computer can no longer read coffee records
+* 🐛 [fix(updates)] : the downloaded installer is checked again against its published checksum when it is launched, and is deleted instead of run if it changed meanwhile in the Downloads folder
+* 🐛 [fix(remote)] : pairing a second phone that names itself like a phone already paired no longer throws the first one out
+* 🐛 [fix(ai)] : the AI key is read from the keychain before the request leaves, never from the background thread
+* 🐛 [fix(privacy)] : text sent to the AI that carries the scrubber's own private placeholder characters no longer stops the request or copies a link elsewhere
+* 🐛 [fix(remote)] : closing the pairing dialog ends its pairing code at once, instead of two minutes later
+* 🐛 [fix(remote)] : the pairing QR carries the computer's address on the home network, never a virtual machine's or Docker's, nor a public one
+* 🐛 [fix(privacy)] : the online weather notice says that the town lookup at ip-api.com is not encrypted
+* 🐛 [fix(backup)] : a backup holding a file its manifest does not list is refused as damaged instead of restoring that file unchecked
+* 🐛 [fix(remote)] : the phone can no longer throw away a roast while it is being recorded
+* 🐛 [fix(remote)] : a phone asking for control while the desktop's confirmation can no longer come is refused after 30 s, instead of every later request reading busy for the rest of the session
+* 🐛 [fix(onboarding)] : a first-run wizard whose settings could not be applied shows again at the next start
+* 🐛 [fix(setup)] : an .aset carrying an infinite value is read with its default instead of failing
+* 🐛 [fix(live)] : the preheat message shown at START puts its status on its own line, as during the preheat, from one roast to the next
+* 🐛 [fix(logger)] : on Windows, collapsing one panel of the log window no longer collapses the panels whose name is part of it
+* 🐛 [fix(mqtt)] : a gateway's answer to a poll is handled on the main thread, and polling no longer leaves a timer behind at each restart
+* 🐛 [fix(trp)] : the TRP bench client closes its previous port when it connects again, which closed the app, and reports a device that never answers
+* 🐛 [fix(ble)] : a Bluetooth scan that times out lets go of the Bluetooth lock a roaster connection waits for, and a scanner started again right after a stop runs once
+* 🐛 [fix(airwave)] : an AirWave connected at once sends its waiting commands instead of failing on them
+* 🐛 [fix(remote)] : a START from the phone that fails gives back the operator level it borrowed
+* 🐛 [fix(skywalker)] : a link that drops again while airflow and drum are being restored gets its own restore at the next reconnection
+* 🐛 [fix(review)] : a drop called late or early without its planned temperature gets no advice about another milestone
+* 🐛 [fix(coach)] : a roast file whose milestone time is not a number no longer leaves the coach empty
+* 🐛 [fix(detection)] : the crash detector reads the rate of rise once per sample, a plateau included
+* 🐛 [fix(records)] : a roast without an identifier no longer makes every roast page answer "not found"
+* 🐛 [fix(report)] : the system information of a problem report names the Qt actually running
+* 🐛 [fix(android)] : on the Android prototype, an Artisan alarm list whose columns are not all as long is refused as not an alarm list
+* 🐛 [fix(android)] : on the Android prototype, a library download that fails keeps the coffee already on the preview sheet
+* 🐛 [fix(android)] : on the Android prototype, a coffee opened while another is being imported no longer deletes it, and stays on the preview sheet
+* 🐛 [fix(android)] : on the Android prototype, a roast that cannot be deleted between roasts is no longer blamed on a roast on screen
+* 🐛 [fix(android)] : on the Android prototype, the coffee picked in BeanCave stays picked when the list is read again
+* 🐛 [fix(android)] : on the Android prototype, a BeanCave import that fails says so
+build 6
+* 🐛 [fix(plan)] : roasts recorded in °F are learned from again; their room temperature was checked against a window in °C, which left out every °F roast made in a room above 60 °F
+* 🐛 [fix(plan)] : the charge and the burner read a coffee's process the same way: honey burns as a natural, an unknown process as a washed, and a "decaf washed" as a decaf
+* 🐛 [fix(plan)] : the burner step a tasting asks for before first crack stays under the roaster's development ceiling (60 % on the Skywalker instead of 65 %)
+* 🐛 [fix(plan)] : a dry end marked exactly where the plan put it no longer moves the planned first crack (it moved by up to 36 s under the roaster's time rule)
+* 🐛 [fix(preheat)] : a preheat whose setpoint is changed on the way is no longer learned from; a change from 220 to 150 °C was learned as a 70 °C overshoot
+* 🐛 [fix(preheat)] : charging as soon as the preheat reads ready (within 2 °C of the setpoint) no longer counts as a preheat that fell short, which shortened its anticipation at every roast
+* 🐛 [fix(auto)] : AUTO no longer marks a dry end after a first crack marked by hand, which gave a Maillard of 0 s
+* 🐛 [fix(auto)] : AUTO pauses and says so when the guidance fails on every refresh, instead of staying armed with nothing driving the roaster
+* 🐛 [fix(auto)] : AUTO no longer undoes a first crack Artisan's own detector has just marked at the same moment
+* 🐛 [fix(plan)] : a plan made after switching between °C and °F comes out in the new unit
+* 🐛 [fix(roasts)] : a roast colour read on a Tonino or a Colorette names its roast level on the Agtron scale, on the desktop and on the Android prototype; a Tonino 100 read as a light roast instead of Agtron 61, medium light
+* 🐛 [fix(colour)] : every Agtron figure has a roast level; a converted figure such as 60.995 fell between two levels, showed a grey dot and was left out of the plan's learning
+* 🐛 [fix(plan)] : a roast without a recorded charge temperature no longer enters the first crack calculation as a charge at 0 °C
+* 🐛 [fix(plan)] : a roast file with only a few readings is skipped instead of stopping the plan from learning from the other roasts
+* 🐛 [fix(android)] : on the Android prototype, a reading of the roaster is recorded once, not again every second while the link is silent; the RoR and the confirmation of AUTO's drop no longer count the same reading twice
+* 🐛 [fix(hibean)] : a HiBean roast without a charge event is imported with CHARGE unmarked instead of at the start of the recording
+* 🐛 [fix(hibean)] : a HiBean time given in UTC is imported in local time
+* 🐛 [fix(live)] : COOL END no longer reopens the minimum and maximum of BT, ET and RoR, whose minimum then fell to room temperature
+* 🐛 [fix(roaster)] : the roaster settings are read again 30 s after a failed read, instead of staying missing for the rest of the session
+* 🐛 [fix(detection)] : the first crack detector reads the crack counter's last answer, like its display; a missed answer as BT entered the window brought every earlier pop in at once and called first crack too soon
+build 5
+* 🐛 [fix(android)] : the Android prototype opens again the coffees shared, moved or published by a 4.4 desktop; it read them as made by a newer TilauScope
+* 🐛 [fix(backup)] : a restore waiting for the next start is cancelled when the quit is refused, or when a roast started during the safety copy, instead of replacing later at the next start the roasts made meanwhile
+* 🐛 [fix(backup)] : a restore that fails half-way leaves extra files behind rather than a folder half emptied
+* 🐛 [fix(backup)] : a file saved while a backup is being written (BeanCave during an automatic backup) no longer makes that backup read as damaged, and a file deleted meanwhile is left out instead of stopping the backup
+* 🐛 [fix(beancave)] : a coffee with too many roasts for one package is refused with a message instead of being written into a package that could not be opened again
+* 🐛 [fix(beancave)] : tastings and brew settings written on Windows are read on macOS and on the Android prototype; they read as empty and refused every new tasting
+* 🐛 [fix(beancave)] : one empty value in a coffee's record no longer makes the whole library unreadable, and a yes/no written as text reads as it says
+* 🐛 [fix(beancave)] : BeanCave alone no longer takes every past roast off the stock at once when its roast folder was not there yet (a drive not mounted)
+* 🐛 [fix(beancave)] : an imported roast is written whole or not at all, so one cut short by a crash or a full disk is written again by the next import
+* 🐛 [fix(skywalker)] : a Skywalker V2 switched on a few seconds after ON is connected on its own, and a message says once that the roaster does not answer while TilauScope keeps trying
+* 🐛 [fix(airwave)] : the window no longer freezes for several seconds when the AirWave reconnects over a weak Bluetooth link
+* 🐛 [fix(mqtt)] : a general error from the MQTT gateway no longer stops reading every sensor for the rest of the session; only a sensor the gateway names is dropped
+* 🐛 [fix(library)] : the roast index finishes a scan that was interrupted, and one hand-edited roast file no longer stops the indexing of the whole folder
+* 🐛 [fix(remote)] : a phone gone off Wi-Fi without closing is let go within seconds, releasing control, and never delays the other phones
+* 🐛 [fix(remote)] : a device of the network holding connections open without pairing can no longer keep the phone out
+* 🐛 [fix(android)] : on the Android prototype, alarm lists, a replaced BeanCave and its files are written whole or not at all, and a file that failed to copy from the picked folder refuses the import instead of deleting the tablet's own tastings
+* 🐛 [fix(android)] : on the Android prototype, a setting an update no longer accepts costs that setting only, instead of the whole setup
+* 🐛 [fix(android)] : on the Android prototype, a page reloaded during a roast keeps its devices connected and no longer delays the preheat and AUTO
+* 🐛 [fix(android)] : on the Android prototype, the same roast is no longer imported twice when its identifier is written differently
+* 🐛 [fix(android)] : on the Android prototype, any trouble of TilauAmbient during a roast cancels that roast's crack counting instead of counting on a probe that never calibrated; it starts afresh at the next Start
+* 🐛 [fix(plan)] : a coffee without a measured density is planned as an average bean (700 g/L) instead of 0 g/L, which set the drum to a fifth of its range and lowered the RoR at drop
+build 4
+* 🐛 [fix(skywalker)] : when the Bluetooth link to the Skywalker V2 drops, the burner, air and drum sliders and the setpoint are greyed out until it is back, instead of showing a value that reached nothing; the extractor stays usable
+* 🐛 [fix(skywalker)] : switching off while the Skywalker V2's Bluetooth link is dropping closes the link cleanly, so the next connection is no longer blocked
+* 🐛 [fix(remote)] : the phone can move a lever only when the computer can: every lever is greyed out on the phone while monitoring is off, and the burner, air and drum while the roaster link is down
+* 🐛 [fix(preheat)] : a preheat fault always cuts the burner, even when it had been raised by hand
+* 🐛 [fix(preheat)] : a preheat setpoint the safety limits would stop on (1000, a °F value read as °C, not a number) is ignored and the current one kept; an infinite one closed the app
+* 🐛 [fix(preheat)] : a tilaupid(STOP) alarm after CHARGE no longer cuts the burner of the roast in progress
+* 🐛 [fix(preheat)] : stopping the preheat cuts the burner first, before anything that could fail
+* 🐛 [fix(android)] : on the Android prototype, the tablet stays awake while the roaster cools after End roast, screen off included, so the roaster is no longer stopped before its cooling is confirmed
+* 🐛 [fix(android)] : on the Android prototype, a link lost while the roaster cools no longer leaves the session stuck; connecting, disconnecting and the link check work again at once
+* 🐛 [fix(android)] : on the Android prototype, after a preheat fault nothing more is sent to the roaster behind its safety stop until the next Start, so a lever moved meanwhile no longer reaches a roaster already off
+* 🐛 [fix(android)] : on the Android prototype, a failure in one part of the roast's second (guided mode, AUTO…) no longer freezes the screen or skips the preheat's safety checks
 build 3
 build 2
 * ⚡ [feat(skywalker)] : the Cubean (200 g) is supported, on the desktop and the Android prototype, through its ESP32 box over Bluetooth or USB, as the Skywalker V1; the first-time setup offers its two boxes

@@ -151,3 +151,12 @@ test("the next roast's first AUTO event is not told as a toast (GUIDED-SPEC G4)"
   assert.equal(page.$("alarmtoast").classList.contains("gone"), true, "AUTO armed at START is not news");
   assert.deepEqual(page.errors, []);
 });
+
+test("a page reloaded during a roast does not recompute the plan on the session's worker (audit P2-20)", async (t) => {
+  const page = await openPage("roast.html", { config: SKYWALKER, prepare: [["start"]] }); // the session already records
+  t.after(page.close);
+  await page.settle();
+  assert.equal(page.sent("get_setup").length, 1);
+  assert.equal(page.sent("get_plan").length, 0, "the plan is drawn from the snapshot while the roast records");
+  assert.deepEqual(page.errors, []);
+});

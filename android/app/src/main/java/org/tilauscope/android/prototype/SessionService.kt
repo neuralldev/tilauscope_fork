@@ -77,13 +77,14 @@ class SessionService : Service() {
     private val scanner by lazy { BleScanner(this) { batch -> execute("classify_scan", batch.toString()) } }
     val bluetoothEnabled get() = scanner.enabled
     private var link: Tc4Link? = null // main thread only
-    private var linkRoast = false // the roast link: it outlives the page, ends with the roast
+    @Volatile private var linkRoast = false // the roast link: it outlives the page, ends with the roast (read by the worker)
     private var linkState: String? = null // last state handed to the session
     private var releaseWhenIdle = false // the roast ended while the roaster still cools: leave once it is let go
     private var extractor: AirWaveLink? = null // main thread only
     private var extractorRoast = false // the roast screen holds the link: its values are settings
     private var extractorLevel: Int? = null // last level handed to the session
     private var ambient: AmbientLink? = null // main thread only
+    private var ambientUp = false // main thread only: the ambient probe answers now
     private var scale: ScaleDevice? = null // main thread only
     private var scaleBrand: ScaleKind? = null // the protocol of [scale]
     private var colour: ColourLink? = null // main thread only
@@ -209,7 +210,9 @@ class SessionService : Service() {
                 execute("link_reading", JSONObject().put("bt", state.get("bt")).put("et", state.opt("et") ?: JSONObject.NULL)
                     .put("burner", state.opt("burner") ?: JSONObject.NULL).put("air", state.opt("air") ?: JSONObject.NULL).toString())
             }
-            if (now == "idle") {
+            // Let go ("idle"), or ended otherwise once no longer a roast's: lost or failed while it
+            // cooled, refused burner check. A roast link never ends while it still runs or reconnects.
+            if (now == "idle" || (!state.optBoolean("roast") && now !in LINK_ALIVE)) {
                 linkRoast = false
                 if (releaseWhenIdle) release()
             }
@@ -327,6 +330,11 @@ class SessionService : Service() {
     }
 
     private fun onAmbient(state: JSONObject) {
+        // Any trouble of the probe cancels the crack counting of the roast in progress (Tilau, 2026-11-21):
+        // nothing it sent can be trusted to have calibrated, and nothing is replayed.
+        val up = state.optString("state") == "connected"
+        if (ambientUp && !up) execute("ambient_lost")
+        ambientUp = up
         if (AMBIENT_KEYS.none { state.isNull(it) }) {
             execute("ambient_reading", JSONObject().apply { AMBIENT_KEYS.forEach { put(it, state.get(it)) } }.toString())
         }
@@ -384,7 +392,10 @@ class SessionService : Service() {
             if (devices.length() > 0) main.post {
                 for (i in 0 until devices.length()) {
                     val c = devices.getJSONObject(i)
-                    if (c.optString("device") == "ambient") { ambient?.command(c.optInt("value")); continue }
+                    if (c.optString("device") == "ambient") { // a step that cannot go out ends the counting, never queued
+                        if (ambientUp) ambient?.command(c.optInt("value")) else execute("ambient_lost")
+                        continue
+                    }
                     if (c.optString("device") != "extractor") continue
                     val value = c.optString("value")
                     when (c.optString("op")) {
@@ -414,10 +425,11 @@ class SessionService : Service() {
         main.post { listener?.invoke(method ?: "snapshot", result) }
     }
 
-    /** Worker. The CPU stays awake while a roast records, screen off included; each tick renews the hold,
-     *  so a stalled worker lets it lapse. */
+    /** Worker. The CPU stays awake while a roast records, screen off included, and while its roast link
+     *  still cools the roaster: asleep, no frame comes in and the link's stall watchdog would stop the
+     *  roaster unconfirmed at wake-up. Each tick renews the hold, so a stalled worker lets it lapse. */
     private fun holdAwake(recording: Boolean) {
-        if (recording) awake.acquire(AWAKE_HOLD_MS) else if (awake.isHeld) awake.release()
+        if (recording || linkRoast) awake.acquire(AWAKE_HOLD_MS) else if (awake.isHeld) awake.release()
     }
 
     /** Leaves the foreground; the service ends once the screen unbinds. */
@@ -459,6 +471,8 @@ class SessionService : Service() {
         private val AMBIENT_KEYS = listOf("temperature_c", "humidity_pct", "pressure_hpa")
         private const val CHANNEL = "session"
         private const val NOTIFICATION_ID = 1
+        /** Tc4Link states of a link still at work: a roast link does not end in them. */
+        private val LINK_ALIVE = setOf("connecting", "verifying", "connected", "cooling", "reconnecting")
         private const val AWAKE_HOLD_MS = 60_000L
     }
 }

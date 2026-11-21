@@ -34,9 +34,9 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimpor
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilaucore.roast_colour import agtron_text, roast_agtron
+from tilaucore.roast_colour import agtron_scale_for, agtron_text, roast_agtron
 from tilauscope.roasters import canonical_roaster_name
-from tilauscope.tilauscope_types import AGTRON_SCALES, THEME, resolve_color_system
+from tilauscope.tilauscope_types import THEME, resolve_color_system
 from tilauscope.brew_advisor import BrewInput, WaterProfile
 from tilauscope.brew_advisor_dialog import BrewAdvisorDlg
 from tilauscope import roast_coach as coach
@@ -313,13 +313,9 @@ class AnalysisMixin:
         # category too dark. A whole-bean reading is shown as the number it is.
         agtron_label = ""
         if ground_colour > 0:
-            for a in AGTRON_SCALES:
-                try:
-                    if a.agtron_range.min_value <= ground_colour <= a.agtron_range.max_value:
-                        agtron_label = f"{a.name} · {a.description}"
-                        break
-                except (TypeError, ValueError):
-                    pass
+            a = agtron_scale_for(ground_colour)
+            if a is not None:
+                agtron_label = f"{a.name} · {a.description}"
         elif whole_colour > 0:
             agtron_label = QApplication.translate(
                 "tilauscope_beancave", "whole bean — not on the ground scale")

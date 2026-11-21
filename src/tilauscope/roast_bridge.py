@@ -66,6 +66,7 @@ class RoastDataBridge(QObject):
         self._last_bt:  float = 0.0
         self._last_et:  float = 0.0
         self._last_ror: float = 0.0
+        self._ror_samples: int = 0   # length of qmc.delta2 last published: one RoR per sample
         self._last_ambient_temp: float = 0.0
         self._last_ambient_hum:  float = 0.0
 
@@ -144,14 +145,19 @@ class RoastDataBridge(QObject):
         return False
 
     def _emit_ror(self) -> bool:
-        """Publie le RoR ; renvoie True si la valeur a changé ce tick."""
+        """Publie le RoR à chaque nouvel échantillon, même inchangé : le détecteur
+        de crash lit l'historique comme une entrée par échantillon. Renvoie True
+        si la valeur a changé ce tick (ce qui rafraîchit la page)."""
         try:
             delta2 = self.aw.qmc.delta2
             ror = float(delta2[-1]) if delta2 else 0.0
-            if ror != self._last_ror:
+            samples = len(delta2) if delta2 else 0
+            changed = ror != self._last_ror
+            if changed or samples != self._ror_samples:
                 self._last_ror = ror
-                self.ror_updated.emit(ror)
-                return True
+                self._ror_samples = samples
+                self.ror_updated.emit(ror)   # its slot only records the history: cheap
+            return changed                   # the page refresh, though, only on a change
         except (IndexError, TypeError, AttributeError):
             pass
         return False

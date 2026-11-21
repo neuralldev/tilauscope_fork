@@ -200,8 +200,8 @@ class AirwaveBLE(ClientBLE, DiFluidProtocol): # pyright: ignore [reportGeneralTy
         self.add_device_description(AirwaveUUID.AIRWAVE_SERVICE_UUID,"")
         self.add_notify(AirwaveUUID.AIRWAVE_DIALOG_UUID, self.notify_callback)
         self.add_write(AirwaveUUID.AIRWAVE_SERVICE_UUID, AirwaveUUID.AIRWAVE_DIALOG_UUID)
+        self._send_lock = threading.Lock()   # before start(): a quick connection drains the queue with it
         self.start(case_sensitive=False, address=device_uuid)
-        self._send_lock = threading.Lock()
 
     def on_connect(self) -> None:
         self.is_connected = True
@@ -671,9 +671,13 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         with QMutexLocker(self.shutdown_lock):
             if self.is_shutting_down: return
         self.is_connected = True
-        # proactively handshake on the fresh-connect path (see _ensure_control_session)
-        self._ensure_control_session()
-        self.connected_signal.emit()
+        # proactively handshake on the fresh-connect path (see _ensure_control_session),
+        # off the GUI thread: on a weak link the write waits up to 5 s. Connected is
+        # announced once it is done, so nothing commands the AirWave before its host.
+        def _handshake() -> None:
+            self._ensure_control_session()
+            self.connected_signal.emit()
+        self._answer_off_gui(_handshake, coalesce=False)
 
     def _relay_disconnected(self):
         with QMutexLocker(self.shutdown_lock):
@@ -782,8 +786,10 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         elif function == AirwaveFunctions.DEVICESETTING and command == AirwaveCommands.HOSTNAME:
                 # Device Ask Host Name, this is the first request sent by the roaster and it MUST be answered
                 if self.aw is not None and self.aw.bleAirwaveEmulateOmniflux:
-                    self.armOmniflux()
-                    self.state.holdon = False
+                    def _arm() -> None:
+                        self.armOmniflux()
+                        self.state.holdon = False
+                    self._answer_off_gui(_arm, coalesce=False)
                 else:
                     def _host_name() -> None:
                         self.SendHostName()

@@ -39,6 +39,15 @@ def setup(machine: str) -> MachineSetup:
     return read_setup(_text(preset))
 
 
+def lever_response(machine: str | None) -> dict | None:
+    """How the roaster's BT answers its levers in a simulation (roasters.json); None: the common default."""
+    if machine not in MACHINES:
+        return None
+    entry = MACHINES[machine]
+    roaster = RoasterManager().get_by_name(entry["manufacturer"], entry["model"])
+    return roaster.lever_response if roaster is not None else None
+
+
 @lru_cache(maxsize=4)
 def bt_offsets(machine: str) -> tuple[float, ...]:
     """The roaster's bean probe deviation at Charge, Dry end, First crack and Drop (roasters.json), °C."""

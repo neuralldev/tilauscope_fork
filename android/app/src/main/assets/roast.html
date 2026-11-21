@@ -32,9 +32,16 @@ main{flex:1;min-height:0;display:flex;gap:16px;padding:0 16px 16px}
 #lostcard{width:400px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
 #btsettings{margin-top:6px;height:52px;padding:0 22px;border-radius:16px;border:1px solid var(--blue);background:rgba(137,180,250,.12);
  color:var(--blue);font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:10px}
-#endcard{width:520px;display:flex;flex-direction:column;gap:20px}
+/* The whole curve area: the four figures on one row, then what is left to do beside how the roast went */
+#endcard{width:calc(100% - 32px);max-width:780px;max-height:calc(100% - 24px);box-sizing:border-box;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+#endtitle{font-size:22px!important}
 button.sum{text-align:left;border:1px solid var(--overlay);flex-direction:row;align-items:center;gap:14px}
-.sumgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sumgrid{display:flex;flex-direction:column;gap:10px}
+.sumtop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sumtop .sum{padding:10px 12px}.sumtop .sum .v{font-size:24px}.sumtop .sum .d{font-size:12px}
+.sumcols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px;align-items:start}
+.sumcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+.sumcols .sum{padding:10px 14px}.sumcols .sum .v{font-size:20px}.sumcols .sum .d{font-size:12px}.sumcols .ccell .cv{font-size:22px}
 .sum{background:var(--surface);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
 .sum .k{font-size:13px;color:var(--sub)}.sum .v{font-size:26px;font-weight:600}.sum .d{font-size:13px;color:var(--muted)}
 #recovered{position:absolute;left:16px;right:16px;top:16px;padding:12px 16px;background:rgba(30,30,46,.94);
@@ -115,7 +122,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 #skipcard{max-width:340px;border-color:var(--peach);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
 #skipbar{width:100%;height:4px;border-radius:2px;background:var(--overlay);overflow:hidden}
 #skipbar i{display:block;height:100%;width:0;background:var(--peach);transition:width 2.5s linear}
-#printlabel{margin-left:auto;width:52px;height:52px;flex:none;border-radius:26px;border:2px solid;display:flex;align-items:center;justify-content:center}
+#printlabel{margin-left:auto;width:48px;height:48px;flex:none;border-radius:24px;border:2px solid;display:flex;align-items:center;justify-content:center}
 #printlabel.working{animation:pulse 1.8s ease-out infinite}
 
 /* Overlays over the right panel */
@@ -296,7 +303,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
    <div class="scrim" id="ended" style="background:rgba(17,17,27,.6)">
     <div class="card" id="endcard">
      <div style="display:flex;align-items:center;gap:12px">
-      <svg width="36" height="36" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="rgba(166,227,161,.16)"/><path d="M12 20.5l5.5 5.5L28.5 15" fill="none" stroke="#A6E3A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="rgba(166,227,161,.16)"/><path d="M12 20.5l5.5 5.5L28.5 15" fill="none" stroke="#A6E3A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span style="font-size:24px;font-weight:600" id="endtitle">Roast complete</span>
       <button class="hidden" id="printlabel" aria-label="Print label"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path id="labelicon" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
      </div>
@@ -957,7 +964,9 @@ window.onSnapshot = function (method, d) {
   // A started roast opens the real roaster's link (connecting starts its air and drum); a refused start opens none.
   if (method === "start" && d && d.state === "recording" && roaster)
     send("roast_link_connect", JSON.stringify({ address: roaster.address, end: endRoast }));
-  if (!askedSetup) { askedSetup = true; send("get_setup"); send("get_plan", "{}"); }
+  // A page reloaded during a roast does not recompute the plan on the session's worker (the PID and AUTO
+  // share it): the roast draws its plan from the snapshot, and the plan is asked again once it is over.
+  if (!askedSetup) { askedSetup = true; send("get_setup"); if (!(d && d.state === "recording")) send("get_plan", "{}"); }
   if (!d) { if (method !== "tick") toast("Not possible right now"); return; }
   // Before Start the plan follows the green weight: asked again when it changes, and for each new roast.
   var planFor = d.state === "idle" ? "idle:" + d.weights_g.green : d.state;
@@ -1268,7 +1277,9 @@ function renderSummary(m) {
   items.push(["Weight", rw == null ? (gw == null ? "—" : gw + " g green") : gw == null ? rw + " g roasted" : gw + " → " + rw + " g",
     rw == null ? "roasted weight not taken yet" : gw == null ? "" : ((gw - rw) / gw * 100).toFixed(1) + " % lost", true, true]);
   $("summary").innerHTML = "";
-  items.forEach(function (it) {
+  var top = document.createElement("div"), cols = document.createElement("div"), todo = document.createElement("div"), around = document.createElement("div");
+  top.className = "sumtop"; cols.className = "sumcols"; todo.className = around.className = "sumcol";
+  items.forEach(function (it, i) {
     var el = document.createElement(it[6] != null ? "button" : "div");
     el.className = "sum" + (it[3] ? " wide" : "") + (it[5] ? " warn" : "");
     el.innerHTML = '<span class="k"></span><span class="v num"></span><span class="d num"></span>';
@@ -1291,14 +1302,18 @@ function renderSummary(m) {
       while (el.firstChild) text.appendChild(el.firstChild);
       el.style.cssText = "flex-direction:row;align-items:center;gap:14px";
       b.className = "wbtn" + (taken ? "" : " use");
-      b.style.cssText = taken ? "height:48px;padding:0 16px" : "height:52px;padding:0 20px;flex:none";
+      b.style.cssText = taken ? "height:48px;padding:0 14px" : "height:48px;padding:0 16px;flex:none";
       b.textContent = taken ? "Weigh again" : "Weigh roasted";
       b.onclick = function () { openWeigh("roasted"); };
       el.appendChild(text); el.appendChild(b);
     }
-    $("summary").appendChild(el);
+    (i < 4 ? top : it[4] ? todo : around).appendChild(el); // left, what is left to do: weigh, then the colour
   });
-  $("summary").appendChild(colourRow());
+  todo.appendChild(colourRow());
+  cols.appendChild(todo);
+  if (around.children.length) cols.appendChild(around); else cols.style.gridTemplateColumns = "minmax(0,1fr)";
+  $("summary").appendChild(top);
+  $("summary").appendChild(cols);
 }
 
 

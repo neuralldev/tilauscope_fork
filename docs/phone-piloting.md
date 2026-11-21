@@ -16,7 +16,9 @@ application restarted, everything below becomes available.
 ## Pairing a phone
 
 **TilauScope Config → Remote access → Pair a phone…** opens a QR code and a link, both
-valid for a short time — a fresh code is a tap away if it expires before it's used.
+valid for a short time, and only while the dialog is open: closing it ends the code. A fresh
+code is a tap away if it expires before it's used. The code carries the computer's address on
+your home network — also while a VPN is on, whose address no phone at home could reach.
 
 Opening that link on a phone, on the same network as the computer, pairs it: the phone shows
 up in the pairing dialog's device list right away, named automatically from what kind of
@@ -43,7 +45,10 @@ below.
     a record page **from an address on your own network**. Anything reaching the port from
     elsewhere — a forwarded port on your router, a network that hands out public addresses —
     is refused outright, whatever code or token it presents. Remote access through a VPN
-    service is refused on the same grounds.
+    service is refused on the same grounds. The page must also be asked for by the computer's
+    address, by a `.local` name, or by the name your home router gives the computer (a bare
+    name, or one ending in `.lan`, `.home`, `.internal` or `.localdomain`): a page from the
+    internet renamed to point at this computer gets nothing.
 
 <!-- CAPTURE 10.1 [scene:pairing] — the Pair a phone dialog, QR and countdown visible. CAPTURE 10.2 [scene:pairing_paired] — the
 paired-devices list with one phone paired. -->
@@ -73,6 +78,12 @@ TilauScope draws, so nothing it can shoot.) -->
 
 A paired phone starts as an **observer**: it sees the live curve and readouts, but every
 control is greyed out. **Take control** requests it.
+
+In control, the phone follows the computer's rule, never a looser one: a lever greyed out on
+the computer is greyed out on the phone too. Every lever is greyed out while monitoring is off
+at the computer, and the burner, air and drum while the link to the roaster is down; the
+extractor stays usable. The emergency heat cut does not lock the levers, on the phone as on the
+computer.
 
 If nobody else is piloting, control passes immediately. If another phone already has it, the
 computer is asked to confirm the handover — *"'\<phone\>' wants to take over piloting"* — and
@@ -174,6 +185,10 @@ stops receiving new instructions rather than doing anything unexpected.
 
 An **observer** phone that loses connection sees a plainer message — the roast carries on
 regardless, since it was never the one steering it.
+
+A phone that leaves the Wi-Fi without closing its connection (out of range, put to sleep) stops
+taking messages: the computer lets it go within a few seconds, which frees control, and the other
+phones never wait behind it.
 
 !!! note
     A phone showing "view frozen" when monitoring has simply been turned off at the desktop

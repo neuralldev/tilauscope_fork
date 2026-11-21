@@ -65,6 +65,17 @@ class LinkTests(unittest.TestCase):
         self.demo.advance(1)
         self.assertEqual([s.bt_c for s in self.demo.session.samples], [150.0, 151.0, 152.0])
 
+    def test_a_reading_is_one_sample_however_many_seconds_it_stays_fresh(self):
+        """Audit 2026-11-21, P3-16: a frame stays fresh 3 s, and each second took it again as a new sample."""
+        self.connected()
+        for bt in (150.0, 151.0):
+            self.tick(bt=bt)
+        for _ in range(2): # the link silent, its last frame still fresh
+            self.clock[0] += 1
+            self.demo.advance(1)
+        self.tick(bt=154.0)
+        self.assertEqual([s.bt_c for s in self.demo.session.samples], [150.0, 151.0, 154.0])
+
     def test_after_a_drop_the_burner_stays_at_zero_until_raised(self):
         self.connected()
         self.demo.set_lever("burner", 60)
@@ -89,6 +100,21 @@ class LinkTests(unittest.TestCase):
         self.assertEqual({k: self.demo.levers[k] for k in ("burner", "air", "drum")},
                          {k: levers[k] for k in ("burner", "air", "drum")})
         self.assertEqual(self.demo.session.settings[settings:], []) # nothing on record
+
+    def test_an_alarm_on_air_or_drum_while_away_is_kept_for_the_return_as_on_the_desktop(self):
+        """Audit 2026-11-21, P4-43 (Tilau: as the desktop). The desktop keeps an alarm's air and drum while
+        the link is away and puts them back once it returns; heat is never re-applied. The tablet lost them."""
+        self.connected()
+        self.commands()
+        burner = self.demo.levers["burner"]
+        self.demo.link_state(json.dumps({"state": "reconnecting"}))
+        self.demo._lever("air", 65, alarm=3)
+        self.demo._lever("drum", 75, alarm=3)
+        self.demo._lever("burner", 80, alarm=3)
+        self.assertEqual((self.demo.levers["air"], self.demo.levers["drum"], self.demo.levers["burner"]), (65, 75, burner))
+        sent = self.commands()   # the link keeps them while away, heat excepted (Tc4Link.keptWhileAway)
+        self.assertIn("OT2,65", sent)
+        self.assertFalse(any(c.startswith("OT1") for c in sent))
 
     def test_a_preheat_waits_for_the_operator_after_a_drop(self):
         self.demo = Demo(str(self.dir / "session.journal"), str(self.dir / "config.json"), str(self.dir / "beancave"))

@@ -22,6 +22,8 @@
 
 from typing import Any, Final
 import logging
+import math
+import time
 
 from tilaucore.roasters import *  # noqa: F403  pylint: disable=wildcard-import,unused-wildcard-import
 from tilaucore.roast_colour import set_whole_to_ground_offset
@@ -114,6 +116,7 @@ def sync_operator_to_qmc(aw: object, name: str) -> None:
 #: Marks "nothing resolved yet" — distinct from the empty name (no roaster),
 #: which is a legitimate cached result.
 _NO_CACHED_NAME: Final[object] = object()
+_RETRY_AFTER_FAILURE_S: Final[float] = 30.0  # a registry that failed to read is read again after this
 
 
 def roast_context_for(aw: Any, name: str | None = None) -> RoasterContext | None:
@@ -128,7 +131,8 @@ def roast_context_for(aw: Any, name: str | None = None) -> RoasterContext | None
     ``'None'`` both mean "no roaster" and resolve to None, as does an unknown
     name. The resolution is cached together with the name it was made for, so
     a None result is cached too and roasters.json is read once per selection.
-    Never raises: a missing or broken registry yields None.
+    Never raises: a missing or broken registry yields None, and is read again
+    _RETRY_AFTER_FAILURE_S later — never on every call, the hot path reads it.
     """
     if name is None:
         name = str(getattr(aw, 'tilau_roaster', '') or '')
@@ -136,16 +140,19 @@ def roast_context_for(aw: Any, name: str | None = None) -> RoasterContext | None
     if name == 'None':
         name = ''
 
-    if getattr(aw, '_tilau_roast_context_name', _NO_CACHED_NAME) == name:
+    if (getattr(aw, '_tilau_roast_context_name', _NO_CACHED_NAME) == name
+            and time.monotonic() < getattr(aw, '_tilau_roast_context_retry_at', math.inf)):
         return getattr(aw, '_tilau_roast_context', None)
 
     context: RoasterContext | None = None
+    aw._tilau_roast_context_retry_at = math.inf
     if name:
         try:
             context = RoasterManager(name).get_roast_context()
         except Exception:  # pylint: disable=broad-except
             _logd.exception('TilauScope: roaster context lookup failed for %r', name)
             context = None
+            aw._tilau_roast_context_retry_at = time.monotonic() + _RETRY_AFTER_FAILURE_S
 
     aw._tilau_roast_context = context
     aw._tilau_roast_context_name = name

@@ -362,7 +362,7 @@ class MilestonesMixin:
                 self._show_cooled_face()   # also when COOL END is marked in Artisan
                 self.roast_bridge.notify_phase("COOL")
                 self.mark_button_active(7)
-                self._disarm_cooling_detection()
+                self._end_cooling_detection()
             else:
                 # undoing COOL END puts the roast back in the cooling, not back
                 # in development: the beans have been dropped either way

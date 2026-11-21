@@ -21,7 +21,7 @@
 
 import logging
 from threading import Lock
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Final, Optional
 
 _log = logging.getLogger(__name__)
 
@@ -30,6 +30,41 @@ _log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from tilauscope.webrecords import TilauWebRecords
+
+
+def _default_route_ipv4() -> Optional[str]:
+    """The address this machine leaves from towards the internet: its home network one.
+
+    A UDP socket only picks its route on connect — nothing is sent.
+    """
+    import socket  # noqa: PLC0415
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(('192.0.2.1', 9))   # TEST-NET-1: routed like the internet, never answered
+            return probe.getsockname()[0]
+    except OSError:
+        return None
+
+
+# A VPN's interface: macOS utun/ipsec/ppp, Linux tun/tap/wg, Windows by its adapter's name.
+_TUNNEL_NAMES: Final = ('utun', 'ipsec', 'ppp', 'tun', 'tap', 'wg')
+_TUNNEL_WORDS: Final = ('vpn', 'tunnel', 'wireguard', 'tap-', 'tailscale', 'anyconnect', 'openvpn')
+
+
+def _tunnel_ipv4s() -> set[str]:
+    """The addresses a VPN holds: with a full tunnel the default route leaves through it,
+    and no phone on the home network reaches it."""
+    found: set[str] = set()
+    try:
+        import ifaddr  # noqa: PLC0415
+        for adapter in ifaddr.get_adapters():
+            name = str(adapter.name or '').lower()
+            nice = str(adapter.nice_name or '').lower()
+            if name.startswith(_TUNNEL_NAMES) or any(word in nice for word in _TUNNEL_WORDS):
+                found.update(ip.ip for ip in adapter.ips if isinstance(ip.ip, str))
+    except Exception:  # noqa: BLE001 - no adapter list, no address set aside
+        pass
+    return found
 
 
 class TilauWebHost:
@@ -184,19 +219,21 @@ class TilauWebHost:
         return self._pairing
 
     def lan_ip(self):
-        """Best LAN IPv4 for the pairing URL, or None. Prefer a private-range
-        address; falls back to the first. Used instead of `tilauscope.local`
-        because iOS mDNS resolution of .local is slow/flaky (protocol §7)."""
+        """Best LAN IPv4 for the pairing URL, or None. Used instead of
+        `tilauscope.local` because iOS mDNS resolution of .local is slow/flaky
+        (protocol §7). The address the home router reaches comes first — a
+        virtual machine's or Docker's bridge is private too, but no phone is on
+        it — unless a VPN holds it; then any private one off a VPN, then any
+        private one; never a public address."""
+        import ipaddress  # noqa: PLC0415
         try:
             from tilauscope.webcontrol import TilauWebControl
-            ips = TilauWebControl._local_ipv4s()
-            for ip in ips:  # private ranges first (skip VPN/oddball adapters)
-                if ip.startswith('192.168.') or ip.startswith('10.'):
-                    return ip
-            for ip in ips:
-                if ip.startswith('172.'):
-                    return ip
-            return ips[0] if ips else None
+            ips = [ip for ip in TilauWebControl._local_ipv4s() if ipaddress.ip_address(ip).is_private]
+            tunnels = _tunnel_ipv4s()
+            route = _default_route_ipv4()
+            if route in ips and route not in tunnels:
+                return route
+            return next((ip for ip in ips if ip not in tunnels), ips[0] if ips else None)
         except Exception:  # noqa: BLE001
             return None
 
@@ -205,3 +242,8 @@ class TilauWebHost:
         if self._pairing is None:
             return None
         return self._pairing.mint_pairing_token()
+
+    def clear_pairing_token(self) -> None:
+        """End the pairing code in force, if any (the pairing dialog closed)."""
+        if self._pairing is not None:
+            self._pairing.clear_pairing_token()

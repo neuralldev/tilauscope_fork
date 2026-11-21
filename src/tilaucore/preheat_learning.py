@@ -25,7 +25,7 @@ from statistics import mean, median, stdev
 from typing import TYPE_CHECKING, Any, Final, List, Optional, Protocol, cast
 
 from tilaucore.artisan_compat import events_internal_to_external_value, fromFtoCstrict
-from tilaucore.preheat import AmbientConditions, AmbientCorrector
+from tilaucore.preheat import PREHEAT_BAND_C, AmbientConditions, AmbientCorrector
 from tilaucore.preheat_thermal import (
     THERMAL_MODEL_FILENAME,
     ThermalModelCandidate,
@@ -1969,8 +1969,10 @@ class PreheatLearning:
         if ror_c_per_min > 0:
             self._session_rors.append(ror_c_per_min)
 
-        # Détection du premier passage à SV
-        if not self._session_reached_sv and filtered_t >= sv_c - 1.0:
+        # Détection du premier passage à SV : la bande « prêt à charger » de l'écran
+        # (PREHEAT_BAND_C). Plus étroite, une charge faite quand l'écran le disait
+        # s'apprenait comme une préchauffe restée courte (audit P3-07).
+        if not self._session_reached_sv and filtered_t >= sv_c - PREHEAT_BAND_C:
             self._session_reached_sv = True
             self._session_reach_time = now
             _logd.debug(f"Session: SV atteinte ({filtered_t:.1f}°C filtré)")

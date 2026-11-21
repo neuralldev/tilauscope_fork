@@ -40,6 +40,7 @@ from typing import Any, Final
 from PyQt6.QtWidgets import QApplication
 
 from artisanlib.util import stringfromseconds
+from tilaucore.roast_analysis import marked
 from tilauscope.tilauscope_types import get_agtron_color
 from tilauscope.graph.common import (DRY_END_WINDOW_C, FIRST_CRACK_WINDOW_C, NOW_WINDOW_C, delta_scale, preheat_arrived,
                                       report_once, within_share)
@@ -361,7 +362,7 @@ def _get_pid_text(qmc: Any, pid, tx, et, bt):
             soak_color = colors['highlighted']
         # RS time origin: after CHARGE (if RStimeAfterCHARGE and recording) else after PID ON
         try:
-            if pid.RStimeAfterCHARGE and qmc.flagstart and qmc.timeindex[0] > -1:
+            if pid.RStimeAfterCHARGE and qmc.flagstart and marked(qmc.timeindex, 0):
                 rs_t0 = qmc.timex[qmc.timeindex[0]]
             else:
                 rs_t0 = pid.time_pidON

@@ -362,8 +362,15 @@ def apply_pending_restore() -> None:
         _log.exception("restore of %s failed", pending.get("archive"))
         settings.setValue(KEY_RESTORE_FAILED, pending.get("safety", ""))
     finally:
-        (Path(data) / core.PENDING_RESTORE_NAME).unlink(missing_ok=True)
+        clear_pending_restore()
         settings.sync()
+
+
+def clear_pending_restore() -> None:
+    """Drop the restore waiting for the next start, applied or abandoned."""
+    data = data_directory()
+    if data:
+        (Path(data) / core.PENDING_RESTORE_NAME).unlink(missing_ok=True)
 
 
 def relaunch_after_exit() -> bool:

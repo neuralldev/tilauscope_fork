@@ -403,7 +403,7 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
         
         date_time_str = hibean_data.get("dateTime", "")
         if date_time_str:   
-            dt_object = datetime.fromisoformat(date_time_str.replace('Z', ''))
+            dt_object = datetime.fromisoformat(date_time_str).astimezone() # a UTC time ('Z') in local time; one without a zone is already local
             roast_date = dt_object.strftime("%Y-%m-%d")
             roast_time = dt_object.strftime("%H:%M:%S")
             roast_longdate = dt_object.strftime("%a %b %d %Y")
@@ -431,7 +431,7 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
         alog_data["ambient_pressure"] = roast_context.get("pressure", 0) if roast_context.get("pressure") is not None else 0
 
         # Remplissage de timeindex avec les index correspondants
-        hibean_time_indices = [0,0,0,0,0,0,0,0,0]
+        hibean_time_indices = [0,-1,0,0,0,0,0,0,0] # CHARGE (event 1) unmarked is -1, the others 0
         time_indices = [0,0,0,0,0,0,0]
         for idx, record in enumerate(data_list):   
             ev = record.get("event")

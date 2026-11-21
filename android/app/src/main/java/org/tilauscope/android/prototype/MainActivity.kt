@@ -49,6 +49,7 @@ class MainActivity : Activity() {
     private var pendingAlarms: Pair<String, String>? = null // an alarm list picked before the service was bound again: its copy and name
     private var stagedImport: String? = null // the staged roast files of the folder shown in the preview
     private var staged: File? = null // the coffee file on the preview sheet (opened from another app, or downloaded), until imported or dismissed
+    private var importing: File? = null // the coffee file an import is reading: no new copy deletes it meanwhile
     private var coffeeWaiting = false // a coffee was opened while a roast is on: its sheet waits for the roast's end
     private var coffeeHeldTold = false
     private lateinit var web: WebView
@@ -135,6 +136,10 @@ class MainActivity : Activity() {
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                     pageLoaded = false
                     session?.stopScan() // scanning and the link check belong to the page that asked for them
+                    // A page reloaded during a roast (renderer gone, activity recreated) keeps every device:
+                    // the drop door and the crack counter are read through them. The session knows, not `recording`,
+                    // which restarts false with the activity.
+                    if (session?.running == true) return
                     session?.disconnectLink()
                     session?.disconnectExtractor()
                     session?.disconnectAmbient()
@@ -191,7 +196,7 @@ class MainActivity : Activity() {
         offer.data = null
         offer.removeExtra(Intent.EXTRA_STREAM)
         Thread {
-            val file = CoffeeFiles.copy(this, uri)
+            val file = CoffeeFiles.copy(this, uri, keep = importing)
             runOnUiThread {
                 if (file == null) {
                     Toast.makeText(this, R.string.coffee_unreadable, Toast.LENGTH_LONG).show()
@@ -231,8 +236,7 @@ class MainActivity : Activity() {
     private fun sendStagedCoffee() {
         val file = staged ?: return
         Thread {
-            val folder = File(cacheDir, RoastFiles.COFFEE_FOLDER).apply { deleteRecursively(); mkdirs() }
-            val copy = File(folder, "coffee${CoffeeFiles.EXTENSION}")
+            val copy = File(RoastFiles.shareFolder(cacheDir), "coffee${CoffeeFiles.EXTENSION}")
             if (runCatching { file.copyTo(copy, overwrite = true) }.isSuccess) runOnUiThread { shareCoffee(copy) }
         }.start()
     }
@@ -324,7 +328,7 @@ class MainActivity : Activity() {
             "roasts_send" -> sendRoasts()
             // A coffee in one file: the staged package, the library and the coffee sent to the computer.
             "coffee_opened" -> staged?.let { service.execute("coffee_preview", it.absolutePath) }
-            "coffee_import" -> staged?.let { service.execute("coffee_import", it.absolutePath) }
+            "coffee_import" -> staged?.let { importing = it; service.execute("coffee_import", it.absolutePath) }
             "coffee_dismiss" -> dropStaged()
             "coffee_file_send" -> sendStagedCoffee()
             "coffee_theirs" -> service.execute(method, argument)
@@ -554,10 +558,18 @@ class MainActivity : Activity() {
                     val name = File(rows.getString(1) ?: continue).name
                     if (!keep(name)) continue
                     val target = File(stage, name)
-                    runCatching {
+                    val ok = runCatching {
                         contentResolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(tree, rows.getString(0)))
                             ?.use { input -> target.outputStream().use { input.copyTo(it) } }
-                    }.onSuccess { copied.add(target) }
+                            ?: error("no stream for $name")
+                    }.isSuccess
+                    if (ok) copied.add(target) else {
+                        // Not copied is not absent: the marker makes the session refuse the folder
+                        // (cave.NOT_COPIED) instead of deleting the tablet's own file.
+                        target.delete()
+                        File(stage, name + NOT_COPIED).createNewFile()
+                        AppLog.w("TilauScopeAndroid", "$name could not be copied from the picked folder")
+                    }
                 }
             }
         return folder to copied
@@ -621,8 +633,14 @@ class MainActivity : Activity() {
     }
 
     private fun deliver(method: String, result: JSONObject?) {
-        if (method == "library_get") staged = result?.optJSONObject("reply")?.optString("path")?.takeIf { it.isNotEmpty() }?.let { File(it) }
-        if (method == "coffee_import" && result != null) dropStaged()
+        // a download that failed leaves the coffee already on the preview sheet where it is
+        if (method == "library_get") result?.optJSONObject("reply")?.optString("path")?.takeIf { it.isNotEmpty() }?.let { staged = File(it) }
+        if (method == "coffee_import" && result != null) {
+            val done = importing
+            importing = null
+            // another coffee opened during the import stays on the preview sheet
+            if (done == null || staged == done) dropStaged() else done.delete()
+        }
         if (method == "coffee_send") result?.optString("reply")?.takeIf { it.isNotEmpty() }?.let { shareCoffee(File(it)) }
         if (coffeeWaiting && result != null && result.has("state")) openCoffee() // the roast may have ended
         if (method == "cave_import" && result != null) { pickedCave = null; File(cacheDir, "cave-import").deleteRecursively() }
@@ -659,5 +677,6 @@ class MainActivity : Activity() {
         const val LIBRARY_FOLDER = "coffee-library" // in the cache: the package last downloaded from the library
         const val LIBRARY_CARD_FOLDER = "coffee-library-cards" // in the cache: a selected roast's package, only while it is read
         val CAVE_FILES = listOf("beancave.json", "tastings.json", "brewlog.json") // as tilauscope_mobile.cave.FILES
+        const val NOT_COPIED = ".not-copied" // as tilauscope_mobile.cave.NOT_COPIED
     }
 }

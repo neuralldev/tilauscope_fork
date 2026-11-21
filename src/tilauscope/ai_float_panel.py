@@ -529,6 +529,9 @@ class AIFloatPanel(QWidget):
         _engine     = normalize_engine(ai.engine)
         _model_name = _engine.split("/", 1)[1] if "/" in _engine else _engine
         _base_url   = provider_base_url(_engine)
+        # Read here, on the UI thread: the key lives in the keychain, and a
+        # legacy key is moved there from the settings on first read.
+        _api_key    = ai.apikey
         # Gemini 2.5 thinking suppression: budget_tokens=0 disables CoT via the
         # OpenAI-compat endpoint extra_body parameter.
         _thinking_params: dict = get_suppress_thinking_params(_engine)
@@ -553,7 +556,7 @@ class AIFloatPanel(QWidget):
             # POST to it with a Bearer token and parse SSE chunks ourselves.
             url = _base_url.rstrip("/") + "/chat/completions"
             headers = {
-                "Authorization": f"Bearer {ai.apikey}",
+                "Authorization": f"Bearer {_api_key}",
                 "Content-Type":  "application/json",
             }
             body: dict = {

@@ -441,9 +441,12 @@ class LifecycleMixin:
         """roast_uuid -> .alog filepath (or None). Runs on the web server thread;
         reads only plain-python structures (metadata cache dataclasses)."""
         try:
-            records = self._metadata_cache.records
-            return next((m.filepath_str for m in records.values()
-                         if m.roast_uuid.lower() == roast_uuid.lower()), None)
+            # a snapshot: the Qt thread fills this cache while the web thread reads it
+            records = list(self._metadata_cache.records.values())
+            wanted = roast_uuid.lower()
+            # a roast without a uuid matches nothing, and hides nothing
+            return next((m.filepath_str for m in records
+                         if (m.roast_uuid or '').lower() == wanted), None)
         except Exception:  # noqa: BLE001
             return None
 
@@ -533,8 +536,13 @@ class LifecycleMixin:
         # Instantly rebuild lookups from memory without firing off another background thread
         self.update_alog_uuid_indexes()
         self._drop_lost_references(directory)
-        if getattr(self.aw, 'tilau_standalone', False):
+        # An absent folder (a drive not mounted yet) indexes as empty: kept as the first count,
+        # every old roast would come off the stock once the folder is back.
+        if getattr(self.aw, 'tilau_standalone', False) and directory.is_dir():
             self._take_saved_roasts_from_stock(updated_records)
+        # Same reason: an absent folder would bring every coffee back to 0 roasts.
+        if directory.is_dir():
+            self._recount_roasts(updated_records)
 
         # Refresh GUI views smoothly
         if self.initialized:
@@ -558,6 +566,14 @@ class LifecycleMixin:
         self._show_awaiting_link(awaiting_link(self.cave, records.values()))
         if taken:
             self._show_stock_note(taken[-1].bean, taken[-1].grams)
+
+    def _recount_roasts(self, records: dict) -> None:
+        """Each coffee's roast count follows the folder: a roast copied in counts at once."""
+        if getattr(self, "cave", None) is None or getattr(self, '_library_read_only', False):
+            return
+        from tilaucore.stock_from_roasts import recount_roasts  # noqa: PLC0415
+        if recount_roasts(self.cave.green_beans, records.values()):
+            self.save_green_beans()
 
     def _show_awaiting_link(self, roasts: list) -> None:
         """The Roasts banner: Artisan roasts that have no coffee of the library yet."""

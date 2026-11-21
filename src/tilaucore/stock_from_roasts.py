@@ -82,3 +82,29 @@ def awaiting_link(cave: BeanCaveContainer, records: Iterable[Any]) -> list[Any]:
     beans = {b.uuid for b in cave.green_beans if b.uuid}
     return sorted((r for r in records if r.roast_uuid in waiting and r.uuid not in beans),
                   key=lambda r: r.roastepoch or r.mtime)
+
+
+def recount_roasts(beans: Iterable[GreenBean], records: Iterable[Any]) -> bool:
+    """Each coffee's roast count and green weight, from the roasts in the folder.
+
+    The rule of the repair tool's "Update roast counts": every roast linked to the
+    coffee, a roast another roaster shared aside. True when a coffee changed.
+    """
+    counts: dict[str, int] = {}
+    grams: dict[str, float] = {}
+    for record in records:
+        if record.uuid and not record.shared:
+            counts[record.uuid] = counts.get(record.uuid, 0) + 1
+            grams[record.uuid] = grams.get(record.uuid, 0.0) + max(0.0, float(record.weight_in_g or 0.0))
+    beans = list(beans)
+    if not counts.keys() & {bean.uuid for bean in beans}:
+        # No roast linked to any coffee: an empty folder, files not downloaded yet or a failed
+        # index — never a reason to bring every coffee back to 0 (the repair tool's rule too).
+        return False
+    changed = False
+    for bean in beans:
+        count, weight = counts.get(bean.uuid, 0), round(grams.get(bean.uuid, 0.0), 1)
+        if bean.uuid and (bean.count, round(float(bean.weight or 0.0), 1)) != (count, weight):
+            bean.count, bean.weight = count, weight
+            changed = True
+    return changed

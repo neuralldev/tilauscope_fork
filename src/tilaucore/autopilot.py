@@ -565,6 +565,10 @@ class AutoPilot:
                 _log.info("AutoPilot: RoR crash detected — paused")
                 return
         # ── milestones: a fresh detector call is marked at once while armed ──
+        # Never a dry end after a first crack already marked (by hand): it would make a
+        # Maillard of 0 s. The missing dry end is the operator's to give (audit P3-08).
+        if pending == "DE" and t_fcs > 0.0:
+            pending = None
         if (pending is not None and pending not in self.automark_done
                 and milestone_due(pending, suggested, bt, dry_end_temp, fc_temp, tp_seen=t_tp > 0.0,
                                   scale=scale, original=host.original_mark(1 if pending == "DE" else 2))):

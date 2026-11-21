@@ -39,6 +39,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from tilaucore.roast_analysis import marked
 from tilauscope.artisan_message_ticker import ArtisanMessageTicker
 from tilauscope.theme_qss import with_tooltip
 from tilauscope.tilauscope_types import THEME
@@ -64,7 +65,7 @@ def live_event_timestamp(qmc: tgraphcanvas) -> str:
     both card kinds have to go through here rather than format their own.
     """
     try:
-        if qmc.flagon and qmc.timeindex[0] > -1:
+        if qmc.flagon and marked(qmc.timeindex, 0):
             elapsed = qmc.timeclock.elapsed() / 1000.0 - qmc.timex[qmc.timeindex[0]]
             return f"+{int(elapsed) // 60}:{int(elapsed) % 60:02d}"
     except Exception:  # pylint: disable=broad-except - a card without a stamp beats no card

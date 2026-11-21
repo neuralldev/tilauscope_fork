@@ -447,10 +447,9 @@ class EventPanel(QWidget):
         Si aucune sauvegarde n'existe, utilise fallback_pos (résultat d'align_panels).
         Doit être appelée APRÈS setFixedWidth() + update_panel_height().
         """
-        pos_x = self.settings.value(self._SETTINGS_X, None)
-        pos_y = self.settings.value(self._SETTINGS_Y, None)
-        if pos_x is not None and pos_y is not None:
-            self.move(int(pos_x), int(pos_y))
+        if self.settings.contains(self._SETTINGS_X) and self.settings.contains(self._SETTINGS_Y):
+            self.move(self.settings.value(self._SETTINGS_X, 0, type=int),
+                      self.settings.value(self._SETTINGS_Y, 0, type=int))
         else:
             self.move(fallback_pos)
 

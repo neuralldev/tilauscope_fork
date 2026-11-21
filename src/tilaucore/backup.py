@@ -14,6 +14,7 @@ with the roast list they were built from.
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import json
 import logging
 import os
@@ -28,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Final
 
-from tilaucore.archive import ArchiveError, member_path, sha256_file, sha256_stream, version_key
+from tilaucore.archive import ArchiveError, member_path, sha256_stream, version_key
 
 _log = logging.getLogger(__name__)
 
@@ -201,8 +202,20 @@ def write_backup(target: Path, roots: Mapping[str, str | os.PathLike | None], se
             for done, (name, path) in enumerate(entries):
                 if cancel is not None and cancel.is_set():
                     raise Cancelled
-                manifest.files[name] = {"sha256": sha256_file(path), "size": path.stat().st_size}
-                archive.write(path, name)
+                # One read: the checksum is the one of the bytes archived, even if the file
+                # changes meanwhile (BeanCave saving during an automatic backup).
+                try:
+                    info = zipfile.ZipInfo.from_file(path, name)
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    digest, size = hashlib.sha256(), 0
+                    with path.open("rb") as source, archive.open(info, "w") as sink:
+                        for chunk in iter(lambda s=source: s.read(1 << 20), b""):
+                            digest.update(chunk)
+                            sink.write(chunk)
+                            size += len(chunk)
+                except FileNotFoundError:   # gone since the folder was listed: nothing to keep of it
+                    continue
+                manifest.files[name] = {"sha256": digest.hexdigest(), "size": size}
                 if progress is not None:
                     progress(done + 1, len(entries))
             archive.writestr(MANIFEST_NAME, json.dumps(_manifest_dict(manifest), ensure_ascii=False, indent=1))
@@ -308,6 +321,10 @@ def restore_files(path: Path, manifest: Manifest, targets: Mapping[str, Path],
              if info["inside"] is None and key in targets}
     with zipfile.ZipFile(path) as archive:
         members = [name for name in archive.namelist() if name.startswith("roots/")]
+        # verify() checks the manifest's files: anything else in the archive has no checksum.
+        unlisted = next((name for name in members if name not in manifest.files and not name.endswith("/")), None)
+        if unlisted is not None:
+            raise BackupError(BackupError.DAMAGED, f"not in the manifest {unlisted}")
         staged: dict[str, Path] = {}
         try:
             for key, base in hosts.items():
@@ -324,15 +341,18 @@ def restore_files(path: Path, manifest: Manifest, targets: Mapping[str, Path],
                     shutil.copyfileobj(source, sink)
                 if progress is not None:
                     progress(done + 1, len(members))
+            # Every file moved in first, in every folder; only then the ones the backup lacks removed:
+            # a move that fails half-way leaves extra files behind, never a folder half emptied.
+            incoming = {key: {p.relative_to(staged[key]) for p in _walk(staged[key])} for key in hosts}
             for key, base in hosts.items():
-                incoming = {p.relative_to(staged[key]) for p in _walk(staged[key])}
-                for existing in _walk(base):
-                    if existing.relative_to(base) not in incoming:
-                        existing.unlink()
-                for relative in incoming:
+                for relative in incoming[key]:
                     final = base / relative
                     final.parent.mkdir(parents=True, exist_ok=True)
                     os.replace(staged[key] / relative, final)
+            for key, base in hosts.items():
+                for existing in _walk(base):
+                    if existing.relative_to(base) not in incoming[key]:
+                        existing.unlink()
         finally:
             for folder in staged.values():
                 shutil.rmtree(folder, ignore_errors=True)

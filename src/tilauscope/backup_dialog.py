@@ -405,8 +405,15 @@ class RestoreDialog(_Card):
 
     def _ready(self, _safety: Path) -> None:
         # The restore itself runs at the next start; quitting starts the relaunch (on_quit).
+        # Its marker may outlive this run only if the run really ends: otherwise the next
+        # start would replace the folders, roasts made in between included.
         self.close()
-        self._aw.fileQuit()
+        if self._aw.qmc.flagstart:   # a roast started during the safety backup: never ended by a restore
+            backup.clear_pending_restore()
+            show_styled_message(self, self.windowTitle(), QApplication.translate("tilauscope_diagnostics", "A roast started while the current state was being saved, so nothing will be restored.\n\nRestore again once the roast is over."), QMessageBox.Icon.Warning)
+            return
+        if not self._aw.closeApp():   # the quit was answered Cancel
+            backup.clear_pending_restore()
 
     def _failed(self, kind: str) -> None:
         self.show_page(0)

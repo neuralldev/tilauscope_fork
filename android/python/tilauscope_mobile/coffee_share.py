@@ -12,18 +12,20 @@ import ast
 from pathlib import Path
 import shutil
 import tempfile
+import time
 
 from tilaucore import coffee_share as core, tasting_log
 from tilaucore.archive import ArchiveError
 from tilaucore.coffee_library import LIBRARY_URL, Library, LibraryError, card_from, card_to_json
 from tilaucore.roasters import canonical_roaster_name, roaster_identity_key
 
+from .alog import TILAUSCOPE_VERSION
 from .roasts import profile_detail
 
 # The tablet's own version is on another track (0.1.0): a package is compared with the TilauScope version whose
 # files this tablet reads and writes, the one its .alog say (alog.profile "version"). Read: every build of it.
 # Written: build 0, so that no desktop of that version finds it newer than itself.
-VERSION = "4.3"
+VERSION = TILAUSCOPE_VERSION
 READS_BUILD = 99999
 WRITES_BUILD = 0
 NAME_CHARS = 60 # a coffee's name in a file name: the file system's limit is 255 bytes
@@ -120,6 +122,24 @@ def theirs(uuid: str, cave, roasts, machine: str) -> dict:
     return {"uuid": uuid, "card": _card_view(bean, profile, machine), "shared_on": str((profile.get("tilau_shared") or {}).get("shared_on") or "")[:10]}
 
 
+SHARE_KEPT_S = 3600.0 # a package sent stays this long: the app it went to may read it later (a draft, an upload)
+
+
+def _share_folder(directory: Path) -> Path:
+    """A folder of its own for a new package; the packages sent over an hour ago go (Tilau, 2026-11-21)."""
+    directory.mkdir(parents=True, exist_ok=True)
+    now = time.time()
+    for old in directory.iterdir():
+        try:
+            if now - old.stat().st_mtime > SHARE_KEPT_S:
+                shutil.rmtree(old) if old.is_dir() else old.unlink()
+        except OSError:
+            pass
+    folder = directory / str(time.time_ns())
+    folder.mkdir()
+    return folder
+
+
 def pack(uuid: str, cave, roasts, directory: str) -> str:
     """A Move package of a coffee into `directory`: the roasts of it the tablet holds (its own, and the shared
     reference it was roasted from), their tastings and the coffee's brew settings. Returns the file's path."""
@@ -130,8 +150,7 @@ def pack(uuid: str, cave, roasts, directory: str) -> str:
                      key=lambda r: r[1].roastepoch or r[1].mtime, reverse=True) # the computer's roasts are already there
     keys = {_norm(m.roast_uuid) for _, m in carried}
     tastings = {k: t for k, t in tasting_log.load(cave.directory).entries.items() if _norm(k) in keys}
-    folder = Path(directory)
-    shutil.rmtree(folder, ignore_errors=True) # one package at a time: the last one sent
+    folder = _share_folder(Path(directory))
     stem = "".join(c if c.isalnum() or c in " -_" else "_" for c in bean.name[:NAME_CHARS]).strip() or "coffee"
     target = folder / f"{stem}{core.EXTENSION}"
     core.write_package(target, mode=core.MOVE, bean=bean, roasts=[roasts.path(o, m.filename) for o, m in carried],

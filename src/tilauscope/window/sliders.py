@@ -179,10 +179,32 @@ class SlidersMixin:
         if enabled == self._controls_enabled:
             return
         self._controls_enabled = enabled
-        for row_w in self._slider_row_widgets:
-            row_w.setEnabled(enabled)
+        self._refresh_controls_enabled()
+
+    def apply_machine_link(self, up: bool, machine_sliders: tuple[int, ...] = ()) -> None:
+        """Grey the roaster's own controls while its link is down.
+
+        Nothing reaches a roaster whose link is down: its sliders (`machine_sliders`)
+        and the set point, which drives its burner, are greyed. A slider driving
+        another machine (the extractor) stays free. `up` frees them all again.
+        """
+        lost = frozenset() if up else frozenset(machine_sliders)
+        if lost == self._link_lost_sliders:
+            return
+        self._link_lost_sliders = lost
+        self._refresh_controls_enabled()
+
+    def machine_slider_enabled(self, idx: int) -> bool:
+        """Whether slider `idx` can be used from the desktop now: remote piloting follows the same rule."""
+        return self._controls_enabled and idx not in self._link_lost_sliders
+
+    def _refresh_controls_enabled(self) -> None:
+        enabled = self._controls_enabled
+        lost = self._link_lost_sliders
+        for i, row_w in enumerate(self._slider_row_widgets):
+            row_w.setEnabled(enabled and i not in lost)
         for w in self._sv_widgets:
-            w.setEnabled(enabled and not self._sv_locked)
+            w.setEnabled(enabled and not lost and not self._sv_locked)
 
     def _apply_sv_lock(self, locked: bool) -> None:
         """Enable/disable the whole SV row. No-op unless the state actually flips,
@@ -195,7 +217,7 @@ class SlidersMixin:
             "Set point driven by TilauPID while preheating"
         ) if locked else ""
         for w in self._sv_widgets:
-            w.setEnabled(not locked and self._controls_enabled)
+            w.setEnabled(not locked and self._controls_enabled and not self._link_lost_sliders)
             w.setToolTip(tip)
 
     def check_sliders_update(self):

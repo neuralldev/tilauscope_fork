@@ -80,6 +80,18 @@ def _read_sliders(aw) -> dict:
         return {}
 
 
+def _locked_sliders(aw) -> list:
+    """Channel ids (`slider{i}`) the desktop greys now — the phone greys the same
+    ones (SlidersMixin.machine_slider_enabled: one rule whatever the device)."""
+    tm = getattr(aw, 'tilauscope_main', None)
+    if tm is None:
+        return []
+    try:
+        return [f'slider{i}' for i in range(4) if not tm.machine_slider_enabled(i)]
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def _num(v) -> Optional[float]:
     # Artisan uses -1 as the "no reading" sentinel; NaN also occurs.
     try:
@@ -160,6 +172,7 @@ class TelemetryTap(QObject):
         self._host = host
         self._last_sec = -1
         self._last_sliders = None  # last broadcast slider dict (omit when unchanged, §5)
+        self._last_locked = None   # last broadcast greyed sliders (omit when unchanged)
         self._last_marks = set()   # milestones already announced (event dedup, §5)
         self._last_recording = None  # last announced flagstart (None = not yet known)
         self._last_on = None         # last announced flagon (None = not yet known)
@@ -231,6 +244,10 @@ class TelemetryTap(QObject):
             if sliders != self._last_sliders:  # §5: omit when unchanged
                 tele['sliders'] = sliders
                 self._last_sliders = sliders
+            locked = _locked_sliders(self._aw)
+            if locked != self._last_locked:  # a lost / regained roaster link
+                tele['locked'] = locked
+                self._last_locked = locked
             # Axis bounds sent here whenever they change, not just in the snapshot,
             # so a late-connecting phone still sees Artisan's own axis adjustment.
             axes = _axes(qmc)
@@ -370,4 +387,5 @@ class TelemetryTap(QObject):
                 'monitoring': bool(getattr(qmc, 'flagon', False)),
                 'axes': _axes(qmc), 'colors': _colors(qmc),
                 'series': {'t': t_ser, 'bt': bt_ser, 'et': et_ser, 'ror': ror_ser},
-                'markers': markers, 'sliders': _read_sliders(self._aw)}
+                'markers': markers, 'sliders': _read_sliders(self._aw),
+                'locked': _locked_sliders(self._aw)}

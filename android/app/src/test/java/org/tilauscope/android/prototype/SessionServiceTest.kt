@@ -19,6 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowPowerManager
 
 /** The session service around the roast link (audit 2026-10-25): the roaster's cooling outlives the screen. */
 @RunWith(RobolectricTestRunner::class)
@@ -84,6 +85,30 @@ class SessionServiceTest {
         bench.link.disconnect(); bench.run(); main() // this roast ends too, and cools
         bench.frame(gatt, 45.0, 0); bench.run(1000); main()
         assertFalse("the earlier roast's release ended this session", shadowOf(service).isStoppedBySelf)
+    }
+
+    /** Audit 2026-11-21, P1-08: the CPU slept once recording stopped; the link went silent, and at wake-up
+     *  its stall watchdog stopped the roaster before the probe confirmed it had cooled. */
+    @Test
+    fun theCpuStaysAwakeWhileTheRoasterCools() {
+        cooling()
+        // what each once-a-second tick decides, recording over (the Python engine is not on this bench)
+        SessionService::class.java.getDeclaredMethod("holdAwake", Boolean::class.javaPrimitiveType)
+            .apply { isAccessible = true }.invoke(service, false)
+        val awake = ShadowPowerManager.getLatestWakeLock()
+        assertTrue("no wake lock held while the roaster cools", awake != null && awake.isHeld)
+    }
+
+    /** Audit 2026-11-21, P1-10: a link lost while cooling ended "failed", never "idle": the session stayed stuck. */
+    @Test
+    fun aLinkLostWhileCoolingEndsTheRoastLink() {
+        val bench = cooling()
+        service.release() // the result of "stop" reaches the screen
+        bench.disconnected(bench.gatt()); bench.run(1000); main()
+        assertEquals("failed", bench.state())
+        assertTrue("the session stayed in the foreground", shadowOf(service).isStoppedBySelf)
+        val linkRoast = SessionService::class.java.getDeclaredField("linkRoast").apply { isAccessible = true }
+        assertFalse("the roast link never ended", linkRoast.getBoolean(service))
     }
 
     @Test

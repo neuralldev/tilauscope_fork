@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebView
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,5 +51,36 @@ class MainActivityTest {
         }
         assertTrue("the renderer's death would kill the app", shadowOf(web).webViewClient.onRenderProcessGone(web, gone))
         controller.recreate() // what the handler asks for: a new page, the session untouched
+    }
+
+    @Test
+    fun aLibraryDownloadThatFailsKeepsTheCoffeeAlreadyOnThePreview() { // audit 2026-11-21, P4-37
+        val activity = screen().get()
+        val staged = MainActivity::class.java.getDeclaredField("staged").apply { isAccessible = true }
+        val deliver = MainActivity::class.java.getDeclaredMethod("deliver", String::class.java, JSONObject::class.java)
+            .apply { isAccessible = true }
+        val shown = File(activity.cacheDir, "shown.tilaucoffee")
+        staged.set(activity, shown)
+        deliver.invoke(activity, "library_get", JSONObject().put("error", "offline")) // no reply path
+        assertEquals(shown, staged.get(activity))
+        deliver.invoke(activity, "library_get", null)
+        assertEquals(shown, staged.get(activity))
+    }
+
+    @Test
+    fun theEndOfAnImportLeavesTheCoffeeOpenedMeanwhileOnThePreview() { // audit 2026-11-21, P4-38
+        val activity = screen().get()
+        fun field(name: String) = MainActivity::class.java.getDeclaredField(name).apply { isAccessible = true }
+        val deliver = MainActivity::class.java.getDeclaredMethod("deliver", String::class.java, JSONObject::class.java)
+            .apply { isAccessible = true }
+        val folder = File(activity.cacheDir, CoffeeFiles.FOLDER).apply { mkdirs() }
+        val imported = File(folder, "opened-1.tilaucoffee").apply { writeText("a") }
+        val opened = File(folder, "opened-2.tilaucoffee").apply { writeText("b") }
+        field("importing").set(activity, imported)
+        field("staged").set(activity, opened)
+        deliver.invoke(activity, "coffee_import", JSONObject().put("reply", "ok"))
+        assertEquals(opened, field("staged").get(activity))
+        assertTrue(opened.exists())
+        assertTrue(!imported.exists())
     }
 }

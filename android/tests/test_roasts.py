@@ -50,6 +50,22 @@ class RoastsTests(unittest.TestCase):
         self.assertTrue((self.dir / "roasts-computer" / "a.alog").exists())
         self.assertFalse((self.dir / "roasts").exists()) # never mixed with the tablet's own
 
+    def test_a_roast_held_under_another_spelling_of_its_id_is_not_imported_twice(self):
+        """Audit 2026-11-21, P2-21: the import compared roast ids as written; the same roast, its id dashed
+        or in capitals (as a package writes it), came in again: twice in the list and in the plan's learning."""
+        dashed = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        self.demo.import_roasts(self.stage_files(**{"a.alog": alog(dashed, 1791709165)}))
+        again = self.stage_files(**{"a-copy.alog": alog(dashed.replace("-", "").upper(), 1791709165)})
+        self.assertEqual(json.loads(self.demo.import_roasts(again)), {"imported": 0, "already": 1, "invalid": 0})
+        self.assertEqual(len(json.loads(self.demo.get_roasts())["roasts"]), 1)
+
+    def test_a_coffee_counts_the_roasts_held_not_the_number_written_in_the_cave(self):
+        """The cave's count was only written by the desktop's repair tool: a coffee roasted showed 0 roasts."""
+        self.demo.import_roasts(self.stage_files(**{"a.alog": alog("a" * 32, 1791709165), "b.alog": alog("b" * 32, 1791702000)}))
+        coffee = json.loads(self.demo.get_coffees())["coffees"][0]
+        self.assertEqual(coffee["roasts"], 2)
+        self.assertEqual(json.loads(self.demo.cave.path.read_text())["green_beans"][0].get("count", 0), 0) # shown, never written
+
     def test_a_folder_is_previewed_before_anything_is_copied(self):
         paths = json.loads(self.stage_files(**{"a.alog": alog("a" * 32, 1791709165), "a2.alog": alog("a" * 32, 1791709165),
                                                "c.alog": "not a profile"}))

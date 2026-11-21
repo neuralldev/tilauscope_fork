@@ -262,7 +262,8 @@ window.onSnapshot = function (method, d) {
   if (method === "get_roasts") { if (d && d.reply) RoastsTab.rows(d.reply.roasts); return; }
   if (method === "get_roast") { RoastsTab.roast(d && d.reply); return; }
   if (method === "delete_roast") { // the coffees' roast memory and counts follow
-    if (d && d.reply) { RoastsTab.rows(d.reply.roasts); send("get_coffees"); } else toast("This roast cannot be deleted now: finish the roast on screen first");
+    if (d && d.reply) { RoastsTab.rows(d.reply.roasts); send("get_coffees"); }
+    else toast(recording ? "This roast cannot be deleted now: finish the roast on screen first" : "This roast could not be deleted");
     return;
   }
   if (method === "get_roast_energy") { if (d && d.reply) EnergySheet.show(d.reply); else toast("This roast has no energy"); return; }
@@ -307,7 +308,9 @@ window.onSnapshot = function (method, d) {
     cave = d.reply; CaveEdit.setCave(cave);
     var stock = cave.coffees.filter(inStock);
     if (!stock.length) filter = "all";
-    selected = cave.chosen || (stock[0] || cave.coffees[0] || {}).uuid || null;
+    // the operator's pick stays, while it is still there (the list is read again after a roast is deleted)
+    var kept = cave.coffees.some(function (c) { return c.uuid === selected; }) ? selected : null;
+    selected = kept || cave.chosen || (stock[0] || cave.coffees[0] || {}).uuid || null;
     splashDone(); render();
     return;
   }

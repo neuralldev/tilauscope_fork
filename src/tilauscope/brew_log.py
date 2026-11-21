@@ -42,6 +42,8 @@ BREWLOG_FILE_NAME: str = "brewlog.json"
 MAX_SAMPLES_PER_BEAN: int = 50
 
 _ENCODING = "utf-8-sig" if _IS_WINDOWS else "utf-8"
+# Read with or without a BOM on every system: a file written on Windows travels (cave folder, moved coffee, backup).
+_READ_ENCODING = "utf-8-sig"
 
 
 def log_path(directory) -> Optional[Path]:
@@ -70,7 +72,7 @@ def load(directory) -> BrewLog:
     if path is None or not path.exists():
         return BrewLog()
     try:
-        return from_json(BrewLog, path.read_text(encoding=_ENCODING))
+        return from_json(BrewLog, path.read_text(encoding=_READ_ENCODING))
     except Exception as exc:  # noqa: BLE001
         _log.warning("Brew log: %s unreadable (%s); starting from an empty journal", path, exc)
         return BrewLog()
@@ -130,7 +132,7 @@ def record(directory, bean_uuid: str, sample: BrewSample) -> bool:
         # Read here, not via load(): its empty journal for an unreadable file,
         # saved now, would replace every sample on file with this single one.
         try:
-            log = from_json(BrewLog, path.read_text(encoding=_ENCODING))
+            log = from_json(BrewLog, path.read_text(encoding=_READ_ENCODING))
         except Exception:  # noqa: BLE001
             _log.error("Brew log: %s unreadable; sample not recorded over it", path)
             return False

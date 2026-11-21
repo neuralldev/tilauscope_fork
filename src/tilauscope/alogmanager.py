@@ -148,7 +148,10 @@ class AlogIndex:
             updated = scan_directory(d, records, should_stop)
             changed = updated != records
             self._records = updated
-            self._signature = sig
+            # A scan stopped half-way is coherent but not complete: without the signature
+            # the next refresh finishes it instead of returning at once.
+            stopped = should_stop is not None and should_stop()
+            self._signature = None if stopped else sig
             if changed:
                 save_index(d, updated)
             return updated

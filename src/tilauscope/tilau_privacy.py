@@ -573,7 +573,9 @@ def sanitize_text(text: str,
         pieces = re.split('(' + '|'.join(re.escape(value) for value in kept) + ')', text or '')
         return ''.join(piece if i % 2 else sanitize_text(piece, sensitive_values, profile=profile, report=rep)
                        for i, piece in enumerate(pieces))
-    cleaned = text or ''
+    # The URL placeholders' own characters (private use, never in a roast's
+    # text): a pair already in the text would name a URL that is not there.
+    cleaned = (text or '').replace(_MARK_OPEN, '').replace(_MARK_CLOSE, '')
 
     # Addresses go before the identity values: an e-mail is self-contained, and
     # scrubbing the user's first name out of it first would leave the domain

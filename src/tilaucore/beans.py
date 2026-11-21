@@ -209,7 +209,12 @@ T = TypeVar('T')
 _SCALARS = (str, int, float, bool)
 
 
+_FALSE_WORDS = frozenset({'false', '0', 'no', ''})
+
+
 def _convert(kind: Any, value: Any) -> Any:
+    if kind is bool and isinstance(value, str): # bool("false") is True
+        return value.strip().lower() not in _FALSE_WORDS
     if kind in _SCALARS:
         return kind(value)
     if is_dataclass(kind):
@@ -235,6 +240,9 @@ def from_dict(kind: type[T], data: dict) -> T:
     hints = typing.get_type_hints(kind)
     values = {}
     for item in fields(kind):
+        has_default = item.default is not MISSING or item.default_factory is not MISSING
+        if data.get(item.name) is None and item.name in data and hints[item.name] in _SCALARS and has_default:
+            continue # a null where a number or a text belongs: the field's default, not float(None) or "None"
         if item.name in data:
             try:
                 values[item.name] = _convert(hints[item.name], data[item.name])

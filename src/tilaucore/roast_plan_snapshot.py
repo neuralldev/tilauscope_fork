@@ -11,9 +11,9 @@ from datetime import datetime, timezone
 from typing import Final
 
 from tilaucore.roast_colour import to_agtron
+from tilaucore.roasters import machine_value
 
 
-ROAST_PLAN_MODEL_VERSION: Final[str] = "skywalker-v2-p2.1"
 ROAST_PLAN_SNAPSHOT_SCHEMA: Final[int] = 1
 
 
@@ -90,8 +90,9 @@ def _tasting_change(plan: dict, mode: str) -> "dict | None":
 def build_prediction_snapshot(
         plan: dict, *, plan_id: str, target_color_agtron: float,
         expected_color_basis: str = "ground", mode: str = "C",
-        created_at_utc: "str | None" = None) -> dict:
-    """Freeze the plan values that exist before the roast starts. """
+        created_at_utc: "str | None" = None, model_version: "str | None" = None) -> dict:
+    """Freeze the plan values that exist before the roast starts. `model_version`: the
+    roaster's plan_model_version (roasters.json), the common default without one."""
     heater = _phase_controls(plan.get("Heater (%) (Dry|Mai|Dev)"))
     airflow = _phase_controls(plan.get("Airflow (%) (Dry|Mai|Dev)"))
     sources = {
@@ -132,7 +133,7 @@ def build_prediction_snapshot(
     return {
         "schema_version": ROAST_PLAN_SNAPSHOT_SCHEMA,
         "plan_id": str(plan_id),
-        "model_version": ROAST_PLAN_MODEL_VERSION,
+        "model_version": model_version or machine_value(None, "plan_model_version"),
         "created_at_utc": created_at_utc or datetime.now(timezone.utc).isoformat(),
         "status": "planned",
         "source_kinds": _source_kinds(sources),
@@ -208,8 +209,10 @@ def complete_prediction_snapshot(snapshot: dict, profile: dict) -> dict:
 
 
 def summarize_prediction_errors(
-        snapshots: "list[dict]", model_version: str = ROAST_PLAN_MODEL_VERSION) -> dict:
-    """Return version-isolated MAE from genuinely pre-roast snapshots."""
+        snapshots: "list[dict]", model_version: "str | None" = None) -> dict:
+    """Return version-isolated MAE from genuinely pre-roast snapshots (the roaster's
+    plan_model_version, the common default without one)."""
+    model_version = model_version or machine_value(None, "plan_model_version")
     samples: dict[str, list[float]] = {}
     contributing_ids: set[str] = set()
     for snapshot in snapshots:

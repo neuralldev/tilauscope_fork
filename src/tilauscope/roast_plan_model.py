@@ -27,7 +27,7 @@ from pathlib import Path
 import numpy as np
 
 from tilauscope.tilauscope_types import GreenBean
-from tilauscope.roasters import RoasterContext
+from tilauscope.roasters import RoasterContext, machine_value
 from tilauscope.alogmanager import AlogIndex, AlogMetadata
 from tilauscope import text_shaping
 from PyQt6.QtCore import  QSettings
@@ -102,8 +102,11 @@ class TilauScopeRoastPlan(RoastPlanEngine):
 
 
 class TilauscopeAlarmFactory:
-    def __init__(self, plan_data):
+    def __init__(self, plan_data, roaster_ctx: "RoasterContext | None" = None):
+        """`roaster_ctx`: the machine whose plan_alarms and cooling set the fixed rows (roasters.json);
+        the common default without one."""
         self.plan = plan_data
+        self._roaster_ctx = roaster_ctx
         # code des actions Tilauscope/Artisan
         self.ACTION_LIST = {
         'Nothing': -1,
@@ -203,8 +206,9 @@ class TilauscopeAlarmFactory:
         # Time rows wait 1 s: Artisan skips the time check of a 0 s offset, so the row never fires.
         # The preheat is not started here: it stays the operator's gesture.
         self._add_row(alarms, 1, -1,-1, self.EVENTS.get("ON")   , 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("PopUp"), 0,    "Starting PLAN"   )
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("ON")   , 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    "0"   )
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("START"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    "20"   )
+        fixed = machine_value(self._roaster_ctx, "plan_alarms")   # the machine's (roasters.json, P4-44)
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("ON")   , 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    f"{fixed['on_air_pct']:g}"   )
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("START"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    f"{fixed['start_air_pct']:g}"   )
 
         # 2. ÉVÉNEMENTS DE SÉCURITÉ & POPUPS
         # Alerte à CHARGE
@@ -326,13 +330,17 @@ class TilauscopeAlarmFactory:
             bt_margin = max(0.5, drop_ror * 20.0 / 60.0)   # °/20 s au RoR de drop
             self._add_row(alarms, 1, -1,-1, self.EVENTS.get("FC START"), 0.      , 1        , 1, round(drop_temp - bt_margin, 1), self.ACTION_LIST.get("PopUp"), 1,    "PREPARE TO DROP (~20 s)"   )
 
-        # 4. DROP
+        # 4. DROP — the machine's declared cooling (the levers AUTO sets), else plan_alarms
+        cooling = getattr(self._roaster_ctx, "cooling", None)
+        def _cool(lever: str) -> float:
+            value = getattr(cooling, f"{lever}_pct", None) if cooling is not None else None
+            return float(value if value is not None else fixed[f"drop_{lever}_pct"])
         self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"),       0, "0")
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"),      0, "50" )
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"),      0, f"{_cool('air'):g}" )
         if drums[0] is not None:   # même gating tambour fixe qu'aux autres phases
-            self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 2.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Drum"),     0, "80" )
+            self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 2.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Drum"),     0, f"{_cool('drum'):g}" )
         if self._airwave_present:
-            self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 3., -3, 2, 0.0, self.ACTION_LIST.get("Slider Damper"), 0, "80")
+            self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 3., -3, 2, 0.0, self.ACTION_LIST.get("Slider Damper"), 0, f"{_cool('extractor'):g}")
 
 # should add cooling fan if any
 

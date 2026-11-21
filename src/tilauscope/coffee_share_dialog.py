@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QFileDialog, QFrame, QHBox
                              QVBoxLayout, QWidget)
 
 from tilaucore import coffee_share as core
+from tilaucore.archive import ArchiveError
 from tilauscope import coffee_share
 from tilauscope.tilauscope_types import THEME, show_styled_message
 from tilauscope.widgets.card_dialog import CardDialog, card_button, card_label
@@ -182,7 +183,10 @@ class ShareCoffeeDialog(CardDialog):
         target = Path(chosen if chosen.endswith(core.EXTENSION) else chosen + core.EXTENSION)
         try:
             coffee_share.save(target, mode, self._source)
-        except Exception:  # pylint: disable=broad-except
+        except Exception as error:  # pylint: disable=broad-except
+            if isinstance(error, ArchiveError) and error.kind == ArchiveError.TOO_LARGE:
+                show_styled_message(self, self.windowTitle(), QApplication.translate("tilauscope_beancave", "This coffee holds too many roasts for one package: it could not be opened again, so nothing was written."), QMessageBox.Icon.Warning)
+                return
             _log.exception("coffee package not written")
             show_styled_message(self, self.windowTitle(), QApplication.translate("tilauscope_beancave", "The package could not be written. Check that the folder exists and that there is free space."), QMessageBox.Icon.Warning)
             return

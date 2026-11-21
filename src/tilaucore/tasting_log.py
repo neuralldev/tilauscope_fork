@@ -20,6 +20,8 @@ from tilaucore.beans import RoastTasting, TastingLog, from_json, to_json
 
 _log = logging.getLogger(__name__)
 _ENCODING = "utf-8-sig" if platform.system() == "Windows" else "utf-8"
+# Read with or without a BOM on every system: a file written on Windows travels (cave folder, moved coffee, backup).
+_READ_ENCODING = "utf-8-sig"
 
 TASTINGS_FILE_NAME: Final[str] = "tastings.json"
 
@@ -161,7 +163,7 @@ def load(directory) -> TastingLog:
     if path is None or not path.exists():
         return TastingLog()
     try:
-        return from_json(TastingLog, path.read_text(encoding=_ENCODING))
+        return from_json(TastingLog, path.read_text(encoding=_READ_ENCODING))
     except Exception as exc:  # noqa: BLE001
         _log.warning("Tastings: %s unreadable (%s); starting empty", path, exc)
         return TastingLog()
@@ -177,7 +179,7 @@ def record(directory, roast_uuid: str, tasting: RoastTasting) -> bool:
         return False
     if path.exists():
         try:
-            log = from_json(TastingLog, path.read_text(encoding=_ENCODING))
+            log = from_json(TastingLog, path.read_text(encoding=_READ_ENCODING))
         except Exception:  # noqa: BLE001
             _log.error("Tastings: %s unreadable; tasting not recorded over it", path)
             return False

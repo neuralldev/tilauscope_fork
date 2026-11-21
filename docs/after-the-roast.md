@@ -626,9 +626,13 @@ large folder, or one on a slow network drive — the list fills in as it goes an
 bar appears with a **Cancel** button: the files already listed stay usable, and **Scan
 again** picks the reading back up.
 
-**Update Roast Counts**, above the list, rescans the roast folder and recomputes how many
-roasts and how much weight each green coffee has behind it — the figures shown in
-[BeanCave's catalogue](beancave.md#the-catalogue).
+BeanCave keeps how many roasts and how much weight each green coffee has behind it — the
+figures shown in [BeanCave's catalogue](beancave.md#the-catalogue) — in step with the roast
+folder on its own: a roast saved, or a file copied into the folder, counts as soon as BeanCave
+reads the folder again. A folder holding no roast of any coffee in the library — a new empty
+folder, or a cloud folder whose files are not downloaded yet — leaves the figures as they were.
+**Update Roast Counts**, above the list, reads every file of the folder in full and recomputes
+those figures on demand.
 
 **Complete from bean** fills only the fields still empty, from the coffee chosen under
 **Green bean** — nothing already filled is touched; it stays grey until a coffee is chosen.

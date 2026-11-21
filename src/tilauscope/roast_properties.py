@@ -2121,7 +2121,9 @@ class _RoastInsightsPanel(QWidget):
         folder = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
         folder.mkdir(parents=True, exist_ok=True)
         path = str(folder / "roast_plan_alarms.alrm")
-        TilauscopeAlarmFactory({"Target Roast Level": self._target_scale.name} | self._plan).export(path)
+        # the machine the plan was computed for, not the one selected now
+        TilauscopeAlarmFactory({"Target Roast Level": self._target_scale.name} | self._plan,
+                               (self._last_setup or {}).get("ctx")).export(path)
         return path
 
     @pyqtSlot()
@@ -2153,7 +2155,7 @@ class _RoastInsightsPanel(QWidget):
             pdf.create_pdf_report(data, graph, crashes, flicks)
             pdf.output(path)
             stem = path[:-4] if path.lower().endswith(".pdf") else path
-            TilauscopeAlarmFactory(data).export(stem + ".alrm")
+            TilauscopeAlarmFactory(data, (self._last_setup or {}).get("ctx")).export(stem + ".alrm")
         except Exception as exc:  # noqa: BLE001
             _log.exception("RoastInsights: plan PDF failed")
             show_styled_message(
