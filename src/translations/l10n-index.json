@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "generated": "2026-11-22T08:19:59Z",
+  "generated": "2026-11-22T09:17:26Z",
   "app_version": "4.4",
-  "source_revision": "14ff26b7a",
+  "source_revision": "f66cdd723",
   "string_count": 3644,
   "sections": [
     {
@@ -197,10 +197,10 @@
       "native": "简体中文",
       "rtl": false,
       "total": 3644,
-      "done": 3510,
+      "done": 3512,
       "draft": 131,
-      "empty": 3,
-      "bytes": 1984866
+      "empty": 1,
+      "bytes": 1984897
     },
     {
       "code": "zh_TW",
@@ -208,10 +208,10 @@
       "native": "繁體中文",
       "rtl": false,
       "total": 3644,
-      "done": 3510,
+      "done": 3512,
       "draft": 131,
-      "empty": 3,
-      "bytes": 1982956
+      "empty": 1,
+      "bytes": 1982987
     },
     {
       "code": "cs",
@@ -274,10 +274,10 @@
       "native": "Deutsch",
       "rtl": false,
       "total": 3644,
-      "done": 3512,
+      "done": 3514,
       "draft": 129,
-      "empty": 3,
-      "bytes": 2048571
+      "empty": 1,
+      "bytes": 2048602
     },
     {
       "code": "el",
@@ -329,10 +329,10 @@
       "native": "Italiano",
       "rtl": false,
       "total": 3644,
-      "done": 3510,
+      "done": 3512,
       "draft": 131,
-      "empty": 3,
-      "bytes": 2048559
+      "empty": 1,
+      "bytes": 2048586
     },
     {
       "code": "ja",
@@ -461,10 +461,10 @@
       "native": "Español",
       "rtl": false,
       "total": 3644,
-      "done": 3512,
+      "done": 3514,
       "draft": 129,
-      "empty": 3,
-      "bytes": 2044270
+      "empty": 1,
+      "bytes": 2044305
     },
     {
       "code": "sv",

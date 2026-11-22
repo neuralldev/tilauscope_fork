@@ -229,3 +229,19 @@ test("the crack counter's chip names what it hears and each crack is a tick on t
   assert.equal(page.$("crackp").getAttribute("d").match(/M/g).length, 3, "one tick per crack");
   assert.deepEqual(page.errors, []);
 });
+
+test("while recording, BeanCave, Settings and the name give their room to the roast (Tilau, 2026-11-22)", async (t) => {
+  const page = await roastScreen({ machine: "skywalker-v2" });
+  t.after(page.close);
+  await page.tick(1);
+  const shown = () => ["gear", "cavebtn", "brand"].map((id) => !page.$(id).classList.contains("hidden"));
+  assert.deepEqual(shown(), [true, true, true]);
+  page.tap(page.$("act")); // Start
+  await page.settle();
+  await page.tick(2);
+  assert.deepEqual(shown(), [false, false, false]);
+  await page.session("stop");
+  await page.tick(1);
+  assert.deepEqual(shown(), [true, true, true]);
+  assert.deepEqual(page.errors, []);
+});

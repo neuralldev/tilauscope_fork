@@ -10,6 +10,14 @@
 <link rel="stylesheet" href="common.css">
 <style>
 #app{height:100%;display:flex;flex-direction:column}
+/* The header holds on one line at 1204 px, a simulation's controls and the crack counter included: nothing wraps,
+   the coffee and the alarms give way first (ellipsis) */
+#app>header{gap:10px}
+#app>header>*{white-space:nowrap;flex-shrink:0}
+#app>header>#coffee,#app>header>#alarmchip{flex-shrink:1;min-width:80px;overflow:hidden}
+#alarmtext{overflow:hidden;text-overflow:ellipsis;min-width:0}
+#coffeename{min-width:0}
+#coffeestock{min-width:0;flex-shrink:100;overflow:hidden;text-overflow:ellipsis} /* the stock gives way before the name */
 #gear,#cavebtn{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center}
 #cavebtn{color:var(--sub)}
 #gear:disabled,#cavebtn:disabled,#coffee:disabled{opacity:.35}
@@ -201,7 +209,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 /* Simulation (SIM-SPEC S2): where the replay is, its speed, and Exit in place of Stop */
 #link.sim{border-color:rgba(203,166,247,.6);background:rgba(203,166,247,.10);color:var(--accent);font-weight:600}
 #replay{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--sub)}
-#replaytrack{width:96px;height:6px;border-radius:3px;background:var(--overlay);position:relative}
+#replaytrack{width:56px;height:6px;border-radius:3px;background:var(--overlay);position:relative}
 #replaybar{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
 #speeds{display:inline-flex;height:30px;border:1px solid var(--line);border-radius:15px;overflow:hidden}
 #speeds button{padding:0 11px;font-size:13px;color:var(--muted);display:inline-flex;align-items:center}
@@ -267,7 +275,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 <script src="energy-sheet.js"></script>
 <div id="app">
  <header>
-  <span class="brand">TilauScope</span>
+  <span class="brand" id="brand">TilauScope</span>
   <button id="link" aria-label="Sensor link"><span class="dot" id="linkdot"></span><svg id="linkbt" class="hidden" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17" fill="none" stroke="#F38BA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l18 18" stroke="#F38BA8" stroke-width="2.2" stroke-linecap="round"/></svg><svg id="linklate" class="hidden" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#FAB387" stroke-width="2.2"/><path d="M12 7v5l3 2" fill="none" stroke="#FAB387" stroke-width="2.2" stroke-linecap="round"/></svg><span id="linktext">Starting…</span></button>
   <span id="room" class="hidden" aria-label="Room conditions"><span class="dot" id="roomdot"></span><span style="color:var(--sub);font-weight:400">Room</span><span class="num" id="roomtext">—</span><span id="door" class="hidden" aria-label="Drop door"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect id="doorframe" x="1.5" y="1.5" width="13" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path id="doorleaf" fill="currentColor"/></svg><span id="doortext">Door</span></span></span>
   <button id="alarmchip" class="hidden" aria-label="Alarms"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 19a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span id="alarmtext"></span></button>
@@ -1141,9 +1149,10 @@ function render() {
     : "The roaster cut the burner when the link dropped. Raise it again to go on.";
   $("resumefollow").classList.toggle("hidden", !d.follow_paused);
   $("stop").classList.toggle("hidden", !(stage >= 1 && stage <= 4) || !!sim);
-  // While recording the page never changes: what leads away stays greyed.
-  $("gear").classList.remove("hidden"); $("gear").disabled = recording;
-  $("cavebtn").classList.remove("hidden"); $("cavebtn").disabled = recording;
+  // While recording the page never changes: what leads away is not shown, and the name gives its room to the roast
+  $("gear").classList.toggle("hidden", recording); $("gear").disabled = recording;
+  $("cavebtn").classList.toggle("hidden", recording); $("cavebtn").disabled = recording;
+  $("brand").classList.toggle("hidden", recording);
   // The chosen coffee; peach when the green weight asks more than its stock (never blocking)
   var cf = d.coffee, green = d.weights_g.green, ahead = d.state === "idle" && cf && cf.decrease && green != null;
   $("coffee").classList.toggle("hidden", !cf);
