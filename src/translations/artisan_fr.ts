@@ -32358,8 +32358,8 @@ Saisissez à nouveau vos mots de passe et clés API : assistant IA, MQTT.</trans
     </message>
     <message>
         <location filename="../tilauscope/graph/crackbar.py" line="52" />
-        <source>FIRST POPS</source>
-        <translation type="unfinished">1ER POPS</translation>
+        <source>FIRST CRACKS</source>
+        <translation>PREMIERS CRACS</translation>
     </message>
     <message>
         <location filename="../tilauscope/graph/crackbar.py" line="54" />
@@ -32383,8 +32383,8 @@ Saisissez à nouveau vos mots de passe et clés API : assistant IA, MQTT.</trans
     </message>
     <message>
         <location filename="../tilauscope/graph/crackbar.py" line="231" />
-        <source>{0} pops in the last {1} s</source>
-        <translation type="unfinished">{0} pops depuis {1} s</translation>
+        <source>{0} cracks in the last {1} s</source>
+        <translation>{0} cracs depuis {1} s</translation>
     </message>
     <message>
         <location filename="../tilauscope/graph/milestone_edit.py" line="425" />

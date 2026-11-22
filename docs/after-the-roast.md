@@ -205,7 +205,7 @@ drawn exactly as the roasting window draws it:
 the same frame, the same phase grounds, the same milestone labels parked in rows above the
 curve rather than sitting on it, and the same lever strips underneath. A roast reviewed is the
 same picture as the roast that was driven. When a crack probe counted during the
-roast, one tick per pop runs along the foot of the plot, exactly as in the roasting window — see
+roast, one tick per crack runs along the foot of the plot, exactly as in the roasting window — see
 [Listening to the crack](the-window.md#listening-to-the-crack). **Statistics**, beside it, holds
 the reading described under [Coach's Advice](#coachs-advice), and **Analysis** the one described
 under [Profile analysis](#profile-analysis). At the right of that row, on

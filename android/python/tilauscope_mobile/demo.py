@@ -33,7 +33,7 @@ from tilaucore.stock_from_roasts import recount_roasts
 from tilaucore.roast_colour import AGTRON_SCALES
 from tilaucore.roast_label import label_data, lines_30mm
 
-from . import alog, catalogue, coffee_share, config as configuration, machine, mqtt
+from . import alog, catalogue, coffee_share, config as configuration, cracks, machine, mqtt
 from .automation import AutoMarks
 from .follow import LEVER_OF, FollowedRoast, live as follow_live
 from .alarms import (ANCHOR_WORDS, ARTISAN_ACTIONS, Act, AlarmLists, TabletAlarms, from_unit, in_unit, rows_in_unit,
@@ -92,6 +92,8 @@ INITIAL_LEVERS = {"burner": 65, "air": 40, "drum": 70, "extractor": 20}
 COLOUR_LEVELS = [(s.name, s.agtron_range.min_value, s.agtron_range.max_value, s.color_map) for s in AGTRON_SCALES]
 
 CHOICE_FILE = "roast_choice.json" # the chosen coffee and its Roast Setup, kept across restarts
+FORECAST_ALPHA = 0.2 # weight of the newest reading in the drawn forecast, as the desktop's
+FORECAST_DEADBAND_S = 3.0 # the drawn forecast moves once the average has drifted this far
 ROOM_MAX_AGE_S = 3.0 # an older ambient reading is no reading (as on the desktop)
 MQTT_ROOM_MAX_AGE_S = 600.0 # an MQTT room sensor reports on change or every few minutes (MQTT-SPEC)
 MQTT_MAX_PAYLOAD = 4096
@@ -213,6 +215,8 @@ class Demo:
         self._bubble: dict | None = None
         self._cracks: tuple[float, int] | None = None # the crack counter's last count and when it came
         self._cracks_cancelled = False # the probe had a trouble during this roast's counting (ambient_lost)
+        self._forecast: dict | None = None # where the bean is due to reach the next milestone's target, drawn on the curve
+        self._forecast_ema: float | None = None
         # The drop door's contact on TilauAmbient (wiki/Drop-Door-Contact-Spec.md): armed for the app's life,
         # through dropped links; the last frame not yet applied, and when it was read on the roast clock.
         self._door = DropDoor()
@@ -408,6 +412,7 @@ class Demo:
         self._started_s = self.now
         self._crack_sent = {} if self._crack_listening() else None
         self._cracks_cancelled, self._cracks = False, None # a new roast counts afresh
+        self._forecast = self._forecast_ema = None
         self._start_auto()
         self._start_alarms()
         if self.pilot is not None:
@@ -866,6 +871,8 @@ class Demo:
             now = self.clock()
             for slot, first, second in self._replay_channels:
                 for channel, value in zip((first, second), self.replay.read_extra(slot, self.now)):
+                    if channel is None or (channel == "cracks" and self._cracks_cancelled):
+                        continue
                     if value != -1 and math.isfinite(value):
                         self._extras[channel] = (now, value)
             if self._replay_cracks is not None and not self._cracks_cancelled:
@@ -1005,6 +1012,7 @@ class Demo:
             self._guarded("crack", self._crack_step)
             if len(self.session.samples) > count:
                 self._guarded("turning point", self._tp_step)
+                self._guarded("forecast", self._forecast_step)
             if self.playback is not None and not self._follow_paused and len(self.session.samples) > count:
                 self._guarded("follow", self._follow_step)
             if self.auto is not None and len(self.session.samples) > count:
@@ -1643,13 +1651,39 @@ class Demo:
             if not following:
                 armed += [m for m, key in (("dry_end", "dry_end_detection"), ("first_crack", "crack_detection")) if config.get(key)]
         if armed:
-            # Without the plan's, the target is the trade's in this roaster's bean probe frame, as Artisan's Phases
-            offsets = machine.bt_offsets(self._machine()) if self._machine() else None
-            offsets = offsets if offsets and len(offsets) > 2 else None
-            dry_end = targets.get("dry_end") or (PROFESSION_DE_TRUE_C[0] + offsets[1] if offsets else None)
-            first_crack = targets.get("first_crack") or (PROFESSION_FC_TRUE_C[0] + offsets[2] if offsets else None)
+            found = self._milestone_targets()
             drop = machine.drop_detection(self._machine()) if self._machine() else (None, None)
-            self.auto = AutoMarks(armed, dry_end, first_crack, self._replay_marks if self.replay is not None else None, drop)
+            self.auto = AutoMarks(armed, found["dry_end"], found["first_crack"],
+                                  self._replay_marks if self.replay is not None else None, drop)
+
+    def _milestone_targets(self) -> dict[str, float | None]:
+        """The Dry end and First crack temperatures this roast looks for: the plan's when it follows the plan,
+        else the trade's in this roaster's bean probe frame, as Artisan's Phases. None: no target known."""
+        targets = self._plan_targets if self._plan_targets is not None and self.playback is None else {}
+        offsets = machine.bt_offsets(self._machine()) if self._machine() else None
+        offsets = offsets if offsets and len(offsets) > 2 else None
+        return {"dry_end": targets.get("dry_end") or (PROFESSION_DE_TRUE_C[0] + offsets[1] if offsets else None),
+                "first_crack": targets.get("first_crack") or (PROFESSION_FC_TRUE_C[0] + offsets[2] if offsets else None)}
+
+    def _forecast_step(self) -> None:
+        """When the bean is due to reach the next milestone's target at the RoR now, as the desktop's forecast
+        line: smoothed (the newest reading weighs 0.2) and held until it has moved 3 s, so it does not jitter."""
+        marks, samples = self.session.milestones, self.session.samples
+        key = None
+        if "charge" in marks and "first_crack" not in marks and "drop" not in marks:
+            key = "first_crack" if "dry_end" in marks else "dry_end"
+        target = self._milestone_targets()[key] if key else None
+        rate = self.session.ror(self.now) if target else None
+        raw = None
+        if rate is not None and rate > 0 and target > samples[-1].bt_c:
+            raw = samples[-1].elapsed_s + (target - samples[-1].bt_c) * 60.0 / rate
+        if raw is None or self._forecast is None or self._forecast["milestone"] != key:
+            self._forecast_ema = raw
+            self._forecast = None if raw is None else {"milestone": key, "at_s": round(raw, 1), "target_c": round(target, 1)}
+            return
+        self._forecast_ema = FORECAST_ALPHA * raw + (1.0 - FORECAST_ALPHA) * self._forecast_ema
+        if abs(self._forecast_ema - self._forecast["at_s"]) >= FORECAST_DEADBAND_S:
+            self._forecast = {**self._forecast, "at_s": round(self._forecast_ema, 1), "target_c": round(target, 1)}
 
     def _crack_probe(self) -> bool:
         """A crack counter to listen to: TilauAmbient switched on, or the replayed file's."""
@@ -1718,12 +1752,21 @@ class Demo:
             self._devices_out.append({"device": "ambient", "op": "command", "value": CRACK_CODES[step]})
 
     def _crack_view(self) -> dict | None:
-        """The calibration listening now, and the seconds it has left, for the roast screen's chip."""
+        """The roast screen's chip: the calibration listening now and the seconds it has left; then, to Drop,
+        what the counter hears (cracks.meter), or listening once counting has started and nothing came yet."""
+        if self.session.state != "recording":
+            return None
         for step, phase in (("cal2", "beans"), ("cal1", "empty")):
             when = (self._crack_sent or {}).get(step)
-            if when is not None and self.session.state == "recording" and self.now - when < CRACK_ACQUISITION_S:
+            if when is not None and self.now - when < CRACK_ACQUISITION_S:
                 return {"phase": phase, "left_s": int(CRACK_ACQUISITION_S - (self.now - when))}
-        return None
+        counting = self._crack_sent is None or "start" in self._crack_sent # the sequence on: from its Start only
+        if "drop" in self.session.milestones or self._cracks_cancelled or not counting:
+            return None
+        heard = cracks.meter(self.session.samples, self._elapsed("first_crack")) if self.session.samples else None
+        if heard is None and self._crack_sent is not None:
+            heard = {"phase": "listening", "count": 0, "bars": 0}
+        return heard
 
     def crack_count(self, count: int) -> None:
         """The crack counter's cumulative count, as TilauAmbient sends it."""
@@ -1732,6 +1775,8 @@ class Demo:
         if self._cracks_cancelled: # counted after a trouble: not trusted
             return
         self._cracks = (self.clock(), count)
+        if "start" in (self._crack_sent or {}): # counting this roast: recorded with the samples, the file's cracks channel
+            self._extras["cracks"] = (self._cracks[0], float(count))
 
     def ambient_lost(self) -> None:
         """The ambient probe went away, or a step of its sequence could not reach it (Tilau, 2026-11-21: on any
@@ -1740,6 +1785,7 @@ class Demo:
         if self._crack_sent is None:
             return
         self._crack_sent, self._cracks, self._cracks_cancelled = None, None, True
+        self._extras.pop("cracks", None)
         print("TilauScope: the ambient probe had a trouble, crack counting cancelled for this roast")
 
     def door_frame(self, data: str, seq: int, age_ms: int) -> None:
@@ -2166,6 +2212,9 @@ class Demo:
             "follow": self._follow, # what this roast follows, chosen at START
             "follow_paused": self.playback is not None and self._follow_paused,
             "crack_detection": self._crack_view(),
+            "crack_times": cracks.crack_times(session.samples), # the ticks along the foot of the curve
+            "forecast": self._forecast if session.state == "recording" else None,
+            "det_curve": bool((self.config or {}).get("det_curve")), # Settings › General: the ET's RoR drawn and read
             "tp": self._tp_view(),
             "simulation": {"title": self.replay_name, "position_s": min(self.now, self.replay.length_s),
                            "length_s": self.replay.length_s, "speed": self.speed} if self.replay is not None else None,
@@ -2185,8 +2234,8 @@ class Demo:
             "milestone_s": {key: self._elapsed(key) for key in session.milestones},
             "samples_from": since,
             "samples": [[s.elapsed_s, round(s.bt_c, 2), None if s.et_c is None else round(s.et_c, 2),
-                         None if r is None else round(r, 2)]
-                        for s, r in zip(session.samples[since:], session.ror_series[since:])],
+                         None if r is None else round(r, 2), None if e is None else round(e, 2)]
+                        for s, r, e in zip(session.samples[since:], session.ror_series[since:], session.et_ror_series[since:])],
         })
         return json.dumps(data, allow_nan=False)
 

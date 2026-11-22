@@ -1,4 +1,10 @@
 ## [4.4] 2026-11-14
+build 8
+* ⚡ [feat(android)] : on the Android prototype, the crack counter shows what it hears in the header chip (listening, first cracks, rolling, settling, with a meter and the count), each crack is a tick along the foot of the curve, and the count is kept in the roast file as the desktop's cracks channel
+* ⚡ [feat(android)] : on the Android prototype, a ΔET setting in Settings › General draws the ET's rate of rise on the RoR scale and shows it beside the ET
+* ⚡ [feat(android)] : on the Android prototype, a dashed line on the curve and a countdown show when the beans are due to reach Dry end, then First crack, by hand as with the plan; the next milestone shows its expected time
+* ⚡ [feat(android)] : on the Android prototype, the time in development and its share of the roast are the status line's readout during development
+* 🐛 [fix(graph)] : the crack bar says FIRST CRACKS instead of FIRST POPS, and its tooltip counts cracks
 build 7
 * 🐛 [fix(beancave)] : a roast folder holding no roast of any coffee in the library (a new empty folder, a cloud folder not downloaded yet) no longer brings every coffee's roast count and roasted weight back to 0
 * 🐛 [fix(remote)] : with a VPN on, the pairing QR still carries the computer's address on the home network instead of the VPN's

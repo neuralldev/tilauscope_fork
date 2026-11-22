@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "generated": "2026-11-21T18:35:30Z",
+  "generated": "2026-11-22T08:19:59Z",
   "app_version": "4.4",
-  "source_revision": "99847985f",
+  "source_revision": "14ff26b7a",
   "string_count": 3644,
   "sections": [
     {
@@ -178,7 +178,7 @@
       "done": 9,
       "draft": 99,
       "empty": 3536,
-      "bytes": 1925454
+      "bytes": 1925458
     },
     {
       "code": "bg",
@@ -189,7 +189,7 @@
       "done": 0,
       "draft": 0,
       "empty": 3644,
-      "bytes": 1747856
+      "bytes": 1747860
     },
     {
       "code": "zh_CN",
@@ -197,10 +197,10 @@
       "native": "简体中文",
       "rtl": false,
       "total": 3644,
-      "done": 3512,
+      "done": 3510,
       "draft": 131,
-      "empty": 1,
-      "bytes": 1984893
+      "empty": 3,
+      "bytes": 1984866
     },
     {
       "code": "zh_TW",
@@ -208,10 +208,10 @@
       "native": "繁體中文",
       "rtl": false,
       "total": 3644,
-      "done": 3512,
+      "done": 3510,
       "draft": 131,
-      "empty": 1,
-      "bytes": 1982987
+      "empty": 3,
+      "bytes": 1982956
     },
     {
       "code": "cs",
@@ -222,7 +222,7 @@
       "done": 9,
       "draft": 92,
       "empty": 3543,
-      "bytes": 1870618
+      "bytes": 1870622
     },
     {
       "code": "da",
@@ -233,7 +233,7 @@
       "done": 6,
       "draft": 94,
       "empty": 3544,
-      "bytes": 1859781
+      "bytes": 1859785
     },
     {
       "code": "nl",
@@ -244,7 +244,7 @@
       "done": 5,
       "draft": 92,
       "empty": 3547,
-      "bytes": 1874277
+      "bytes": 1874281
     },
     {
       "code": "fi",
@@ -255,7 +255,7 @@
       "done": 9,
       "draft": 99,
       "empty": 3536,
-      "bytes": 1866616
+      "bytes": 1866620
     },
     {
       "code": "fr",
@@ -263,10 +263,10 @@
       "native": "Français",
       "rtl": false,
       "total": 3644,
-      "done": 890,
-      "draft": 2754,
+      "done": 892,
+      "draft": 2752,
       "empty": 0,
-      "bytes": 2070562
+      "bytes": 2070537
     },
     {
       "code": "de",
@@ -274,10 +274,10 @@
       "native": "Deutsch",
       "rtl": false,
       "total": 3644,
-      "done": 3514,
+      "done": 3512,
       "draft": 129,
-      "empty": 1,
-      "bytes": 2048605
+      "empty": 3,
+      "bytes": 2048571
     },
     {
       "code": "el",
@@ -288,7 +288,7 @@
       "done": 9,
       "draft": 101,
       "empty": 3534,
-      "bytes": 1973488
+      "bytes": 1973492
     },
     {
       "code": "he",
@@ -299,7 +299,7 @@
       "done": 9,
       "draft": 101,
       "empty": 3534,
-      "bytes": 1908802
+      "bytes": 1908806
     },
     {
       "code": "hu",
@@ -310,7 +310,7 @@
       "done": 9,
       "draft": 99,
       "empty": 3536,
-      "bytes": 1884761
+      "bytes": 1884765
     },
     {
       "code": "id",
@@ -321,7 +321,7 @@
       "done": 9,
       "draft": 99,
       "empty": 3536,
-      "bytes": 1869491
+      "bytes": 1869495
     },
     {
       "code": "it",
@@ -329,10 +329,10 @@
       "native": "Italiano",
       "rtl": false,
       "total": 3644,
-      "done": 3512,
+      "done": 3510,
       "draft": 131,
-      "empty": 1,
-      "bytes": 2048584
+      "empty": 3,
+      "bytes": 2048559
     },
     {
       "code": "ja",
@@ -343,7 +343,7 @@
       "done": 9,
       "draft": 101,
       "empty": 3534,
-      "bytes": 1899473
+      "bytes": 1899477
     },
     {
       "code": "ko",
@@ -354,7 +354,7 @@
       "done": 9,
       "draft": 104,
       "empty": 3531,
-      "bytes": 1889276
+      "bytes": 1889280
     },
     {
       "code": "lv",
@@ -365,7 +365,7 @@
       "done": 9,
       "draft": 96,
       "empty": 3539,
-      "bytes": 1876463
+      "bytes": 1876467
     },
     {
       "code": "no",
@@ -376,7 +376,7 @@
       "done": 6,
       "draft": 95,
       "empty": 3543,
-      "bytes": 1866431
+      "bytes": 1866435
     },
     {
       "code": "fa",
@@ -387,7 +387,7 @@
       "done": 9,
       "draft": 102,
       "empty": 3533,
-      "bytes": 1937352
+      "bytes": 1937356
     },
     {
       "code": "pl",
@@ -398,7 +398,7 @@
       "done": 9,
       "draft": 98,
       "empty": 3537,
-      "bytes": 1867196
+      "bytes": 1867200
     },
     {
       "code": "pt",
@@ -409,7 +409,7 @@
       "done": 9,
       "draft": 98,
       "empty": 3537,
-      "bytes": 1884075
+      "bytes": 1884079
     },
     {
       "code": "pt_BR",
@@ -420,7 +420,7 @@
       "done": 9,
       "draft": 100,
       "empty": 3535,
-      "bytes": 1871199
+      "bytes": 1871203
     },
     {
       "code": "ru",
@@ -431,7 +431,7 @@
       "done": 9,
       "draft": 102,
       "empty": 3533,
-      "bytes": 1982469
+      "bytes": 1982473
     },
     {
       "code": "gd",
@@ -442,7 +442,7 @@
       "done": 9,
       "draft": 99,
       "empty": 3536,
-      "bytes": 1885420
+      "bytes": 1885424
     },
     {
       "code": "sk",
@@ -453,7 +453,7 @@
       "done": 8,
       "draft": 96,
       "empty": 3540,
-      "bytes": 1872069
+      "bytes": 1872073
     },
     {
       "code": "es",
@@ -461,10 +461,10 @@
       "native": "Español",
       "rtl": false,
       "total": 3644,
-      "done": 3514,
+      "done": 3512,
       "draft": 129,
-      "empty": 1,
-      "bytes": 2044301
+      "empty": 3,
+      "bytes": 2044270
     },
     {
       "code": "sv",
@@ -475,7 +475,7 @@
       "done": 9,
       "draft": 93,
       "empty": 3542,
-      "bytes": 1863618
+      "bytes": 1863622
     },
     {
       "code": "th",
@@ -486,7 +486,7 @@
       "done": 9,
       "draft": 103,
       "empty": 3532,
-      "bytes": 2026711
+      "bytes": 2026715
     },
     {
       "code": "tr",
@@ -497,7 +497,7 @@
       "done": 9,
       "draft": 101,
       "empty": 3534,
-      "bytes": 1870454
+      "bytes": 1870458
     },
     {
       "code": "uk",
@@ -508,7 +508,7 @@
       "done": 9,
       "draft": 102,
       "empty": 3533,
-      "bytes": 1958870
+      "bytes": 1958874
     },
     {
       "code": "vi",
@@ -519,7 +519,7 @@
       "done": 9,
       "draft": 99,
       "empty": 3536,
-      "bytes": 1885984
+      "bytes": 1885988
     }
   ]
 }

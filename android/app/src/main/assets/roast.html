@@ -58,6 +58,15 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 #phase{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:14px;font-size:14px;font-weight:600}
 #phase .dot{width:8px;height:8px;border-radius:4px}
 #clock{font-size:32px;font-weight:600;line-height:1}
+/* Development: the time in development is the readout (Tilau, 2026-11-22: on a light roast it is the one that counts) */
+#devcap{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 6px 0 12px;border-radius:20px;background:rgba(243,139,168,.14);border:1.5px solid var(--red);color:var(--red)}
+#devcap .k{font-size:13px;font-weight:700;letter-spacing:.3px}
+#devcap b{font-size:28px;font-weight:700;line-height:1;color:var(--text)}
+#devcap .pct{height:28px;padding:0 10px;border-radius:14px;background:var(--red);color:var(--bg);font-size:14px;font-weight:800;display:inline-flex;align-items:center}
+.stp .time.eta{color:var(--yellow);font-weight:700}
+.fchip{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:8px;height:30px;padding:0 12px 0 10px;border-radius:15px;
+ background:rgba(249,226,175,.14);border:1px solid rgba(249,226,175,.55);color:var(--yellow);font-size:12px;font-weight:700;letter-spacing:.4px}
+.fchip b{font-size:17px;letter-spacing:0;color:var(--text);font-weight:700}
 .panel{background:var(--surface);border-radius:16px}
 #readings{padding:12px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .reading{display:flex;flex-direction:column;gap:2px}
@@ -144,6 +153,21 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 #crackchip{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border-radius:15px;border:1px solid rgba(148,226,213,.6);
  background:rgba(148,226,213,.10);color:var(--teal);font-size:13px;font-weight:600;white-space:nowrap}
 #crackchip i{width:12px;height:12px;border-radius:7px;border:2px solid var(--teal);border-right-color:transparent;animation:spin 1s linear infinite}
+/* Counting: the phase word, a ten-bar meter of the cracks in the last 35 s and the count; its colour is the phase's */
+#crackchip.count{--c:var(--teal);gap:9px;padding:0 6px 0 12px;border-color:color-mix(in srgb,var(--c) 60%,transparent);background:color-mix(in srgb,var(--c) 10%,transparent);font-weight:600}
+#crackchip.count.listening{padding-right:12px}
+#crackchip.count i{display:none}
+#crackchip.count #cracktext{display:inline-flex;align-items:center;gap:9px}
+#crackchip .ear{width:10px;height:10px;border-radius:5px;border:2px solid var(--c);animation:listen 2.2s ease-in-out infinite}
+#crackchip .clab{color:var(--sub);font-weight:500}
+#crackchip .cw{color:var(--c);font-size:12px;letter-spacing:.5px;font-weight:700}
+#crackchip .cn{min-width:30px;height:22px;border-radius:11px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;background:var(--c);color:var(--bg);font-size:14px;font-weight:800}
+#crackchip .meter{display:inline-flex;gap:2px;align-items:flex-end;height:14px}
+#crackchip .meter b{width:3px;border-radius:1px;background:var(--line)}
+#crackchip .meter b.f{background:var(--c)}
+#crackchip.heard{animation:heard .7s ease-out}
+@keyframes listen{0%,100%{transform:scale(.8);opacity:.5}50%{transform:scale(1.15);opacity:1}}
+@keyframes heard{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 55%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
 @keyframes spin{to{transform:rotate(360deg)}}
 #alarmtoast{position:absolute;right:16px;bottom:16px;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;
  background:rgba(30,30,46,.95);border:1px solid rgba(249,226,175,.45);color:var(--yellow);font-size:14px;z-index:4}
@@ -273,12 +297,17 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
     <path id="planmarks" fill="none" stroke="#6C7086" stroke-opacity=".7" stroke-width="1" stroke-dasharray="2 6"/>
     <path id="planror" fill="none" stroke="#457ED9" stroke-opacity=".6" stroke-width="1.8" stroke-dasharray="7 6"/>
     <path id="planbt" fill="none" stroke="#89B4FA" stroke-opacity=".55" stroke-width="2.2" stroke-dasharray="7 6"/>
+    <path id="crackp" fill="none" stroke="#FAB387" stroke-opacity=".75" stroke-width="1.6"/>
+    <path id="detp" fill="none" stroke="#FAB387" stroke-opacity=".55" stroke-width="1.5" stroke-linejoin="round"/>
     <path id="rorp" fill="none" stroke="#457ED9" stroke-width="1.8" stroke-linejoin="round"/>
     <path id="etp" fill="none" stroke="#FAB387" stroke-width="1.8" stroke-linejoin="round" opacity=".85"/>
     <g id="lanesg"></g>
     <path id="btp" fill="none" stroke="#89B4FA" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
     <circle id="tpdot" r="0" fill="#A6ADC8" stroke="#1E1E2E" stroke-width="2"/>
     <path id="endp" fill="none" stroke="#F38BA8" stroke-width="2" stroke-dasharray="2 6"/>
+    <path id="fcp" fill="none" stroke="#F9E2AF" stroke-width="1.6" stroke-dasharray="6 5"/>
+    <path id="fcaim" fill="none" stroke="#F9E2AF" stroke-opacity=".35" stroke-width="1.4" stroke-dasharray="2 4"/>
+    <circle id="fcdot" r="0" fill="#1E1E2E" stroke="#F9E2AF" stroke-width="2.5"/>
    </svg>
    <div id="labels"></div>
    <span id="dot"></span>
@@ -336,6 +365,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
    <div class="status">
     <span id="phase"><span class="dot" id="phasedot"></span><span id="phasename">—</span></span>
     <span class="num" style="font-size:13px;color:var(--sub)" id="phasetime"></span>
+    <span id="devcap" class="hidden" aria-label="Time in development"><span class="k">DEV</span><b class="num" id="devtime"></b><span class="pct num" id="devpct"></span></span>
     <span style="flex:1"></span>
     <button id="autochip" class="hidden" aria-label="AUTO"></button>
     <span class="num" id="clock">0:00</span>
@@ -1144,16 +1174,25 @@ function render() {
   $("phase").style.background = ph[1] + "22";
   var starts = { 2: m.charge, 3: m.dry_end, 4: m.first_crack, 5: m.drop };
   $("phasetime").textContent = stage >= 2 && stage <= 5 ? fmt(now - starts[stage]) + " in phase" : "";
+  var developing = stage === 4 && !restored && charge != null;
+  $("phase").classList.toggle("hidden", developing);
+  $("phasetime").classList.toggle("hidden", developing);
+  $("devcap").classList.toggle("hidden", !developing);
+  if (developing) {
+    $("devtime").textContent = fmt(now - m.first_crack);
+    $("devpct").textContent = (now > charge ? Math.round((now - m.first_crack) * 100 / (now - charge)) : 0) + " %";
+  }
   $("clock").textContent = stage === 0 ? "0:00" : fmt(charge != null ? now - charge : now);
 
   // Readings
   $("bt").textContent = lost || d.bt_c == null ? "—" : shownT(d.bt_c).toFixed(1);
   $("bt").style.color = lost ? "#6C7086" : "var(--blue)";
   $("btnote").innerHTML = "";
+  var win = rorWindow(m);
   if (lost && d.bt_c != null) $("btnote").textContent = "Last " + Math.round(shownT(d.bt_c)) + " " + deg();
   else if (!lost && d.has_et !== false) // the machine's ET, "—" until it reads; none on a roaster without the probe
-    $("btnote").innerHTML = 'ET <span style="color:var(--peach);font-weight:600">' + (d.et_c != null ? shownT(d.et_c).toFixed(1) + " " + deg() : "—") + "</span>";
-  var ror = d.ror_c_per_min, win = rorWindow(m);
+    $("btnote").innerHTML = 'ET <span style="color:var(--peach);font-weight:600">' + (d.et_c != null ? shownT(d.et_c).toFixed(1) + " " + deg() : "—") + "</span>" + detNote(d, win);
+  var ror = d.ror_c_per_min;
   var showRor = win != null && stage >= 2 && stage <= 4 && ror != null;
   $("ror").textContent = showRor ? shownD(ror).toFixed(1) : "—";
   var change = showRor && !lost ? rorChange(win) : null;
@@ -1175,7 +1214,9 @@ function render() {
     el.children[0].style.background = done ? col : "";
     el.children[1].textContent = s[1];
     el.children[1].style.color = done || isNext ? "#CDD6F4" : "";
-    el.children[2].textContent = done && charge != null ? fmt(m[s[0]] - charge) : "";
+    var eta = !done && isNext && !lost && d.forecast && d.forecast.milestone === s[0] && charge != null ? d.forecast.at_s : null;
+    el.children[2].textContent = done && charge != null ? fmt(m[s[0]] - charge) : eta != null ? "~" + fmt(eta - charge) : "";
+    el.children[2].classList.toggle("eta", eta != null);
     $("steps").appendChild(el);
   });
 
@@ -1355,17 +1396,18 @@ function drawChart(d, m, stage, lost, restored, win) {
   for (var n = 0; n <= span / 60; n += 2)
     labels += '<span class="lbl" style="top:' + (H - 24) + 'px;width:50px;text-align:center;left:' + (X(n * 60) - 25) + 'px">' + n + ":00</span>";
 
-  var bt = "", et = "", ror = "", penB = "M", penE = "M", penR = "M", prev = null;
+  var bt = "", et = "", ror = "", det = "", penB = "M", penE = "M", penR = "M", penD = "M", prev = null, detOn = d.det_curve && d.has_et !== false;
   if (origin != null) {
     samples.forEach(function (s) {
       var t = s[0] - origin;
       if (t < 0) return;
-      if (prev != null && s[0] - prev > STALE_GAP_S) { penB = penE = penR = "M"; }
+      if (prev != null && s[0] - prev > STALE_GAP_S) { penB = penE = penR = penD = "M"; }
       prev = s[0];
       var x = X(t).toFixed(1);
       bt += penB + x + " " + Y(s[1]).toFixed(1) + " "; penB = "L";
       if (s[2] != null) { et += penE + x + " " + Y(s[2]).toFixed(1) + " "; penE = "L"; } else penE = "M";
       if (s[3] != null && win && s[0] >= win.from && s[0] <= win.to) { ror += penR + x + " " + RY(s[3]).toFixed(1) + " "; penR = "L"; } else penR = "M";
+      if (detOn && s[4] != null && win && s[0] >= win.from && s[0] <= win.to) { det += penD + x + " " + RY(s[4]).toFixed(1) + " "; penD = "L"; } else penD = "M";
     });
   }
   // What the roast follows, behind it from Charge: its BT and RoR dashed, its milestones dotted.
@@ -1401,6 +1443,24 @@ function drawChart(d, m, stage, lost, restored, win) {
   $("btp").setAttribute("d", bt);
   $("etp").setAttribute("d", et);
   $("rorp").setAttribute("d", ror);
+  $("detp").setAttribute("d", det);
+  // One tick per crack heard along the foot of the plot, as on the desktop: their density is the crack
+  var cracks = "";
+  if (origin != null) (d.crack_times || []).forEach(function (t) {
+    if (t >= origin && t - origin <= span) cracks += "M" + X(t - origin).toFixed(1) + " " + (T + ph - 13) + " v11 ";
+  });
+  $("crackp").setAttribute("d", cracks);
+  // Where the bean is due to reach the next milestone's target: dashed and dimmed, it has not happened yet
+  var f = d.forecast && charge != null && !lost && !restored ? d.forecast : null, fx = f ? f.at_s - charge : null;
+  var fOn = f && fx >= 0 && fx <= span && f.target_c >= LO && f.target_c <= 250 && d.last_sample_s != null;
+  $("fcp").setAttribute("d", fOn ? "M" + X(fx).toFixed(1) + " " + T + " V" + (T + ph) : "");
+  $("fcaim").setAttribute("d", fOn && d.bt_c != null ? "M" + X(end).toFixed(1) + " " + Y(d.bt_c).toFixed(1) + " L" + X(fx).toFixed(1) + " " + Y(f.target_c).toFixed(1) : "");
+  $("fcdot").setAttribute("r", fOn ? 6 : 0);
+  if (fOn) {
+    $("fcdot").setAttribute("cx", X(fx).toFixed(1)); $("fcdot").setAttribute("cy", Y(f.target_c).toFixed(1));
+    labels += '<span class="fchip num" style="left:' + Math.max(L, Math.min(X(fx) - 70, W - R - 175)) + "px;top:" + Math.max(T + 34, Y(f.target_c) - 46) + 'px">' +
+      (f.milestone === "dry_end" ? "DRY END" : "FIRST CRACK") + " <b>" + fmt(Math.max(0, f.at_s - d.last_sample_s)) + "</b></span>";
+  }
 
   // Close milestones (first crack to drop is about a minute) stack on a second row. The turning point, found
   // from the readings rather than marked, is dotted with a dot on the BT, as on the desktop.
@@ -1543,11 +1603,35 @@ function shownWords(text) {
   return String(text || "").replace(/(\d+(?:\.\d+)?)°/g, function (_m, v) { return Math.round(shownT(+v)) + "°"; });
 }
 
-// Shown only while the probe listens to calibrate (AUTOMATION-SPEC decision 11)
+// The probe calibrating (AUTOMATION-SPEC decision 11), then to Drop what it hears: the desktop crack bar's words
+var CRACK_PHASES = { listening: ["LISTENING", "var(--teal)"], first: ["FIRST CRACKS", "var(--yellow)"],
+  rolling: ["ROLLING", "var(--peach)"], settling: ["SETTLING", "var(--accent)"] };
+var crackCount = null;
 function renderCracks(d) {
-  var c = d.crack_detection;
-  $("crackchip").classList.toggle("hidden", !c);
-  if (c) $("cracktext").textContent = "Crack counter · " + (c.phase === "empty" ? "empty drum" : "beans") + " · " + c.left_s + " s";
+  var c = d.crack_detection, chip = $("crackchip"), counting = c && CRACK_PHASES[c.phase];
+  chip.classList.toggle("hidden", !c);
+  chip.classList.toggle("count", !!counting);
+  chip.classList.toggle("listening", !!counting && c.phase === "listening");
+  if (!c) { crackCount = null; return; }
+  if (!counting) { $("cracktext").textContent = "Crack counter · " + (c.phase === "empty" ? "empty drum" : "beans") + " · " + c.left_s + " s"; return; }
+  var ph = CRACK_PHASES[c.phase], bars = "";
+  chip.style.setProperty("--c", ph[1]);
+  if (c.phase === "listening") $("cracktext").innerHTML = '<span class="ear"></span><span class="clab">Cracks</span><span class="cw">' + ph[0] + "</span>";
+  else {
+    for (var i = 0; i < 10; i++) bars += '<b class="' + (i < c.bars ? "f" : "") + '" style="height:' + (5 + i) + 'px"></b>';
+    $("cracktext").innerHTML = '<span class="clab">Cracks</span><span class="meter">' + bars + '</span><span class="cw">' + ph[0] + '</span><span class="cn num">' + c.count + "</span>";
+  }
+  if (crackCount != null && c.count > crackCount) { // a crack heard: the chip pulses once
+    chip.classList.remove("heard"); void chip.offsetWidth; chip.classList.add("heard");
+  }
+  crackCount = c.count;
+}
+
+// The ET's RoR beside the ET, with its curve (Settings › General › ΔET curve)
+function detNote(d, win) {
+  var last = samples[samples.length - 1];
+  if (!d.det_curve || !win || !last || last[4] == null || last[0] < win.from || last[0] > win.to) return "";
+  return ' · ΔET <span style="color:var(--peach);font-weight:600">' + (last[4] >= 0 ? "+" : "−") + Math.abs(shownD(last[4])).toFixed(1) + "</span>";
 }
 
 /* ---------- alarms (ALARM-SPEC C2) ---------- */

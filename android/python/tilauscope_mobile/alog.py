@@ -39,9 +39,10 @@ EXTRA_DEVICES = (
     ("difluid", "inlet_c", "catalyst_c", "Inlet", "Catalyst", ("#148286ff", "#168083ff"), (False, False), (True, True)),
     ("tilau12", "room_c", "room_rh", "Temp", "Hum", ("#fffc79ff", "#fffb00ff"), (False, True), (True, True)),
     ("tilau34", "pressure_hpa", "altitude_m", "Press", "Alt", ("#fffb00ff", "#fffb00ff"), (True, True), (True, False)),
+    ("tilau56", "cracks", None, "cracks", "", ("#fffb00ff", "#000000"), (True, True), (True, False)), # the crack counter's count; no second channel
 )
 # Registry ids at the time of writing; the desktop resolves them through tilau_name_map.
-REGISTRY_ID = {"difluid": 190, "tilau12": 191, "tilau34": 192}
+REGISTRY_ID = {"difluid": 190, "tilau12": 191, "tilau34": 192, "tilau56": 193}
 MISSING = -1.0 # Artisan's "no reading"
 
 

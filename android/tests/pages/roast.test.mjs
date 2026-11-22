@@ -160,3 +160,72 @@ test("a page reloaded during a roast does not recompute the plan on the session'
   assert.equal(page.sent("get_plan").length, 0, "the plan is drawn from the snapshot while the roast records");
   assert.deepEqual(page.errors, []);
 });
+
+test("the ΔET of its setting, the forecast of the next milestone and the time in development (Tilau, 2026-11-22)", async (t) => {
+  const page = await roastScreen({ machine: "skywalker-v2", det_curve: true }); // the simulated roaster
+  t.after(page.close);
+  page.tap(page.$("act")); // Start
+  await page.settle();
+  await page.tick(3);
+  page.tap(page.$("act")); // Charge
+  await page.settle();
+  await page.tick(150);
+  assert.notEqual(page.$("detp").getAttribute("d"), "", "the ET's RoR is drawn");
+  assert.match(page.$("btnote").textContent, /ΔET [+−]\d/);
+  const f = page.window.snap.forecast;
+  assert.equal(f && f.milestone, "dry_end");
+  assert.notEqual(page.$("fcp").getAttribute("d"), "", "the forecast line is drawn");
+  assert.match(page.$("labels").textContent, /DRY END \d+:\d\d/);
+  assert.match(page.$("steps").querySelector(".time.eta").textContent, /^~\d+:\d\d$/, "the next milestone shows when it is due");
+  assert.ok(page.$("devcap").classList.contains("hidden"));
+  await page.session("mark", "dry_end");
+  await page.session("mark", "first_crack");
+  await page.tick(30);
+  assert.equal(page.window.snap.forecast, null, "nothing left to forecast after First crack");
+  assert.equal(page.$("fcp").getAttribute("d"), "");
+  assert.ok(!page.$("devcap").classList.contains("hidden"), "the time in development is the readout");
+  assert.ok(page.$("phase").classList.contains("hidden"));
+  assert.match(page.$("devtime").textContent, /^0:(29|30|31)$/);
+  assert.match(page.$("devpct").textContent, /^\d+ %$/);
+  assert.deepEqual(page.errors, []);
+});
+
+test("without its setting the ΔET is neither drawn nor read", async (t) => {
+  const page = await roastScreen({ machine: "skywalker-v2" });
+  t.after(page.close);
+  page.tap(page.$("act"));
+  await page.settle();
+  await page.tick(3);
+  page.tap(page.$("act"));
+  await page.settle();
+  await page.tick(120);
+  assert.equal(page.$("detp").getAttribute("d"), "");
+  assert.doesNotMatch(page.$("btnote").textContent, /ΔET/);
+  assert.deepEqual(page.errors, []);
+});
+
+test("the crack counter's chip names what it hears and each crack is a tick on the curve", async (t) => {
+  const ambient = { ambient: { name: "TilauAmbient", address: "11:22:33:44:55:66", enabled: true } };
+  const page = await roastScreen({ machine: "skywalker-v2", crack_detection: true, devices: ambient });
+  t.after(page.close);
+  page.tap(page.$("act")); // Start
+  await page.settle();
+  await page.tick(25); // CAL1 at Start + 20 s, listening to the empty drum
+  assert.match(page.$("cracktext").textContent, /empty drum/);
+  page.tap(page.$("act")); // Charge
+  await page.settle();
+  await page.tick(5);
+  await page.session("mark", "dry_end");
+  await page.tick(132); // CAL2 at Dry end + 90 s, the probe's Start 40 s later
+  assert.match(page.$("cracktext").textContent, /LISTENING/);
+  await page.session("crack_count", 0);
+  await page.tick(1);
+  await page.session("crack_count", 3);
+  await page.tick(1);
+  const chip = page.$("crackchip");
+  assert.ok(chip.classList.contains("count"));
+  assert.match(page.$("cracktext").textContent, /FIRST CRACKS/);
+  assert.equal(chip.querySelector(".cn").textContent, "3");
+  assert.equal(page.$("crackp").getAttribute("d").match(/M/g).length, 3, "one tick per crack");
+  assert.deepEqual(page.errors, []);
+});

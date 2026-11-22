@@ -248,6 +248,7 @@ function renderGeneral() {
     '<div class="row"><span class="k"><b>Your name</b><small>Shown on roast records</small></span><input class="field" id="operator" maxlength="40" value="' + esc(draft.operator) + '"></div>' +
     '<div class="row"><span class="k"><b>Temperature unit</b><small>Readings, curves, targets and alarms. Roast files stay in °C</small></span><div class="seg" id="unit">' +
     '<button data-u="C"' + (draft.unit !== "F" ? ' class="on"' : "") + '>°C</button><button data-u="F"' + (draft.unit === "F" ? ' class="on"' : "") + ">°F</button></div></div>" +
+    detectRow("det_curve", "ΔET curve", "How fast the drum air heats, on the RoR scale") +
     detectRow("charge_detection", "Charge detection", "Marks Charge from the bean probe, by hand or following a roast") +
     detectRow("dry_end_detection", "Dry end detection", "Marks Dry end from the bean probe when you roast without a plan") +
     detectRow("crack_detection", "Crack detection", "TilauAmbient listens to the cracks: CAL1, CAL2, then counting to Drop") + logRow() + "</div>";

@@ -35,7 +35,7 @@ class Sample:
 
 
 # Accessory channels recorded with each sample, as the desktop's extra devices do.
-EXTRA_CHANNELS = ("inlet_c", "catalyst_c", "room_c", "room_rh", "pressure_hpa", "altitude_m")
+EXTRA_CHANNELS = ("inlet_c", "catalyst_c", "room_c", "room_rh", "pressure_hpa", "altitude_m", "cracks")
 
 
 MAX_WEIGHT_G = 5000

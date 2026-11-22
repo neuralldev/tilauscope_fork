@@ -32855,8 +32855,8 @@ Inserisci di nuovo password e chiavi API: assistente AI, MQTT.</translation>
     </message>
     <message>
         <location filename="../tilauscope/graph/crackbar.py" line="52" />
-        <source>FIRST POPS</source>
-        <translation>Primi scoppi</translation>
+        <source>FIRST CRACKS</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/graph/crackbar.py" line="54" />
@@ -32880,8 +32880,8 @@ Inserisci di nuovo password e chiavi API: assistente AI, MQTT.</translation>
     </message>
     <message>
         <location filename="../tilauscope/graph/crackbar.py" line="231" />
-        <source>{0} pops in the last {1} s</source>
-        <translation>{0} scoppi negli ultimi {1} s</translation>
+        <source>{0} cracks in the last {1} s</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/graph/milestone_edit.py" line="425" />

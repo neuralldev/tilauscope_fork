@@ -38,6 +38,7 @@ def default() -> dict:
             "charge_detection": True, # without a plan, Charge found from the bean probe, as the desktop's Auto CHARGE
             "dry_end_detection": False, # by hand: Dry end found from the bean probe
             "crack_detection": False, # TilauAmbient calibrates, then counts the cracks, every roast (decision 11)
+            "det_curve": False, # the ET's RoR on the curve and beside the ET (Tilau, 2026-11-22)
             "mqtt": None} # the broker and its sensors (MQTT-SPEC), None for none
 
 
@@ -108,6 +109,7 @@ def validate(data: dict) -> dict:
     clean["charge_detection"] = bool(data.get("charge_detection", True))
     clean["dry_end_detection"] = bool(data.get("dry_end_detection", False))
     clean["crack_detection"] = bool(data.get("crack_detection", False))
+    clean["det_curve"] = bool(data.get("det_curve", False))
     clean["mqtt"] = None if data.get("mqtt") is None else mqtt.validate(data["mqtt"])
     return clean
 

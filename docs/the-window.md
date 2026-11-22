@@ -294,7 +294,7 @@ the target line, with the arrival mark in frame. -->
 ### Listening to the crack
 
 If your probe counts cracks, TilauScope tells you what it is hearing — as a state, not as a tally.
-A number of pops is trivia while a batch is running; what you need to know is whether
+A number of cracks is trivia while a batch is running; what you need to know is whether
 [first crack](glossary.md#fc--first-crack) has started, whether it is rolling, and whether it is
 over.
 
@@ -307,15 +307,15 @@ The bar names one of four states:
 | It says | It means |
 |---|---|
 | **QUIET** | The probe is listening and hearing nothing yet. |
-| **FIRST POPS** | Isolated cracks. The crack is beginning. |
+| **FIRST CRACKS** | Isolated cracks. The crack is beginning. |
 | **ROLLING** | Cracks are coming steadily. [Development](glossary.md#development) has started. |
-| **SETTLING** | The pops have thinned out and stayed thin. The crack is done. |
+| **SETTLING** | The cracks have thinned out and stayed thin. The crack is done. |
 
 **What to do about it is said where advice is always said** — on the assistant's instruction line,
 not on the bar. The bar reports; the assistant tells you the gesture. Nothing on screen speaks
 twice.
 
-At the Guided level the bar shows the state alone. At Expert it adds a meter, the number of pops
+At the Guided level the bar shows the state alone. At Expert it adds a meter, the number of cracks
 heard over the last half-minute or so, and the running total the probe has counted since it
 started listening.
 
@@ -323,7 +323,7 @@ started listening.
 it was marked — by you or by [automatic detection](configuration.md). The bar is a reading, and
 it is never what decides that first crack happened.
 
-**Along the foot of the plot, one tick per pop.** The ticks pile up where the cracks were dense and
+**Along the foot of the plot, one tick per crack.** The ticks pile up where the cracks were dense and
 thin out where they were not, so the shape of the crack stays on the curve after it is over. Beside
 it, a faint dotted rule marks where the [roast plan](the-roast-plan.md) expected first crack — the
 distance between that rule and the crack you actually heard is what tells you the batch ran early
