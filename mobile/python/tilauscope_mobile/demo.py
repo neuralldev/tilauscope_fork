@@ -162,6 +162,9 @@ def _memory(memory) -> dict | None:
 AIRWAVE_SPEED = (30, 100) # AirWaveLink.SPEED_MIN, SPEED_MAX
 
 
+PUBLISH_PACKAGES_KEPT = 4 # packages made and not yet sent (library_publish)
+
+
 class Demo:
     def __init__(self, journal_path: str | None = None, config_path: str | None = None,
                  cave_directory: str | None = None) -> None:
@@ -179,7 +182,9 @@ class Demo:
         apply_colour_gap((self.config or {}).get("machine"))
         self.cave = Cave(cave_directory) if cave_directory else None
         self.roasts = Roasts(str(Path(cave_directory).parent)) if cave_directory else None
-        self.library = coffee_share.Browser() # the community library: its calls run on their own thread, never the worker's
+        # The community library: its calls run on their own thread, never the worker's; this tablet's key beside the config
+        self.library = coffee_share.Browser(author=coffee_share.Author(Path(config_path).with_name("library.json") if config_path else None))
+        self._publish_packages: dict[str, tuple[bytes, str]] = {} # made by library_publish, by token, until library_send takes it
         self.coffee: dict | None = None # the chosen coffee, kept from roast to roast
         self.setup: dict | None = None # its Roast Setup, kept from roast to roast
         self.choice_path = str(Path(config_path).with_name(CHOICE_FILE)) if config_path else None
@@ -684,8 +689,45 @@ class Demo:
         """One page of the library ({text, mine, cursor, seq}), searched by the relay. Slow: the app calls it on its own
         thread; it touches only `library`. `seq` comes back as it came, so the page can drop a reply it no longer waits for."""
         request = json.loads(data)
-        reply = self.library.page(str(request.get("text") or ""), bool(request.get("mine")), self._machine_name(), str(request.get("cursor") or ""))
+        reply = self.library.page(str(request.get("text") or ""), bool(request.get("mine")), self._machine_name(), str(request.get("cursor") or ""),
+                                  own=bool(request.get("own")))
         return json.dumps({**reply, "seq": request.get("seq")})
+
+    def library_publish_check(self, data: str) -> str:
+        """What the publish sheet shows of a roast ({origin, name}): {name, day, batch_g, machine, tasting, brewing},
+        or {refused: reason} (coffee_share.publishable). Nothing leaves the tablet."""
+        request = json.loads(data)
+        found = coffee_share.publishable(str(request.get("origin") or ""), str(request.get("name") or ""), self.cave, self.roasts)
+        if isinstance(found, str):
+            return json.dumps({"refused": found, **request})
+        bean, _roast, tasting, card = found
+        return json.dumps({**request, "coffee": bean.name, "day": card.roasted, "batch_g": card.batch_g, "machine": card.roaster,
+                           "tasting": tasting is not None, "brewing": bool(bean.dial_ins)})
+
+    def library_publish(self, data: str, directory: str) -> str:
+        """Makes the package that publishes a roast of this tablet ({origin, name}) with its coffee, on the worker: it
+        reads the BeanCave and the roasts. {ready: name, token}, then the page asks library_send with the token; else
+        {refused} or {error}. `directory`: the app's cache, where the package is written only while it is made."""
+        request = json.loads(data)
+        sensitive = [str((self.config or {}).get(k) or "") for k in ("operator", "organization")] # package adds the roast's
+        made = coffee_share.package(str(request.get("origin") or ""), str(request.get("name") or ""), self.cave,
+                                    self.roasts, sensitive, directory)
+        if "bytes" not in made:
+            return json.dumps(made)
+        token = uuid.uuid4().hex # two publishes in flight never take each other's package
+        self._publish_packages[token] = (made["bytes"], made["name"]) # bytes only: the network's thread reads nothing of the session
+        while len(self._publish_packages) > PUBLISH_PACKAGES_KEPT: # a page gone before its send: the oldest goes
+            self._publish_packages.pop(next(iter(self._publish_packages)))
+        return json.dumps({"ready": made["name"], "token": token})
+
+    def library_send(self, token: str) -> str:
+        """Sends the package library_publish made under `token`. Slow, as library_page."""
+        made = self._publish_packages.pop(token, None)
+        return json.dumps(self.library.send(*made) if made else {"error": "local"})
+
+    def library_withdraw(self, coffee_id: str) -> str:
+        """Takes a coffee this tablet published out of the library. Slow, as library_page."""
+        return json.dumps(self.library.withdraw(coffee_id))
 
     def library_get(self, coffee_id: str, directory: str) -> str:
         """Downloads one coffee's package into the app's cache. Slow, as library_page."""

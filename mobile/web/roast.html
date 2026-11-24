@@ -128,7 +128,8 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 .big .t{font-size:26px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.big .s{font-size:14px;color:var(--sub)}
 #newroast{width:96px;flex:none;border-radius:24px;border:1px solid var(--line);
  font-size:16px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
-#save{padding:0 14px}#save .glyph{width:48px;height:48px}
+#save{padding:0 14px}#save .glyph{width:48px;height:48px;flex:none}
+#save .t{white-space:pre-line;line-height:1.1}#save.ask .t{font-size:22px} /* "Save, then / new roast": two lines beside New roast */
 #save.ask{background:rgba(166,227,161,.2)!important;animation:glow 1.8s ease-out infinite}
 @keyframes glow{0%{box-shadow:0 0 0 0 rgba(166,227,161,.45)}70%{box-shadow:0 0 0 10px rgba(166,227,161,0)}100%{box-shadow:0 0 0 0 rgba(166,227,161,0)}}
 #newroast{position:relative;touch-action:none}#newroast.hold{border-color:var(--peach);color:var(--peach)}
@@ -326,7 +327,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
      <div style="font-size:22px;font-weight:600" id="lostt">No signal from the sensor</div>
      <div style="font-size:15px;color:var(--sub);line-height:1.45" id="lostb">Check that it is on and close to the tablet.<br>Recording resumes by itself when the signal returns.</div>
      <div class="num" style="margin-top:4px;font-size:13px;color:var(--muted)" id="lastread"></div>
-     <button id="btsettings" class="hidden"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Android settings</button>
+     <button id="btsettings" class="hidden"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Settings</button>
     </div>
    </div>
    <div class="scrim" id="skipped" style="z-index:6">
@@ -412,7 +413,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
     <div class="actions hidden" id="closing">
      <button id="newroast"><svg id="newring" class="hidden" viewBox="0 0 104 104" preserveAspectRatio="none" aria-hidden="true"><rect x="2" y="2" width="100" height="100" rx="26" fill="none" stroke="#FAB387" stroke-width="3" pathLength="100" stroke-dasharray="0 100" id="newringpath"/></svg><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="#CDD6F4" stroke-width="2.6" stroke-linecap="round" id="newplus"/></svg><span id="newlabel">New roast</span></button>
      <button class="big" id="save" style="border-color:var(--green);color:var(--green)"><span class="glyph" style="background:var(--green)"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path id="saveglyph" fill="none" stroke="#1E1E2E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span style="display:flex;flex-direction:column;gap:3px"><span class="t" id="savelabel"></span><span class="s" id="savesub"></span></span></button>
+      <span style="display:flex;flex-direction:column;gap:3px;min-width:0"><span class="t" id="savelabel"></span><span class="s" id="savesub"></span></span></button>
     </div>
    </div>
 
@@ -456,7 +457,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 var PHASES = [["Ready", "#6C7086"], ["Preheat", "#F9E2AF"], ["Drying", "#89DCEB"], ["Maillard", "#F9E2AF"],
   ["Development", "#F38BA8"], ["Cooling", "#A6E3A1"], ["Done", "#A6E3A1"]];
 var CHECK = "M6 13.5l4.5 4.5L20 8", DOWN = "M13 5v14M7 13l6 6 6-6";
-var btDenied = false; // Android refused Bluetooth: nothing can connect until it is allowed
+var btDenied = false; // the system refused Bluetooth: nothing can connect until it is allowed
 var roaster = null, endRoast = [], LONG_PRESS_MS = 1500; // the roaster declared in Settings, if any
 var ACTIONS = [
   { label: "Start recording", sub: "Then mark Charge when beans go in", color: "#89B4FA", glyph: "M9 6.5v13l11-6.5z", run: function () {
@@ -1270,7 +1271,7 @@ function render() {
   var asking = stage === 6 && askedSave && needsSave(d);
   if (!asking) askedSave = false;
   $("save").classList.toggle("ask", asking);
-  $("savelabel").textContent = saved ? "Saved" : asking ? "Save, then new roast" : "Save roast";
+  $("savelabel").textContent = saved ? "Saved" : asking ? "Save, then\nnew roast" : "Save roast";
   $("savesub").textContent = saved ? "Touch to share it again" : asking ? "One touch: saved, then the next roast" : "Opens in TilauScope";
   renderHint();
   $("saveglyph").setAttribute("d", saved ? CHECK : "M13 5v12M7 11l6 6 6-6M6 21h14");
@@ -1284,7 +1285,7 @@ function render() {
   $("btsettings").classList.toggle("hidden", !denied);
   if (denied) {
     $("lostt").textContent = "Bluetooth is not allowed";
-    $("lostb").innerHTML = "The tablet cannot reach the roaster or the accessories.<br>Allow Nearby devices for TilauScope; they connect as soon as you come back.";
+    $("lostb").innerHTML = "The tablet cannot reach the roaster or the accessories.<br>Allow Bluetooth for TilauScope in Settings; they connect as soon as you come back.";
     $("lastread").textContent = "";
   }
   if (lost) $("lastread").textContent = "Last reading " + (d.bt_c != null ? Math.round(shownT(d.bt_c)) + " " + deg() + " · " : "") + Math.round(now - lastT) + " s ago";
@@ -1375,8 +1376,9 @@ function drawChart(d, m, stage, lost, restored, win) {
   var LANE_H = 28, LANE_GAP = 4, zone = laneKeys.length ? laneKeys.length * (LANE_H + LANE_GAP) - LANE_GAP + 18 : 0;
   var L = 44, R = 40, T = 36, B = 32, pw = W - L - R, ph = H - T - B - zone, bottom = H - B;
   var charge = m.charge;
-  // The preheat draws its climb from the start; from Charge on, the roast from Charge (and its plan).
-  var preheatMode = charge == null && d.preheat && d.state === "recording";
+  // Until Charge the climb is drawn from the start, preheat by hand or TilauPID (its target then dashed across);
+  // from Charge on, the roast from Charge (and its plan).
+  var preheatMode = charge == null && d.state === "recording";
   var behind = followed(d), origin = charge != null ? charge : preheatMode ? 0 : null, planOn = behind && !preheatMode;
   var end = d.last_sample_s != null && origin != null ? d.last_sample_s - origin : 0;
   var planEnd = planOn && behind.marks.drop != null ? behind.marks.drop * 60 : 0;
@@ -1802,7 +1804,7 @@ window.onLink = function (s) {
 $("btsettings").onclick = function () { send("app_settings"); };
 // Granted at a later prompt: the links connect on their own, the warning goes.
 window.onBluetoothGranted = function () { btDenied = false; if (snap) render(); };
-// Allowed in Android's settings: the roast link again when a roast records, then the page connects its devices.
+// Allowed in the system's settings: the roast link again when a roast records, then the page connects its devices.
 window.onBluetoothAllowed = function () {
   if (snap && snap.state === "recording" && roaster) send("roast_link_connect", JSON.stringify({ address: roaster.address, end: endRoast }));
   location.reload();

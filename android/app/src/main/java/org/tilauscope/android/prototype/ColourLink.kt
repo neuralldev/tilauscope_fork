@@ -38,6 +38,7 @@ class ColourLink(private val context: Context, private val onState: (JSONObject)
     private var gatt: BluetoothGatt? = null
     private var address: String? = null
     private var wanted = false
+    private val retry = RetryDelay()
     private var state = "idle"
     private var reading: Double? = null
     private var readingId = 0 // tells the page a new measurement from a repeated value
@@ -95,6 +96,7 @@ class ColourLink(private val context: Context, private val onState: (JSONObject)
                 if (status != BluetoothGatt.GATT_SUCCESS) drop() else {
                     answerAt = SystemClock.elapsedRealtime()
                     set("connected")
+                    retry.reset()
                     handler.postDelayed(keepAlive, KEEPALIVE_MS)
                 }
             }
@@ -124,8 +126,9 @@ class ColourLink(private val context: Context, private val onState: (JSONObject)
 
     /** Any thread. Keeps looking for the meter until [disconnect]. */
     fun connect(address: String): Boolean = handler.post {
-        if (wanted && address == this.address) {
-            publish()
+        if (wanted && address == this.address) { // asked again (a page, the icon): searched now, at the first pace
+            retry.reset()
+            if (gatt != null) publish() else { handler.removeCallbacksAndMessages(RECONNECT); open() }
             return@post
         }
         close()
@@ -185,7 +188,7 @@ class ColourLink(private val context: Context, private val onState: (JSONObject)
 
     private fun retryLater() {
         if (wanted) handler.postAtTime({ if (wanted && gatt == null) open() }, RECONNECT,
-            SystemClock.uptimeMillis() + RECONNECT_MS)
+            SystemClock.uptimeMillis() + retry.next())
     }
 
     private fun set(value: String) {
@@ -205,7 +208,6 @@ class ColourLink(private val context: Context, private val onState: (JSONObject)
         const val KEEPALIVE_MS = 5000L
         const val LOST_MS = 8000L
         const val CONNECT_TIMEOUT_MS = 15_000L
-        const val RECONNECT_MS = 2000L
         val RECONNECT = Any()
     }
 }

@@ -107,6 +107,7 @@ abstract class StreamingScaleLink(private val context: Context, private val onSt
 
     private var address: String? = null
     private var wanted = false
+    private val retry = RetryDelay()
     private var state = "idle"
     private val weight = SettledWeight()
     private var battery: Int? = null
@@ -173,6 +174,7 @@ abstract class StreamingScaleLink(private val context: Context, private val onSt
                     return@post
                 }
                 state = "connected"
+                retry.reset()
                 lastRx = SystemClock.elapsedRealtime()
                 heartbeatAt = 0L
                 publish()
@@ -202,8 +204,9 @@ abstract class StreamingScaleLink(private val context: Context, private val onSt
 
     /** Any thread. Keeps looking for the scale until [disconnect]. */
     override fun connect(address: String): Boolean = handler.post {
-        if (wanted && address == this.address) {
-            publish()
+        if (wanted && address == this.address) { // asked again (a page, the icon): searched now, at the first pace
+            retry.reset()
+            if (gatt != null) publish() else { handler.removeCallbacksAndMessages(RECONNECT); open() }
             return@post
         }
         close()
@@ -303,7 +306,7 @@ abstract class StreamingScaleLink(private val context: Context, private val onSt
 
     private fun retryLater() {
         if (wanted) handler.postAtTime({ if (wanted && gatt == null) open() }, RECONNECT,
-            SystemClock.uptimeMillis() + RECONNECT_MS)
+            SystemClock.uptimeMillis() + retry.next())
     }
 
     private fun set(value: String) {
@@ -329,7 +332,6 @@ abstract class StreamingScaleLink(private val context: Context, private val onSt
         const val WRITE_STALL_MS = 1000L
         const val RETRY_MS = 20L
         const val CONNECT_TIMEOUT_MS = 15_000L
-        const val RECONNECT_MS = 2000L
         val RECONNECT = Any()
     }
 }

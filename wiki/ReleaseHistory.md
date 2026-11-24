@@ -1,4 +1,21 @@
 ## [4.4] 2026-11-14
+build 11
+* ⚡ [feat(android)] : on the Android prototype and the iPad app, an alarm's extractor command is chosen by touch: power on or off, catalyst off, normal or strong, and the fan's speed; the list reads it in words ("Extractor on · catalyst normal · fan 60 %")
+* 🐛 [fix(android)] : on the Android prototype and the iPad app, an alarm condition on a device only the computer reads shows the computer's name for it (Burner, Air, T3…) instead of "skywalker_pf 1"
+* ⚡ [feat(android)] : on the Android prototype and the iPad app, a roast recorded on the tablet is published to the community library from its sheet in BeanCave › Roasts (the same sheet and agreement as on the computer), and withdrawn from the tablet under Mine
+* 🐛 [fix(android)] : on the Android prototype and the iPad app, two tablets connected to the same MQTT broker no longer make it drop one another every 2 s
+* 🐛 [fix(ipad)] : on the iPad app, TilauScope's signature sound plays once at launch instead of at each page change
+* 🐛 [fix(ipad)] : on the iPad app, a smaller window keeps at least 1000 × 700 points, and a page in a smaller one still scrolls instead of cutting off Start or overlapping its text
+* 🐛 [fix(android)] : on the Android prototype and the iPad app, a coffee's stock holds on one line in BeanCave
+* 🐛 [fix(android)] : on the Android prototype and the iPad app, a scale, colour meter or water activity meter that is switched off is looked for less and less often (every 17 s, then up to every 2 min, at once again when a page asks for it), and its searches no longer fill the app's log
+build 10
+* ⚡ [feat(ipad)] : TilauScope for iPad, a first build for testing on iPadOS 26 (not distributed yet): the same roast, plan, AUTO, BeanCave and device screens as the Android prototype, with the roaster link, AirWave, TilauAmbient, the Acaia, Decent and Bookoo scales, the colour and water activity meters, the label printer and MQTT; a .tilaucoffee opened from Files or Mail comes into BeanCave
+* ⚡ [feat(release)] : the Release Manager has an iPad tab, as the Android one: tests, build, TestFlight upload and install on a plugged-in iPad, with its own version and build
+* ⚡ [feat(android)] : on the Android prototype and the iPad app, Settings › General › About TilauScope shows the version, the app's licence and a link to its source, and the licence of each part the app is built with
+* 🐛 [fix(android)] : on the Android prototype, the screens name the system settings "Settings" and the Bluetooth permission without Android terms, as the pages are now shared with the iPad app
+* 🐛 [fix(android)] : on the Android prototype, the roast screen draws the bean and environment curves from the start of the preheat in every mode, by hand as with TilauPID, so the climb is visible before Charge
+* 🐛 [fix(android)] : on the Android prototype, the device checks in Settings show their figures plainly (the water activity reading, its timer and the printer's roll type no longer sit in outlined pills or overflow their card)
+* 🐛 [fix(android)] : on the Android prototype, the "Save, then new roast" button holds its title and its line within the button
 build 9
 build 8
 * ⚡ [feat(android)] : on the Android prototype, the crack counter shows what it hears in the header chip (listening, first cracks, rolling, settling, with a meter and the count), each crack is a tick along the foot of the curve, and the count is kept in the roast file as the desktop's cracks channel

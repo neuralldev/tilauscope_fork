@@ -208,6 +208,9 @@ class Tc4Link(private val context: Context, private val onState: (JSONObject) ->
             return@post
         }
         if (gatt != null) {
+            // Another connection replaces this one: the roast link's own retry must not bring it back.
+            this.roast = false
+            handler.removeCallbacksAndMessages(RECONNECT)
             close("idle")
             handler.postDelayed({ connect(address, roast, endScript) }, CLOSE_WAIT_MS + RETRY_MS)
             return@post

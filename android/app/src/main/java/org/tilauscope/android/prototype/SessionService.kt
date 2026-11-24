@@ -464,7 +464,8 @@ class SessionService : Service() {
     "get_roasts", "get_roast", "import_roasts", "roasts_preview", "roast_label", "get_alarms", "set_alarm_list", "import_alarms",
     "get_alarm_list", "edit_alarm", "add_alarm", "delete_alarm", "undo_alarm", "move_alarm", "new_alarm_list", "delete_alarm_list",
     "simulate", "set_auto_mark", "set_follow", "mqtt_check", "get_energy", "get_roast_energy", "delete_roast",
-    "coffee_preview", "coffee_import", "coffee_theirs", "library_page", "library_get", "library_card")
+    "coffee_preview", "coffee_import", "coffee_theirs", "library_page", "library_get", "library_card",
+    "library_publish_check", "library_publish", "library_send", "library_withdraw")
         private val TEXT_REPLY_METHODS = setOf("export_alog", "alarm_list_file", "coffee_send")
         private val UNLOGGED_METHODS = setOf("tick", "classify_scan") // once a second, or each scan batch
         private val QUIET_METHODS = setOf("ambient_reading", "crack_count", "door_frame", "extra_readings", "link_reading", "mqtt_message")

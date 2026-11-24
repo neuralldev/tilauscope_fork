@@ -34,3 +34,20 @@ internal fun BluetoothGatt.writeOrRefuse(d: BluetoothGattDescriptor, value: Byte
     AppLog.w("TilauScopeGatt", "Write refused: the Bluetooth stack is gone", error)
     false
 }
+
+/**
+ * The wait before searching again for an accessory that does not answer (switched off): 2 s, then longer,
+ * so that with the 15 s attempt a search comes every 17 s, 30 s, 1 min, then 2 min. Back to 2 s once it
+ * answers, or when a page or its icon asks for it again (Tilau, 2026-11-24).
+ */
+class RetryDelay {
+    private var failures = 0
+
+    fun next(): Long = STEPS_MS[minOf(failures++, STEPS_MS.size - 1)]
+
+    fun reset() { failures = 0 }
+
+    private companion object {
+        val STEPS_MS = longArrayOf(2_000, 15_000, 45_000, 105_000)
+    }
+}

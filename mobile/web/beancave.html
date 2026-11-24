@@ -39,7 +39,7 @@
 .blendtag{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 6px}
 .sb{font-size:13px;color:var(--sub);line-height:1.45}
 .tl{display:grid;gap:6px}.tl div{border:1px solid var(--overlay);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;min-width:0}
-.tl b{font-size:16px;font-family:ui-monospace,monospace;font-weight:600}.tl span{font-size:9px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.tl b{font-size:16px;font-family:ui-monospace,monospace;font-weight:600;white-space:nowrap}.tl span{font-size:9px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px}
 .chips span.f{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
 .dim{font-size:13px;color:var(--muted);font-style:italic}
@@ -188,6 +188,22 @@
 .lb-side h3{margin:0;font-size:20px;font-weight:600}
 .lb-side .mini{flex:1;min-height:280px}.lb-side .tile{background:var(--bg)}.lb-side .tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
 .lb-msg{display:flex;align-items:center;justify-content:center;padding:30px 40px;text-align:center;color:var(--sub);font-size:15px;line-height:1.5}
+/* Publishing a roast of this tablet (library.js) */
+.rpub{width:44px;height:44px;flex:none;border-radius:22px;border:2px solid rgba(166,227,161,.6);background:rgba(166,227,161,.08);color:var(--green);display:flex;align-items:center;justify-content:center}
+.mtag{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--green)}
+.lb-pub{font-size:14px;color:var(--green);display:flex;flex-direction:column;gap:2px}.lb-pub small{font-size:12px;color:var(--muted)}
+.btn.danger-o{border-color:var(--red);color:var(--red);background:rgba(243,139,168,.08)}
+.btn.danger{background:var(--red);color:var(--bg);border:0}
+.tsheet.pub{width:680px;gap:14px}.pub-h{display:flex;align-items:center;gap:14px}.pub-h h3{margin:0}
+.pub-ic{width:48px;height:48px;border-radius:24px;background:rgba(166,227,161,.14);color:var(--green);display:flex;align-items:center;justify-content:center;flex:none}
+.pub-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pub-go,.pub-stay{border-radius:16px;padding:12px 16px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.pub-go{background:rgba(166,227,161,.07);border:1px solid rgba(166,227,161,.35)}.pub-go .zh{color:var(--green)}
+.pub-stay{background:var(--surface);border:1px solid var(--overlay);color:var(--sub)}
+.pub-ok{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:var(--surface);font-size:16px;text-align:left}
+.pub-ok .sw{width:52px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none}
+.pub-ok .sw::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:12px;background:var(--bg);transition:left .15s}
+.pub-ok.on .sw{background:var(--green)}.pub-ok.on .sw::after{left:25px}
 .lb-bar{display:flex;align-items:center;gap:16px;flex:none}.lb-said{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .lb-verdict{font-size:15px}.lb-verdict.not{color:var(--muted)}
 .lb-more{flex:none;padding:12px 14px;text-align:center;font-size:13px;color:var(--muted)}
@@ -226,7 +242,7 @@
   <div id="lb-state" class="hidden"></div>
   <div id="lb-browse" class="hidden">
    <div class="lb-main"><input id="lb-search" type="search" placeholder="Search a coffee, a country, a process…" autocomplete="off">
-    <div class="lb-filters"><button class="lb-chip on" id="lb-mine" aria-pressed="true">My machine</button><span class="lb-count num" id="lb-count"></span></div>
+    <div class="lb-filters"><button class="lb-chip on" id="lb-mine" aria-pressed="true">My machine</button><button class="lb-chip hidden" id="lb-own" aria-pressed="false">Mine</button><span class="lb-count num" id="lb-count"></span></div>
     <div id="lb-rows"></div></div>
    <div class="lb-side" id="lb-side"></div>
   </div>
@@ -268,7 +284,8 @@ window.onSnapshot = function (method, d) {
   }
   if (method === "get_roast_energy") { if (d && d.reply) EnergySheet.show(d.reply); else toast("This roast has no energy"); return; }
   if (method === "save_tasting") { if (d && d.reply) { RoastsTab.roast(d.reply); send("get_roasts"); } else toast("The tasting could not be saved"); return; }
-  if (method === "library_page" || method === "library_get" || method === "library_card") { LibraryTab.reply(method, d && d.reply); return; }
+  if (method === "library_page" || method === "library_get" || method === "library_card" || method === "library_publish" || method === "library_send" || method === "library_withdraw") { LibraryTab.reply(method, d && d.reply); return; }
+  if (method === "library_publish_check") { LibraryTab.publishSheet(d && d.reply); return; }
   if (method === "coffee_preview") { LibraryTab.sheet(d && d.reply); return; }
   if (method === "coffee_theirs") { LibraryTab.theirsArrived(d && d.reply); if (cave && $("theirs")) render(); return; }
   if (method === "coffee_send") { if (!d || !d.reply) toast("This coffee could not be prepared to send"); return; }
@@ -381,7 +398,7 @@ function renderSheet(c) {
     (c.shared ? '<span class="blendtag">SHARED' + LibraryTab.theirsDay(c) + "</span>" : "") +
     '<button class="gl" id="sendcoffee" aria-label="Send this coffee and its roasts to the computer">' + LibraryTab.ICON.send + "</button></span><span class=\"sb\">" +
     esc([c.country, c.process, c.supplier].filter(Boolean).join(" · ") || "—") + "</span>" +
-    '<div class="tl" style="grid-template-columns:repeat(4,minmax(0,1fr))">' +
+    '<div class="tl" style="grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr))">' +
     tile(Math.round(c.stock_g) + " g", "Stock", c.stock_g > 0 ? "var(--green)" : "var(--muted)") +
     tile(c.crop > 0 ? c.crop : "—", "Crop", age >= 3 ? "var(--red)" : age === 2 ? "var(--peach)" : "") +
     tile(c.sca > 0 ? c.sca.toFixed(1) : "—", "SCA") + tile(c.roasts, "Roasts") + "</div>" +

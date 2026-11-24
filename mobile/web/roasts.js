@@ -231,6 +231,8 @@ var RoastsTab = (function () {
       '<button class="rfollow" id="rfollow" aria-label="Follow this roast"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
       (printable(d) ? '<button class="rprint" id="rprint" aria-label="Print label"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">' +
         '<path id="rprinticon" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : "") +
+      // A roast this tablet recorded goes to the library from here; the computer's, from the computer (Tilau, 2026-11-24)
+      (d.origin === "tablet" ? '<button class="rpub" id="rpub" aria-label="Publish to the library">' + LibraryTab.ICON.cloud + "</button>" : "") +
       '<button class="rshare" id="rshare" aria-label="Share the roast"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/>' +
       '<circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/>' +
       '<path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>';
@@ -305,6 +307,7 @@ var RoastsTab = (function () {
     if ($("rtaste")) $("rtaste").onclick = function () { tasteSheet(d); };
     if ($("rcoffee")) $("rcoffee").onclick = function () { closeFull(); onOpenCoffee(d.bean_uuid); };
     $("rshare").onclick = function () { send("roast_share", d.origin + "/" + d.name); };
+    if ($("rpub")) $("rpub").onclick = function () { send("library_publish_check", JSON.stringify({ origin: d.origin, name: d.name })); };
     $("rsim").onclick = function () { send("simulate", JSON.stringify({ origin: d.origin, name: d.name })); };
     $("rfollow").onclick = function () { send("set_follow", JSON.stringify({ origin: d.origin, name: d.name })); };
     if ($("rprint")) $("rprint").onclick = function () {

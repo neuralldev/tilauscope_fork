@@ -60,7 +60,7 @@ var systemCurrency = function () { return (window.TilauBridge && TilauBridge.cur
     '<div style="margin-top:28px;font-size:30px;font-weight:600;letter-spacing:.3px">TilauScope</div>' +
     '<div style="margin-top:8px;font-size:15px;color:var(--sub)">Getting the roaster ready…</div>' +
     '<div class="bar"><i></i></div>' +
-    '<div style="position:absolute;bottom:24px;font-size:12px;color:var(--muted)">Android Lab · 0.1.0 prototype</div>';
+    '<div style="position:absolute;bottom:24px;font-size:12px;color:var(--muted)">Lab · 0.1.0 prototype</div>';
   document.body.insertBefore(splash, document.body.firstChild);
 })();
 
@@ -114,8 +114,5 @@ function tilauSound(short) {
   } catch (e) { /* no sound on this device */ }
 }
 
-// Once per launch of the app: the page changes keep the window's name, a new launch starts without it.
-if (window.name !== "tilauscope-started") {
-  window.name = "tilauscope-started";
-  tilauSound(false);
-}
+// Once per launch of the app, on its first page: the app knows (WebKit clears window.name between local pages).
+if (window.TilauBridge && TilauBridge.firstPage && TilauBridge.firstPage()) tilauSound(false);

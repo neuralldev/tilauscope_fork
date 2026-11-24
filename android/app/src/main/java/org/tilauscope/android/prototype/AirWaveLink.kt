@@ -355,6 +355,8 @@ class AirWaveLink(private val context: Context, private val onState: (JSONObject
     }
 
     private fun finish(final: String) {
+        handler.removeCallbacks(endTest) // a speed test cut short ends with the link: it never restores or cuts a later one
+        testEnd = 0L
         gatt?.let {
             it.disconnect()
             it.close()

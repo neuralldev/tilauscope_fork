@@ -152,7 +152,10 @@ class MqttLink(
 
     companion object {
         private const val TAG = "TilauScopeMqtt"
-        private const val CLIENT_ID = "TilauScope-tablet" // not the desktop's "Tilauscope": both may be connected
+        // One per app run, so an Android tablet, the iPad and the desktop ("Tilauscope") stay connected together: a
+        // broker drops the older of two clients sharing an id, and the two then took turns every 2 s. Clean session:
+        // nothing is kept under the id, a new one each run loses nothing. 19 characters, within MQTT 3.1.1's 23.
+        private val CLIENT_ID = "TilauScope-%08x".format(kotlin.random.Random.nextInt())
         private const val KEEPALIVE_S = 60
         private const val CONNECT_TIMEOUT_MS = 3000 // the desktop's connect timeout
         private const val RETRY_MS = 2000L

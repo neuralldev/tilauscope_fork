@@ -26,6 +26,7 @@ object AppLog {
     private var current: File? = null
     private var older: File? = null
     private val states = HashMap<String, String>()
+    private val searching = HashSet<String>() // devices lost and searched again: their retries are not written
 
     /** Once per process: the files, then a line saying which app on which tablet. */
     fun start(context: Context) {
@@ -45,9 +46,17 @@ object AppLog {
     fun w(tag: String, message: String, error: Throwable? = null) { Log.w(tag, message, error); write("W", tag, message, error) }
     fun e(tag: String, message: String, error: Throwable? = null) { Log.e(tag, message, error); write("E", tag, message, error) }
 
-    /** A device's state, written when it changes. */
+    /** A device's state, written when it changes. A device switched off is searched again and again
+     *  (connecting, lost…): its first "lost" is written, the retries are not, until it answers. */
     fun state(device: String, state: String) {
-        val changed = synchronized(lock) { (states.put(device, state) != state) }
+        val changed = synchronized(lock) {
+            val changed = states.put(device, state) != state
+            when {
+                state == "lost" -> searching.add(device)
+                state == "connecting" && device in searching -> false
+                else -> { if (state.isNotEmpty()) searching.remove(device); changed }
+            }
+        }
         if (changed && state.isNotEmpty()) i("TilauScopeDevices", "$device: $state")
     }
 

@@ -436,6 +436,18 @@ The library takes a limited number of roasts from each computer per day.
 Under **Mine**, a roast you published shows **Withdraw from the library**. It leaves the library
 at once; roasters who already imported it keep their copy.
 
+### From the tablet
+
+The Android and iPad apps publish too, but only the roasts recorded on the tablet itself: a roast
+that came from the computer is published from the computer, so that it never appears twice. In
+**BeanCave › Roasts**, open such a roast and touch the green cloud. The same sheet as on the
+computer lists what goes and what stays on the tablet; turn on **Any roaster may use this coffee
+and adapt it.**, then touch **Publish**. The Library tab opens on it, under **Mine**.
+
+Each device signs with its own key: a roast published from the tablet is withdrawn from that
+tablet, under its **Mine**, and a roast published from the computer from the computer. Removing the
+app loses the tablet's key, and with it the way to withdraw what it published.
+
 ---
 
 ## BeanCave on its own, beside Artisan

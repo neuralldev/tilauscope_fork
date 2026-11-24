@@ -39,8 +39,37 @@ function icon(name, size) {
 // Artisan's action codes the tablet edits by picto; the others stay as they are, for the computer.
 var SLIDER = { 6: "burner", 3: "air", 4: "drum", 5: "extractor" };
 var TILES = [[6, "flame", "burner"], [3, "fan", "air"], [4, "drum", "drum"], [5, "wind", "extractor"],
-  [2, "button", "Button"], [0, "msg", "Message"], [26, "wind", "Extractor command"], [27, "probe", "TilauAmbient"]];
+  [2, "button", "Button"], [0, "msg", "Message"], [26, "wind", "Extractor"], [27, "probe", "TilauAmbient"]];
 var IF_ALARM = 10, START = -1, ON = 9;
+// The extractor's command (26), in the desktop's grammar: POWER ON|OFF, MODE the catalyst (Tilau, 2026-11-24: FAN fan
+// only, STD normal, EXT strong) and FAN <30..100> the fan's speed. Anything else written stays as it is.
+var CATALYST = [["FAN", "Off"], ["STD", "Normal"], ["EXT", "Strong"]];
+// Its parts in the order written, each command kept in its place; a comment after "#" is kept as it is.
+var EXTRACTOR_WORD = { power: "POWER", mode: "MODE", speed: "FAN" };
+function extractorParts(text) {
+  var cut = text.indexOf("#");
+  var parts = { power: "", mode: "", speed: "", tokens: [], comment: cut >= 0 ? text.slice(cut) : "" };
+  (cut >= 0 ? text.slice(0, cut) : text).replace(/;/g, ",").split(",").forEach(function (p) {
+    var t = p.trim(), w = t.toUpperCase().split(/\s+/), kind = "";
+    if (!t) return;
+    if (w.length === 2 && w[0].indexOf("POWER") === 0 && (w[1] === "ON" || w[1] === "OFF")) kind = "power";
+    else if (w.length === 2 && w[0].indexOf("MODE") === 0 && ["FAN", "STD", "EXT"].indexOf(w[1]) >= 0) kind = "mode";
+    else if (w.length === 2 && w[0].indexOf("FAN") === 0 && /^\d+$/.test(w[1]) && +w[1] >= FAN_SPEED[0] && +w[1] <= FAN_SPEED[1]) kind = "speed";
+    if (kind) parts[kind] = w[1];
+    parts.tokens.push({ kind: kind, text: t });
+  });
+  return parts;
+}
+function extractorText(p) {
+  var out = [], seen = {};
+  p.tokens.forEach(function (t) { // each command where it was, changed or taken out
+    if (!t.kind) out.push(t.text);
+    else if (!seen[t.kind]) { seen[t.kind] = true; if (p[t.kind]) out.push(EXTRACTOR_WORD[t.kind] + " " + p[t.kind]); }
+  });
+  ["power", "mode", "speed"].forEach(function (k) { if (!seen[k] && p[k]) out.push(EXTRACTOR_WORD[k] + " " + p[k]); }); // a new one, last
+  return out.join(",") + (p.comment ? " " + p.comment : "");
+}
+var FAN_SPEED = [30, 100]; // the AirWave's speeds (alarms.EXTRACTOR_SPEED)
 var CONDS = ["<", ">", "=", "≠"];
 
 var editing = null; // the list open in the editor (get_alarm_list)
@@ -152,7 +181,7 @@ function actionChip(r) {
     return '<span class="c a lv-' + SLIDER[r.action] + skip + '" data-z="do">' + icon(pic, 16) + esc(r.text) + " %</span>";
   }
   var tile = TILES.filter(function (t) { return t[0] === r.action; })[0];
-  var label = r.action === 2 ? "#" + r.text : r.action === 0 ? "“" + r.text + "”" : r.text;
+  var label = r.action === 2 ? "#" + r.text : r.action === 0 ? "“" + r.text + "”" : r.action === 26 ? r.what : r.text;
   if (!tile) {
     var named = editing.computer_actions.filter(function (x) { return x.code === r.action; })[0];
     return '<span class="c a no" data-z="do">' + icon("pid", 16) + esc(named ? named.name : "Action " + r.action) + "</span>";
@@ -274,7 +303,7 @@ function fillZone() {
       '<div class="zrow"><span class="zh">' + icon("link", 18) + ' not</span><div class="segs">' + refs("negguard", r.negguard) + "</div></div>";
   } else {
     var tiles = TILES.map(function (t) {
-      var name = SLIDER[t[0]] ? (editing.levers[t[2]] || t[2]) : t[2];
+      var name = SLIDER[t[0]] ? (editing.levers[t[2]] || t[2]) + (t[2] === "extractor" ? " %" : "") : t[2]; // its fan, beside its command
       var off = SLIDER[t[0]] && !editing.levers[t[2]];
       return '<button class="tile' + (t[0] === r.action ? " on" : "") + (off ? " dim" : "") + '" data-action="' + t[0] + '">' + icon(t[1], 28) + "<small>" + esc(name) + "</small></button>";
     }).join("");
@@ -285,7 +314,21 @@ function fillZone() {
     if (SLIDER[r.action]) value = stepper("text", +r.text || 0, (+r.text || 0) + " %");
     else if (r.action === 2) value = '<div class="segs">' + editing.buttons.map(function (b) {
       return '<button class="seg-b' + (String(b.n) === r.text.split("#")[0].trim() ? " on" : "") + '" data-text="' + b.n + '">#' + b.n + (b.command ? " · " + esc(b.command) : "") + "</button>"; }).join("") + "</div>";
-    else if (r.action === 0 || r.action === 26 || r.action === 27) value = '<input class="field ztext" id="ztext" value="' + esc(r.text) + '" maxlength="200">';
+    else if (r.action === 26) {
+      var xp = extractorParts(r.text);
+      var choice = function (field, options) {
+        return options.map(function (o) {
+          return '<button class="seg-b' + (xp[field] === o[0] ? " on" : "") + '" data-x' + field + '="' + o[0] + '">' + o[1] + "</button>";
+        }).join("");
+      };
+      value = '<div class="zrow"><span class="zl">Power</span><div class="segs">' + choice("power", [["", "Unchanged"], ["ON", "On"], ["OFF", "Off"]]) + "</div></div>" +
+        '<div class="zrow"><span class="zl">Catalyst</span><div class="segs">' + choice("mode", [["", "Unchanged"]].concat(CATALYST)) + "</div></div>" +
+        '<div class="zrow"><span class="zl">Fan</span><div class="segs">' + choice("speed", [["", "Unchanged"]]) + "</div>" +
+        '<div class="step">' + [-10, -1].map(function (d) { return '<button data-xd="' + d + '">' + (d < 0 ? "−" : "+") + Math.abs(d) + "</button>"; }).join("") +
+        "<b" + (xp.speed ? "" : ' style="color:var(--muted)"') + ">" + (xp.speed || "—") + " %</b>" +
+        [1, 10].map(function (d) { return '<button data-xd="' + d + '">+' + d + "</button>"; }).join("") + "</div></div>";
+    }
+    else if (r.action === 0 || r.action === 27) value = '<input class="field ztext" id="ztext" value="' + esc(r.text) + '" maxlength="200">';
     var isComputer = !TILES.some(function (t) { return t[0] === r.action; }) && r.action !== -1;
     tiles += '<button class="tile dim' + (isComputer ? " on" : "") + '" id="z-more">' + icon("pid", 28) + "<small>…</small></button>";
     html += '<div class="tiles">' + tiles + '</div><div class="zval">' + value + "</div>" +
@@ -300,11 +343,26 @@ function fillZone() {
     $("zsheet").querySelectorAll("[data-" + f + "]").forEach(function (b) { b.onclick = function () {
       var fields = {}; fields[f] = +b.dataset[f];
       if (f === "action" && SLIDER[fields.action] && !(+r.text >= 0 && r.text !== "")) fields.text = "0";
+      if (f === "action" && fields.action === 26 && r.action !== 26) fields.text = ""; // a slider's value is no command
       if (f === "action" && fields.action === 2 && !editing.buttons.length) return;
       edit(sheet.row, fields);
     }; });
   });
   $("zsheet").querySelectorAll("[data-text]").forEach(function (b) { b.onclick = function () { edit(sheet.row, { text: b.dataset.text }); }; });
+  $("zsheet").querySelectorAll("[data-xd]").forEach(function (b) { b.onclick = function () { // the fan's speed, from 60 % when unchanged
+    var parts = extractorParts(r.text), d = +b.dataset.xd;
+    parts.speed = String(Math.max(FAN_SPEED[0], Math.min(FAN_SPEED[1], parts.speed ? +parts.speed + d : 60)));
+    r.text = extractorText(parts); // a quick second tap builds on this one, before the answer
+    edit(sheet.row, { text: r.text });
+  }; });
+  ["power", "mode", "speed"].forEach(function (f) { // the extractor's command, rebuilt with the choice touched
+    $("zsheet").querySelectorAll("[data-x" + f + "]").forEach(function (b) { b.onclick = function () {
+      var parts = extractorParts(r.text);
+      parts[f] = b.getAttribute("data-x" + f);
+      r.text = extractorText(parts); // a quick second tap builds on this one, before the answer
+      edit(sheet.row, { text: r.text });
+    }; });
+  });
   $("zsheet").querySelectorAll("[data-s]").forEach(function (b) { b.onclick = function () {
     var f = b.dataset.s, d = +b.dataset.d, fields = {};
     if (f === "offset") fields.offset = Math.max(0, Math.min(3600, r.offset + d));

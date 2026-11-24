@@ -29,6 +29,13 @@ from .session import Session
 # The tablet's channels of each desktop device, by the stable key the desktop writes in tilau_name_map.
 CHANNELS = {key: (first, second, (label1, label2)) for key, first, second, label1, label2, *_ in EXTRA_DEVICES}
 
+# The computer's devices the tablet does not read, by the channel names the desktop gives them
+# (src/tilauscope/device_setup/catalogue.py): a lever key stands for the tablet's own name of that lever.
+DESKTOP_ONLY = {"skywalker_pf": ("burner", "air"), "skycommand_pf": ("burner", "air"), "trp_hf": ("burner", "air"),
+                "tc4_34": ("T3", "T4"), "tc4_56": ("T5", "T6"), "tc4_78": ("T7", "T8"),
+                "mqtt12": ("MQTT 1", "MQTT 2"), "mqtt34": ("MQTT 3", "MQTT 4"), "mqtt56": ("MQTT 5", "MQTT 6"),
+                "mqtt78": ("MQTT 7", "MQTT 8"), "mqtt910": ("MQTT 9", "MQTT 10"), "virtual": ("Extra 1", "Extra 2")}
+
 # Artisan's timeindex position of each tablet milestone (canvas.py: 0 CHARGE … 6 DROP)
 MARK_INDEX = {"charge": 0, "dry_end": 1, "first_crack": 2, "drop": 6}
 
@@ -300,7 +307,10 @@ class TabletAlarms:
             return f"Extra probe {source - 1}", "The computer's extra devices are not known yet: import its roasts"
         key = self.desktop_devices[position]
         if key not in CHANNELS:
-            return f"{key} {channel + 1}", "This device of the computer is not read on the tablet"
+            name = DESKTOP_ONLY.get(key, (f"{key} 1", f"{key} 2"))[channel]
+            if name in LEVERS:
+                name = self.levers.get(name, {}).get("name") or name.capitalize()
+            return name, "This device of the computer is not read on the tablet"
         return CHANNELS[key][2][channel], None
 
     def _what(self, a: Alarm, why: str | None) -> tuple[str, str | None]:
@@ -325,7 +335,7 @@ class TabletAlarms:
                 why = why or "No extractor in the tablet's setup"
             elif not _extractor_commands(a.text):
                 why = why or "The tablet runs FAN, MODE and POWER only"
-            return f"Extractor {a.text}", why
+            return extractor_sentence(a.text), why
         if a.action == AMBIENT:
             if not self.ambient:
                 why = why or "No TilauAmbient in the tablet's setup"
@@ -362,6 +372,24 @@ def _ambient_commands(text: str) -> list[int]:
     """The probe's command codes for `CAL1,START` and the like (unknown words are left out, as on the desktop)."""
     return [AMBIENT_COMMANDS[word] for word in (part.strip().upper() for part in text.split(","))
             if word in AMBIENT_COMMANDS]
+
+
+# The AirWave's modes drive its catalyst; FAN n drives its fan (Tilau, 2026-11-24)
+CATALYST = {"FAN": "off", "STD": "normal", "EXT": "strong"}
+
+
+def extractor_sentence(text: str) -> str:
+    """An extractor command in words: "Extractor on · catalyst normal · fan 60 %"; as written when none is read."""
+    words = {"power": lambda v: v, "mode": lambda v: "catalyst " + CATALYST[v], "speed": lambda v: f"fan {v} %"}
+    said, read = [], False
+    for part in text.split("#")[0].replace(";", ",").split(","): # in the order written; what is not read, as written
+        commands = _extractor_commands(part)
+        if commands:
+            read = True
+            said.append(words[commands[0][0]](commands[0][1]))
+        elif part.strip():
+            said.append(part.strip())
+    return "Extractor " + " · ".join(said) if read else f"Extractor {text}"
 
 
 def _extractor_commands(text: str) -> list[tuple[str, str]]:

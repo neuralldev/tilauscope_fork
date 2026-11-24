@@ -9,7 +9,7 @@ between this application and the desktop.
 
 This application is free software, licensed under the GNU Affero General Public
 License version 3 or, at your option, any later version. Its full source, this
-directory and src/tilaucore/, is published with TilauScope:
+directory, mobile/ and src/tilaucore/, is published with TilauScope:
 https://github.com/neuralldev/tilauscope_fork
 
 Test builds before TilauScope 4.3 build 57 contained portions derived from
@@ -21,11 +21,37 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General
 Public License (../LICENSE) for details.
 
 
+ADDITIONAL PERMISSION (GNU AGPL VERSION 3, SECTION 7)
+------------------------------------------------------
+
+As the copyright holder of this application and of the shared code it includes
+(android/, ios/, mobile/ and src/tilaucore/ in the TilauScope repository), Tilau
+permits you to convey it, or a work based on it, through an application store
+(such as Apple's App Store, TestFlight or Google Play) whose terms of use
+restrict its recipients, provided its Corresponding Source remains available
+under this licence. Those terms then do not count as further restrictions under
+section 10. This permission covers only that code; the third-party components
+below keep their own licences.
+
+
 THIRD-PARTY COMPONENTS
 ----------------------
 
-Bundled in the application, each under its own licence:
+Bundled in the application, each under its own licence, whose text is in
+licenses/ in the application's assets (mobile/web/licenses in the repository) and
+in Settings › General › About TilauScope:
 
-  * the Python runtime and standard library: Python Software Foundation License;
-  * Chaquopy (Python for Android): MIT License;
-  * the Kotlin standard library: Apache License 2.0.
+  * the Python runtime and standard library 3.14.0: Python Software Foundation
+    License (Python-PSF.txt);
+  * Chaquopy 17.0.0 (Python for Android): MIT License (Chaquopy-MIT.txt);
+  * the Kotlin standard library 2.1.20: Apache License 2.0 (Apache-2.0.txt);
+  * OpenSSL 3.0.18, in the Python build: Apache License 2.0 (Apache-2.0.txt);
+  * the CA certificates of certifi, in the Python build (cacert.pem): Mozilla
+    Public License 2.0 (certifi-MPL-2.0.txt);
+  * SQLite 3.50.4, in the Python build: public domain (SQLite-public-domain.txt);
+  * libffi, mpdecimal, XZ Utils (liblzma), Zstandard and bzip2, in the Python
+    build: MIT, BSD 2-Clause, BSD Zero Clause, BSD 3-Clause and the bzip2
+    licence (libffi-MIT.txt, mpdecimal-BSD-2-Clause.txt, XZ-0BSD.txt,
+    Zstandard-BSD-3-Clause.txt, bzip2.txt);
+  * the DejaVu Sans fonts of the roast label: Bitstream Vera Fonts licence and
+    public domain (DejaVu-Fonts.txt).

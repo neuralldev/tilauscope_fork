@@ -43,6 +43,7 @@ class AquaGaugeLink(private val context: Context, private val onState: (JSONObje
     private var gatt: BluetoothGatt? = null
     private var address: String? = null
     private var wanted = false
+    private val retry = RetryDelay()
     private var state = "idle"
     private var aw: Double? = null
     private var measuring = false
@@ -88,6 +89,7 @@ class AquaGaugeLink(private val context: Context, private val onState: (JSONObje
                 if (g !== gatt) return@post
                 if (status != BluetoothGatt.GATT_SUCCESS) drop() else {
                     set("connected")
+                    retry.reset()
                     keepAlive()
                 }
             }
@@ -117,8 +119,9 @@ class AquaGaugeLink(private val context: Context, private val onState: (JSONObje
 
     /** Any thread. Keeps looking for the meter until [disconnect]. */
     fun connect(address: String): Boolean = handler.post {
-        if (wanted && address == this.address) {
-            publish()
+        if (wanted && address == this.address) { // asked again (a page, the icon): searched now, at the first pace
+            retry.reset()
+            if (gatt != null) publish() else { handler.removeCallbacksAndMessages(RECONNECT); open() }
             return@post
         }
         close()
@@ -219,7 +222,7 @@ class AquaGaugeLink(private val context: Context, private val onState: (JSONObje
 
     private fun retryLater() {
         if (wanted) handler.postAtTime({ if (wanted && gatt == null) open() }, RECONNECT,
-            SystemClock.uptimeMillis() + RECONNECT_MS)
+            SystemClock.uptimeMillis() + retry.next())
     }
 
     private fun set(value: String) {
@@ -243,7 +246,6 @@ class AquaGaugeLink(private val context: Context, private val onState: (JSONObje
         const val ANSWER_MS = 3000L
         const val KEEPALIVE_MS = 5000L
         const val CONNECT_TIMEOUT_MS = 15_000L
-        const val RECONNECT_MS = 2000L
         val RECONNECT = Any()
         val FINAL = Any() // the silence that ends a measurement, or the next idle read
         val ANSWER = Any()

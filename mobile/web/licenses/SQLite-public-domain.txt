@@ -1,0 +1,14 @@
+SQLite is in the public domain.
+
+All of the code and documentation in SQLite has been dedicated to the public
+domain by the authors. Anyone is free to copy, modify, publish, use, compile,
+sell, or distribute the original SQLite code, either in source code form or as a
+compiled binary, for any purpose, commercial or non-commercial, and by any means.
+
+The source files carry, in place of a legal notice, this blessing:
+
+    May you do good and not evil.
+    May you find forgiveness for yourself and forgive others.
+    May you share freely, never taking more than you give.
+
+https://www.sqlite.org/copyright.html

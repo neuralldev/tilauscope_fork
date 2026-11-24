@@ -46,6 +46,7 @@ class AcaiaLink(private val context: Context, private val onState: (JSONObject) 
 
     private var address: String? = null
     private var wanted = false
+    private val retry = RetryDelay()
     private var state = "idle"
     private var infoReceived = false
     private var idSent = false
@@ -124,6 +125,7 @@ class AcaiaLink(private val context: Context, private val onState: (JSONObject) 
                     return@post
                 }
                 state = "connected" // the scale now sends INFO and waits for the ID
+                retry.reset()
                 lastRx = SystemClock.elapsedRealtime()
                 publish()
                 handler.post(heartbeat)
@@ -153,8 +155,9 @@ class AcaiaLink(private val context: Context, private val onState: (JSONObject) 
 
     /** Any thread. Keeps looking for the scale until [disconnect]. */
     override fun connect(address: String): Boolean = handler.post {
-        if (wanted && address == this.address) {
-            publish()
+        if (wanted && address == this.address) { // asked again (a page, the icon): searched now, at the first pace
+            retry.reset()
+            if (gatt != null) publish() else { handler.removeCallbacksAndMessages(RECONNECT); open() }
             return@post
         }
         close()
@@ -321,7 +324,7 @@ class AcaiaLink(private val context: Context, private val onState: (JSONObject) 
 
     private fun retryLater() {
         if (wanted) handler.postAtTime({ if (wanted && gatt == null) open() }, RECONNECT,
-            SystemClock.uptimeMillis() + RECONNECT_MS)
+            SystemClock.uptimeMillis() + retry.next())
     }
 
     private fun set(value: String) {
@@ -365,7 +368,6 @@ class AcaiaLink(private val context: Context, private val onState: (JSONObject) 
         const val WRITE_STALL_MS = 1000L
         const val RETRY_MS = 20L
         const val CONNECT_TIMEOUT_MS = 15_000L
-        const val RECONNECT_MS = 2000L
         val RECONNECT = Any()
 
         /** Even-position and odd-position byte sums. */

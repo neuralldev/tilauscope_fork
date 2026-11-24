@@ -91,9 +91,9 @@ input.field:focus{border-color:var(--blue)}
 .arrow{color:var(--muted)}
 .bell{margin-left:auto;color:var(--muted);display:flex;padding:8px}.bell.on{color:var(--yellow)}
 /* the alarm's number is its on/off switch: green when on, outlined when off */
-.num{min-width:38px;height:30px;padding:0 9px;border-radius:15px;border:1.5px solid var(--line);color:var(--muted);font-size:13px;font-weight:700;
+.arow .num{min-width:38px;height:30px;padding:0 9px;border-radius:15px;border:1.5px solid var(--line);color:var(--muted);font-size:13px;font-weight:700;
  display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;margin-right:4px;flex:none}
-.num.on{border-color:transparent;background:rgba(166,227,161,.18);color:var(--green)}
+.arow .num.on{border-color:transparent;background:rgba(166,227,161,.18);color:var(--green)}
 .arow.off .rowin>*:not(.num):not(.grip){opacity:.35}
 .arow.lift{z-index:3;overflow:visible}.arow.lift .rowin{box-shadow:0 14px 34px rgba(0,0,0,.55);outline:2px solid var(--blue);background:#262637}
 .arow.drop-before{box-shadow:0 -4px 0 var(--blue)}.arow.drop-after{box-shadow:0 4px 0 var(--blue)}
@@ -105,6 +105,8 @@ input.field:focus{border-color:var(--blue)}
 #zsheet .grab{width:44px;height:5px;border-radius:3px;background:var(--line);position:absolute;left:50%;top:8px;transform:translateX(-50%)}
 .zh{color:var(--muted);display:inline-flex;align-items:center;gap:6px;font-size:13px}
 .zrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.zval{display:flex;flex-direction:column;gap:16px;padding-bottom:8px} /* the value's rows: the extractor's power and catalyst */
+.zl{width:90px;flex:none;font-size:15px;color:var(--sub)}
 .segs{display:flex;flex-wrap:wrap;gap:8px}
 .seg-b{height:42px;padding:0 14px;border-radius:12px;border:1px solid var(--overlay);font-size:15px;color:var(--sub)}
 .seg-b.on{background:var(--blue);border-color:var(--blue);color:var(--bg);font-weight:700}.seg-b.on.k{background:#CBA6F7;border-color:#CBA6F7}
@@ -128,6 +130,21 @@ input.field:focus{border-color:var(--blue)}
 .chipb.on{border-color:var(--blue);background:rgba(137,180,250,.14);color:var(--blue);font-weight:600}
 .live{height:48px;padding:0 14px;border-radius:12px;background:var(--surface);display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub)}
 .live b{font-size:18px;color:var(--text)}
+/* About TilauScope (about.js) */
+.about{display:flex;gap:32px;min-height:0}
+.about-side{width:330px;flex:none;display:flex;flex-direction:column;gap:16px}
+.about-back{align-self:flex-start;height:40px;color:var(--blue);font-size:15px}
+.about-id{display:flex;align-items:center;gap:16px}.about-id b{display:block;font-size:26px;font-weight:600}.about-id small{font-size:15px;color:var(--sub)}
+.about-logo{width:64px;height:64px;border-radius:18px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:none}
+.about-free{padding:18px 20px;display:flex;flex-direction:column;gap:12px}.about-free b{font-size:17px}
+.about-free p,.about-parts>p{margin:0;font-size:14px;color:var(--sub);line-height:1.5}
+.about-btns{display:flex;gap:10px;flex-wrap:wrap}
+.about-note{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
+.about-parts{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding-top:56px}.about-parts>b{font-size:17px}
+.sheet:has(.lic-text){width:760px;height:calc(100% - 80px);max-height:700px}
+.lic-head{display:flex;align-items:baseline;gap:12px}.lic-head span{font-size:15px;color:var(--sub)}
+.lic-sub{font-size:13px!important;color:var(--muted)!important}
+.lic-text{flex:1;min-height:0;overflow-y:auto;margin:0;background:var(--surface);border-radius:16px;padding:18px 20px;font-family:ui-monospace,"SF Mono",monospace;font-size:13px;line-height:1.55;color:var(--sub);white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -138,6 +155,7 @@ input.field:focus{border-color:var(--blue)}
 <script src="label.js"></script>
 <script src="printer-check.js"></script>
 <script src="alarm-editor.js"></script>
+<script src="about.js"></script>
 <div id="page">
  <nav>
   <button id="back"><svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 4L6 9l5 5" fill="none" stroke="#A6ADC8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Roast</button>
@@ -162,6 +180,7 @@ var alarms = null; // the alarm lists on the tablet and the active one (get_alar
 var roastCount = null; // {tablet, computer}: the roasts it holds (get_roasts)
 // Opened from the BeanCave screen (#cave): its tab first, and back there.
 var fromCave = location.hash === "#cave", home = fromCave ? "beancave.html" : "roast.html";
+var aboutOpen = false; // Settings › General › About TilauScope (about.js)
 var setup = null, draft = null, tab = fromCave ? "cave" : "controls", heard = [], scanState = "", asked = false, leaving = false, checking = false;
 var LEVER_WHERE = { burner: "Always on screen", air: "Always on screen", drum: "Opened on demand", extractor: "Opened on demand" };
 
@@ -226,6 +245,7 @@ window.onScanState = function (state) { scanState = state; if (!checking) render
 function selectTab(t) {
   stopCheck();
   tab = t;
+  aboutOpen = false;
   send(t === "devices" ? "scan_start" : "scan_stop");
   if (t === "network") brokerConnect();
   if (t === "cave") { send("get_cave"); send("get_roasts"); }
@@ -236,7 +256,7 @@ function selectTab(t) {
 function render() {
   if (!setup || heldWhilePressed($("main"), render)) return;
   document.querySelectorAll(".tab").forEach(function (b) { b.classList.toggle("on", b.dataset.t === tab); });
-  if (tab === "general") renderGeneral(); else if (tab === "controls") renderControls(); else if (tab === "cave") renderCave();
+  if (tab === "general") { if (aboutOpen) renderAbout(); else renderGeneral(); } else if (tab === "controls") renderControls(); else if (tab === "cave") renderCave();
   else if (tab === "alarms") renderAlarms(); else if (tab === "network") renderNetwork(); else renderDevices();
 }
 
@@ -251,13 +271,14 @@ function renderGeneral() {
     detectRow("det_curve", "ΔET curve", "How fast the drum air heats, on the RoR scale") +
     detectRow("charge_detection", "Charge detection", "Marks Charge from the bean probe, by hand or following a roast") +
     detectRow("dry_end_detection", "Dry end detection", "Marks Dry end from the bean probe when you roast without a plan") +
-    detectRow("crack_detection", "Crack detection", "TilauAmbient listens to the cracks: CAL1, CAL2, then counting to Drop") + logRow() + "</div>";
+    detectRow("crack_detection", "Crack detection", "TilauAmbient listens to the cracks: CAL1, CAL2, then counting to Drop") + logRow() + aboutRow() + "</div>";
   $("main").querySelectorAll(".seg[data-key] button").forEach(function (b) {
     b.onclick = function () { draft[b.parentNode.dataset.key] = b.dataset.v === "1"; render(); };
   });
   $("unit").querySelectorAll("button").forEach(function (b) { b.onclick = function () { draft.unit = b.dataset.u; setUnit(draft.unit); render(); }; });
   $("redo").onclick = function () { leave("setup.html"); };
   $("sharelog").onclick = function () { send("share_log"); };
+  $("about").onclick = function () { aboutOpen = true; render(); };
   $("operator").oninput = function () { draft.operator = this.value; };
 }
 

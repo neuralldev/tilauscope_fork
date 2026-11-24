@@ -24,11 +24,20 @@ val copyMachineSetups by tasks.registering(Copy::class) {
     into(machineSetups.map { it.dir("machine_setups") })
     doLast { machineSetups.get().file("machine_setups/__init__.py").asFile.writeText("") }
 }
-tasks.named("preBuild") { dependsOn(copyLabelFonts, copyMachineSetups) }
+// The licences read in Settings › General › About: each bundled component's comes with the pages
+// (mobile/web/licenses); the app's own, the label fonts' and the notice join them at build time.
+val bundledLicences = layout.buildDirectory.dir("generated/licences")
+val copyLicences by tasks.registering(Copy::class) {
+    from("../../LICENSE") { rename { "TilauScope-AGPL-3.0.txt" } }
+    from("../../licenses/DejaVu-Fonts.txt", "../NOTICE")
+    into(bundledLicences.map { it.dir("licenses") })
+}
+tasks.named("preBuild") { dependsOn(copyLabelFonts, copyMachineSetups, copyLicences) }
 tasks.matching { it.name.endsWith("PythonSources") }.configureEach { dependsOn(copyMachineSetups) }
 
 android {
-    sourceSets { getByName("main") { assets.srcDir(labelFonts) } }
+    // The pages are shared with the iPad app (mobile/web), as is the Python core (mobile/python).
+    sourceSets { getByName("main") { assets.srcDirs("../../mobile/web", labelFonts, bundledLicences) } }
     namespace = "org.tilauscope.android.prototype"
     compileSdk = 35
     defaultConfig {
@@ -73,7 +82,7 @@ chaquopy {
     // Nothing else of ../../src: the desktop's Qt and Artisan code never reaches the tablet.
     sourceSets {
         getByName("main") {
-            srcDir("../python")
+            srcDir("../../mobile/python")
             srcDir("../../src")
             srcDir(machineSetups)
             include("tilauscope_mobile/**", "tilaucore/**", "machine_setups/**")

@@ -35,9 +35,9 @@ marked with a `## TILAU ##` comment.
 
 ## Working on the code
 
-- Python 3.14. Desktop tests: `make test-fast` (or `make test-all`); Android tests
-  without Android tooling:
-  `PYTHONPATH=android/python:src python3 -m unittest discover -s android/tests`.
+- Python 3.14. Desktop tests: `make test-fast` (or `make test-all`); tests of the code the
+  Android and iPad apps share, without mobile tooling:
+  `PYTHONPATH=mobile/python:src python3 -m unittest discover -s mobile/tests`.
 - Lint with `ruff`, as configured in `src/pyproject.toml`.
 - A roasting value or rule (a threshold, a duration, how a lever moves) comes from
   roasting practice and is checked on recorded roasts; say where it comes from in
@@ -57,3 +57,15 @@ like any other change.
 By opening a pull request, you agree that your contribution is distributed under
 the GNU Affero General Public License v3 or later, like the rest of TilauScope
 (see [LICENSE](LICENSE) and [NOTICE](NOTICE)).
+
+The tablet apps (`android/`, `ios/`, `mobile/` and `src/tilaucore/`) are also published
+through application stores, under an additional permission of the licence's section 7
+(see `android/NOTICE` and `ios/NOTICE`). A contribution to that code is covered by the
+same permission, and you grant Tilau, the maintainer, a perpetual, worldwide,
+royalty-free, non-exclusive licence to distribute it under the GNU AGPL v3 or later
+together with additional permissions of that section. You keep the copyright of your
+contribution.
+
+Sign off each commit (`git commit -s`): the `Signed-off-by:` line certifies, as the
+[Developer Certificate of Origin](https://developercertificate.org/) says, that you wrote
+the change or have the right to submit it under these terms.

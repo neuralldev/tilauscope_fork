@@ -7,6 +7,7 @@ package org.tilauscope.android.prototype
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -32,6 +33,7 @@ import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 
 /** Hosts the local roast screen (assets/roast.html); the session lives in SessionService. */
 class MainActivity : Activity() {
@@ -103,6 +105,16 @@ class MainActivity : Activity() {
         /** {"bytes", "since"} of the diagnostic log, for Settings › General. */
         @JavascriptInterface
         fun logInfo(): String = AppLog.info()
+
+        /** True once per launch of the app, on its first page: the launch jingle (common.js). */
+        @JavascriptInterface
+        fun firstPage(): Boolean = synchronized(MainActivity) { !jingled.also { jingled = true } }
+
+        /** {"platform", "version", "build"} for Settings › General › About (about.js). */
+        @JavascriptInterface
+        fun about(): String = packageManager.getPackageInfo(packageName, 0).let {
+            JSONObject().put("platform", "android").put("version", it.versionName ?: "").put("build", it.longVersionCode.toString()).toString()
+        }
 
         /** ISO code of the system currency, the desktop's default price currency. */
         @JavascriptInterface
@@ -301,6 +313,12 @@ class MainActivity : Activity() {
             }
             "save" -> service.execute("export_alog", File(filesDir, RoastFiles.FOLDER).absolutePath)
             "share_log" -> shareLog()
+            // Settings › General › About: a licence text beside the pages (assets licenses/), and the published source.
+            "licence" -> if (Regex("[A-Za-z0-9_-][A-Za-z0-9._-]*").matches(argument)) {
+                val text = try { assets.open("licenses/$argument").bufferedReader().use { it.readText() } } catch (error: IOException) { null }
+                if (pageLoaded) web.evaluateJavascript("window.onLicence && onLicence(${JSONObject.quote(argument)}, ${text?.let { JSONObject.quote(it) } ?: "null"})", null)
+            }
+            "open_source" -> try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_CODE))) } catch (error: ActivityNotFoundException) { /* no browser */ }
             "unmark", "stop", "reset", "toggle_signal", "get_setup", "get_cave", "cave_start_empty", "get_coffees" -> service.execute(method)
             // The desktop's BeanCave folder: the cave comes with the files that depend on it.
             "cave_pick" -> startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), PICK_CAVE)
@@ -336,6 +354,11 @@ class MainActivity : Activity() {
             "library_page" -> service.executeSlow(method, argument) // the network: never on the thread that ticks the roast
             "library_get" -> service.executeSlow(method, argument, File(cacheDir, LIBRARY_FOLDER).absolutePath)
             "library_card" -> service.executeSlow(method, argument, File(cacheDir, LIBRARY_CARD_FOLDER).absolutePath)
+            // Publishing a roast of this tablet (wiki/CoffeeLibrary-Spec.md §6): checked and packed on the worker, sent and withdrawn off the roast's thread
+            "library_publish_check" -> service.execute(method, argument)
+            "library_publish" -> service.execute(method, argument, File(cacheDir, "coffee-publish").absolutePath) // the worker: it reads the BeanCave
+            "library_send" -> service.executeSlow(method, argument)
+            "library_withdraw" -> service.executeSlow(method, argument)
             "roast_share" -> {
                 val parts = argument.split("/", limit = 2)
                 val name = parts.getOrNull(1) ?: return
@@ -674,6 +697,8 @@ class MainActivity : Activity() {
         const val PICK_CAVE = 3
         const val PICK_ROASTS = 5
         const val PICK_ALARMS = 6
+        var jingled = false // per process: a new activity of the same run plays no jingle
+        const val SOURCE_CODE = "https://github.com/neuralldev/tilauscope_fork" // as android/NOTICE
         const val LIBRARY_FOLDER = "coffee-library" // in the cache: the package last downloaded from the library
         const val LIBRARY_CARD_FOLDER = "coffee-library-cards" // in the cache: a selected roast's package, only while it is read
         val CAVE_FILES = listOf("beancave.json", "tastings.json", "brewlog.json") // as tilauscope_mobile.cave.FILES

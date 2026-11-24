@@ -10,6 +10,7 @@ var LibraryTab = (function () {
     down: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     send: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-7-6 16-3-7-7-2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
     warn: '<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3z" fill="none" stroke="#F9E2AF" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v5m0 2.5v.5" stroke="#F9E2AF" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    cloud: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4 4 0 0 1-1 8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20v-8M9 15l3-3 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     machine: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4.5v15M4.5 12h15" stroke="currentColor" stroke-width="1.4"/></svg>'
   };
   // Their tasting in the desktop's words (library_tab.verdict_sentence)
@@ -23,6 +24,32 @@ var LibraryTab = (function () {
   var roastOf = {}, failed = {}, asked = []; // a card's roast as the Roasts tab draws it, its last failure, the cards being read
   var theirs = {};             // a coffee's shared roast by uuid, asked once
   var seen = null;             // the sheet on screen, for its Import
+  var own = false, mineCount = 0; // Mine: only the coffees this tablet published, and how many it did
+  var withdrawing = null;      // the coffee being withdrawn: one request at a time
+
+  // Why a roast cannot be published, and what to correct (the desktop's library_tab.card_refusal; Tilau, 2026-11-24:
+  // a tablet publishes only the roasts it recorded).
+  var REFUSAL = {
+    computer: "This roast was recorded on the computer: publish it from the computer.",
+    shared: "This roast was shared by another roaster: it is theirs to publish.",
+    unreadable: "This roast file cannot be read now. Open the roast again, then try once more.",
+    no_coffee: "Only a real roast of a coffee of your BeanCave can be published: the library lists a roast under its coffee.",
+    unmarked: "This roast has no Charge or no Drop marked, so the library cannot show its curve.",
+    crop: "The library takes a crop year between 1990 and 2100. Correct the crop year in the coffee's BeanCave record, or leave it empty, then publish again.",
+    batch_g: "The library takes batches up to 5 kg, so this roast cannot be published.",
+    total_s: "From Charge to Drop, this roast lasts less than a minute or more than an hour, so it cannot be published.",
+    after_fc_s: "First crack is marked after Drop, or more than 30 minutes before it, so this roast cannot be published.",
+    drop_c: "The bean temperature at Drop must be between 100 and 300 °C for the library, so this roast cannot be published."
+  };
+  // What happened and what to do, for a library error while publishing or withdrawing (library_tab.failure_sentence).
+  function sendFailure(kind) {
+    if (kind === "offline") return "The library cannot be reached. Check the internet connection, then try again.";
+    if (kind === "rate") return "The library takes a limited number of coffees from each tablet per day. Try again tomorrow.";
+    if (kind === "local") return "TilauScope could not write the coffee on this tablet. Check the free space, then try again.";
+    if (kind === "too_large") return "This roast is too large for the library and cannot be published.";
+    if (kind === "not_mine") return "This tablet has no record of publishing this coffee, so it cannot withdraw it. Withdraw it from the device that published it.";
+    return "The library did not accept the request. Check that this tablet's date and time are correct, then try again.";
+  }
 
   function mmss(s) { return Math.floor(s / 60) + ":" + ("0" + Math.round(s % 60)).slice(-2); }
   function dayOf(iso) {
@@ -118,7 +145,7 @@ var LibraryTab = (function () {
   // A page of the relay's search: the first one replaces the list, a cursor's is added below it.
   function ask(cursor) {
     waiting = ++seq; appending = !!cursor;
-    send("library_page", JSON.stringify({ text: $("lb-search").value, mine: mine, cursor: cursor, seq: seq }));
+    send("library_page", JSON.stringify({ text: $("lb-search").value, mine: mine, own: own, cursor: cursor, seq: seq }));
   }
   function first() { phase = "loading"; draw(); ask(""); }
   function search() { clearTimeout(typed); more = ""; ask(""); }
@@ -146,7 +173,7 @@ var LibraryTab = (function () {
   function row(c) {
     return '<button class="lb-row' + (c.id === selected ? " sel" : "") + '" data-id="' + esc(c.id) + '"><span class="l1"><b>' + esc(c.name) + '</b><span class="d">' +
       esc(roastDay(c.roasted)) + '</span></span><span class="l2">' + esc([c.country, c.process].filter(Boolean).join(" · ")) + '</span><span class="l3">' +
-      esc(c.roaster_name || c.roaster || "") + "</span></button>";
+      esc(c.roaster_name || c.roaster || "") + "</span>" + (c.mine ? '<span class="mtag">MINE</span>' : "") + "</button>";
   }
   // The selected card's roast: the Roasts tab's own picture once its package is read, a sentence until then or in its place.
   function roastZone(c) {
@@ -161,8 +188,11 @@ var LibraryTab = (function () {
     $("lb-side").innerHTML = '<div><h3>' + esc(c.name) + '</h3><span class="when">' + esc([c.country, c.process, roastDay(c.roasted)].filter(Boolean).join(" · ")) + "</span></div>" +
       roastZone(c) + '<div class="lb-bar"><div class="lb-said"><div class="zh">THEIR TASTING</div>' +
       '<div class="lb-verdict' + (verdict ? "" : " not") + '">' + (verdict || "Not tasted") + "</div>" + chipsOf(c.flavours) + "</div>" +
-      '<button class="go ico" id="lb-import"' + (getting ? " disabled" : "") + ">" + ICON.down + "Import this coffee</button></div>" + machineLine(c);
-    $("lb-import").onclick = function () { getting = c.id; draw(); send("library_get", c.id); };
+      (c.mine ? '<button class="btn danger-o" id="lb-withdraw"' + (withdrawing ? " disabled" : "") + ">Withdraw from the library</button></div>" +
+        '<div class="lb-pub">Published ' + esc(roastDay(c.published)) + " · other roasters can import it now.<small>Published from this tablet: only this tablet can withdraw it.</small></div>"
+        : '<button class="go ico" id="lb-import"' + (getting ? " disabled" : "") + ">" + ICON.down + "Import this coffee</button></div>" + machineLine(c));
+    if (c.mine) $("lb-withdraw").onclick = function () { withdrawSheet(c); };
+    else $("lb-import").onclick = function () { getting = c.id; draw(); send("library_get", c.id); };
   }
 
   function draw() {
@@ -175,15 +205,21 @@ var LibraryTab = (function () {
     if (phase !== "ready") return;
     $("lb-state").classList.add("hidden");
     $("lb-browse").classList.remove("hidden");
+    var mineChip = $("lb-own");
+    mineChip.classList.toggle("hidden", !mineCount && !own); // shown once this tablet has published
+    mineChip.classList.toggle("on", own);
+    mineChip.setAttribute("aria-pressed", String(own));
+    mineChip.textContent = "Mine · " + mineCount;
     var chip = $("lb-mine"), on = mine && !!machine;
     chip.classList.toggle("on", on);
     chip.setAttribute("aria-pressed", String(on));
     chip.disabled = !machine; // no machine set in Settings: nothing to match
-    $("lb-count").textContent = total === 1 ? "1 roast · newest first" : total + " roasts · newest first";
+    $("lb-count").textContent = total == null ? "Newest first" : total === 1 ? "1 roast · newest first" : total + " roasts · newest first"; // null: a search over many of Mine
     var rows = $("lb-rows"), top = rows.scrollTop;
     if (!cards.length) {
       rows.innerHTML = "";
-      $("lb-side").innerHTML = $("lb-search").value.trim() || on ? '<div class="empty"><b>No coffee matches</b><p>Clear the search, or turn off My machine.</p></div>'
+      $("lb-side").innerHTML = own && !$("lb-search").value.trim() ? '<div class="empty"><b>You have not published a roast yet</b><p>Open one of your roasts in the Roasts tab, then touch the cloud.</p></div>'
+        : $("lb-search").value.trim() || on || own ? '<div class="empty"><b>No coffee matches</b><p>Clear the search, or turn off ' + (own ? "My machine and Mine" : "My machine") + ".</p></div>"
         : '<div class="empty"><b>No roast in the library yet</b></div>';
       return;
     }
@@ -213,7 +249,7 @@ var LibraryTab = (function () {
         return;
       }
       if (!appending) { cards = []; $("lb-rows").scrollTop = 0; }
-      cards = cards.concat(r.cards); total = r.total; next = r.next || ""; machine = r.machine; more = ""; phase = "ready";
+      cards = cards.concat(r.cards); total = r.total; next = r.next || ""; machine = r.machine; more = ""; phase = "ready"; mineCount = r.mine || 0;
       if (!pick()) selected = cards.length ? cards[0].id : null;
       draw();
       if (nearEnd()) loadMore(); // a page that does not fill the list: the next one at once
@@ -222,6 +258,23 @@ var LibraryTab = (function () {
       asked = asked.filter(function (a) { return a !== id; });
       if (r && r.detail) roastOf[id] = r.detail; else failed[id] = r && r.error || "local";
       if (id === selected && phase === "ready") draw();
+    } else if (method === "library_publish") { // packed on the worker: now sent
+      if (r && r.ready) send("library_send", r.token); // its own package, whatever else is being published
+      else if (r && r.refused) publishSheet(r);
+      else toast(sendFailure(r && r.error));
+    } else if (method === "library_send") { // the library opens on it, under Mine, nothing else filtering it
+      if (r && r.id) {
+        toast("Published: " + r.name); own = true; mine = false; $("lb-search").value = ""; selected = r.id;
+        first(); showTab("library");
+      } else toast(sendFailure(r && r.error));
+    } else if (method === "library_withdraw") {
+      withdrawing = null;
+      if (!r || !r.id) { toast(sendFailure(r && r.error)); draw(); return; }
+      var gone = cards.filter(function (c) { return c.id === r.id; })[0];
+      cards = cards.filter(function (c) { return c.id !== r.id; }); if (total != null) total = Math.max(0, total - 1); mineCount = Math.max(0, mineCount - 1);
+      if (!pick()) selected = cards.length ? cards[0].id : null;
+      toast("Withdrawn: " + (gone ? gone.name : "the coffee"));
+      draw();
     } else if (method === "library_get") {
       getting = null; draw();
       if (r && r.path) { send("coffee_opened"); return; }
@@ -230,12 +283,52 @@ var LibraryTab = (function () {
     }
   }
 
+  // ── publishing a roast of this tablet (Tilau, 2026-11-24) ─────────────────
+  // The roast's sheet asked library_publish_check: what goes, what stays, the agreement, then Publish; or why it cannot.
+  function publishSheet(r) {
+    if (!r || r.refused) {
+      openSheet('<div class="tsheet" style="align-items:center;text-align:center;gap:14px;padding:30px 36px">' + ICON.warn +
+        "<h3>This roast cannot be published</h3><p class=\"sb\" style=\"font-size:15px\">" + esc(r ? REFUSAL[r.refused] ||
+          "This roast holds a value the library does not accept, so it cannot be published." : "This roast cannot be read now. Try again.") + "</p></div>");
+      return;
+    }
+    var goes = ["The coffee: origin, process, flavours", "This roast and its curve"].concat(r.tasting ? ["Your tasting"] : [], r.brewing ? ["Brew settings"] : []);
+    var stays = ["Your name and organisation", "Stock, sacks, price", "Room conditions, altitude", "File locations, alarms"];
+    function list(items) { return items.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join(""); }
+    openSheet('<div class="tsheet pub" role="dialog" aria-label="Publish to the library"><div class="pub-h"><span class="pub-ic">' + ICON.cloud + "</span><div><h3>Publish this roast of " +
+      esc(r.coffee) + '</h3><span class="sb">' + esc([roastDay(r.day), r.batch_g + " g", r.machine].filter(Boolean).join(" · ")) + "</span></div></div>" +
+      '<div class="pub-cols"><div class="pub-go"><div class="zh">GOES TO THE LIBRARY</div>' + list(goes) + '</div><div class="pub-stay"><div class="zh">STAYS ON THIS TABLET</div>' + list(stays) + "</div></div>" +
+      '<p class="sb" style="font-size:14px">Withdrawing it later removes it from the library, not from the roasters who already imported it.</p>' +
+      '<button class="pub-ok" id="pub-ok" role="switch" aria-checked="false"><span class="sw"></span>Any roaster may use this coffee and adapt it.</button>' +
+      '<div class="tacts" style="justify-content:flex-end;align-items:center;gap:14px"><span class="sb">Touch outside to cancel</span><button class="go" id="pub-go" disabled>Publish</button></div></div>');
+    $("pub-ok").onclick = function () {
+      var on = this.getAttribute("aria-checked") !== "true";
+      this.setAttribute("aria-checked", String(on)); this.classList.toggle("on", on); $("pub-go").disabled = !on;
+    };
+    $("pub-go").onclick = function () {
+      closeSheet(false);
+      send("library_publish", JSON.stringify({ origin: r.origin, name: r.name }));
+      toast("Publishing " + r.coffee + "…");
+    };
+  }
+  function withdrawSheet(c) {
+    openSheet('<div class="tsheet" style="gap:14px"><h3>Withdraw ' + esc(c.name) + " from the library?</h3>" +
+      '<p class="sb" style="font-size:15px">Roasters who already imported it keep their copy.</p>' +
+      '<div class="tacts" style="justify-content:flex-end;align-items:center;gap:14px"><span class="sb">Touch outside to cancel</span><button class="btn danger" id="wd-go">Withdraw</button></div></div>');
+    $("wd-go").onclick = function () {
+      closeSheet(false);
+      if (withdrawing) return; // one request at a time: a second would only be refused
+      withdrawing = c.id; draw(); send("library_withdraw", c.id);
+    };
+  }
+
   function init() {
     $("lb-search").oninput = function () { clearTimeout(typed); if (phase === "ready") typed = setTimeout(search, 400); };
     $("lb-mine").onclick = function () { mine = !mine; if (phase === "ready") search(); };
+    $("lb-own").onclick = function () { own = !own; if (phase === "ready") search(); };
     $("lb-rows").onscroll = function () { if (nearEnd()) loadMore(); };
   }
 
-  return { setColours: setColours, init: init, show: show, reply: reply, sheet: sheet, closeSheet: closeSheet, theirsZone: theirsZone, theirsDay: theirsDay,
+  return { setColours: setColours, init: init, show: show, reply: reply, sheet: sheet, publishSheet: publishSheet, closeSheet: closeSheet, theirsZone: theirsZone, theirsDay: theirsDay,
            theirsArrived: theirsArrived, forgetTheirs: forgetTheirs, ICON: ICON };
 })();
