@@ -1,4 +1,5 @@
 ## [4.4] 2026-11-14
+build 13
 build 12
 * 🐛 [fix(result)] : the Batch block of the result form at the end of a roast reads in full (batch number, assigned, n°, pos) instead of being cut to its first letters
 * ⚡ [feat(labels)] : labels, PDF or Niimbot, are printed from BeanCave only, once a green coffee or a roast is selected: the result form no longer prints the roast label nor asks for it on saving, and the Print a Coffee Label window is gone from the TilauScope menu
