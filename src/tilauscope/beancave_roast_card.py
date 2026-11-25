@@ -13,74 +13,40 @@
 # AUTHOR
 # Tilau 2025-2026
 
-"""Landscape roast card: key figures, the curve with the settings played under it, key moments."""
+"""Landscape roast card: key figures, the curve with the settings played under it, key moments.
+
+What it shows comes from tilaucore.roast_card, shared with the tablet's card; this paints it.
+"""
 
 from __future__ import annotations
 
 import logging
-import math
-from dataclasses import dataclass
-from numbers import Real
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QDateTime, QLocale
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import QApplication
 
-from artisanlib.util import decodeLocalStrict, events_internal_to_external_value
 from tilauscope.beancave_card_base import CardPainter
+from tilaucore import roast_card as rc
 from tilaucore.roast_colour import agtron_text
-from tilauscope.roast_debrief import roast_colour
 from tilauscope.roasters import canonical_roaster_name
 from tilauscope.tilauscope_types import (COLOR_AIR, COLOR_GRAIN, PHASE_COLORS, THEME,
                                          dimmed, get_agtron_color)
 
 _logd = logging.getLogger('tilau')
-# Drawn on a 2400 × 1350 layout, saved at 3200 × 1800.
-_W, _H, _SCALE = 2400, 1350, 4 / 3
+_W, _H, _SCALE = rc.WIDTH, rc.HEIGHT, rc.SCALE
 _BG, _SURFACE, _BORDER, _RAISED = THEME['BG'], THEME['SURFACE'], THEME['BORDER'], THEME['SURFACE1']
 _TEXT, _MUTED, _FAINT = THEME['TEXT'], THEME['SUBTEXT'], THEME['OVERLAY0']
 # The probe hues of the roasting window; the rate wears the bean's hue one step back.
 _BLUE, _PEACH = COLOR_GRAIN, COLOR_AIR
 _RISE = dimmed(_BLUE, _BLUE)
 _PHASE_COLORS = PHASE_COLORS   # drying, Maillard, development
-# Settings lanes by Artisan event type (0 air, 1 drum, 2 damper, 3 burner), burner first.
-# They wear the operator's event colours, as on the curve; these stand in for a missing one.
-_LANE_ORDER = (3, 0, 2, 1)
+# Settings lanes wear the operator's event colours, as on the curve; these stand in for a missing one.
 _LANE_COLORS = {3: THEME['CRITICAL'], 0: THEME['TEAL'], 2: THEME['MAUVE'], 1: THEME['LAVENDER']}
-# Plot frame, key moments column
+# Plot frame
 _X0, _X1, _Y0 = 150, 1730, 300
 _LANE_H, _LANE_GAP = 52, 14
-_ROW_Y0, _ROW_STEP, _ROW_LAST = 392, 39, 1270
-# Changes on one setting closer than this collapse into the last one in the key moments.
-_SETTLE_S = 10.0
-
-
-def _number(value) -> float | None:
-    if isinstance(value, Real) and math.isfinite(value):
-        return float(value)
-    return None
-
-
-def _mmss(seconds: float) -> str:
-    seconds = max(0, round(seconds))
-    return f'{seconds // 60}:{seconds % 60:02d}'
-
-
-@dataclass
-class _Lane:
-    kind: int
-    name: str
-    color: str
-    steps: list[tuple[float, int]]   # (seconds from CHARGE, value), in order
-
-
-@dataclass
-class _Moment:
-    t: float
-    text: str
-    color: str
-    milestone: bool = False
-    kind: int = -1   # the setting a gesture moved
+_mmss = rc.mmss
 
 
 class RoastSocialCard(CardPainter):
@@ -102,115 +68,24 @@ class RoastSocialCard(CardPainter):
 
     @staticmethod
     def agtron_of(profile: dict) -> int:
-        return round(roast_colour(profile)[0] or 0)
+        return rc.colour(profile)[0]
 
     @staticmethod
     def _date_label(profile: dict) -> str:
-        epoch = _number(profile.get('roastepoch'))
+        epoch = rc.number(profile.get('roastepoch'))
         if epoch is not None and epoch > 0:
             when = QDateTime.fromSecsSinceEpoch(int(epoch))
             return QLocale().toString(when, 'd MMM yyyy · HH:mm')
         return str(profile.get('roastdate') or '').strip()
 
     @staticmethod
-    def _milestones(profile: dict) -> dict[str, int]:
-        times = profile.get('timex') or []
-        indices = profile.get('timeindex') or []
-        marks = {}
-        for key, slot in (('charge', 0), ('dry', 1), ('fc', 2), ('drop', 6)):
-            if slot >= len(indices):
-                continue
-            index = indices[slot]
-            if (isinstance(index, int) and (index >= 0 if slot == 0 else index > 0)
-                    and index < len(times) and _number(times[index]) is not None):
-                marks[key] = index
-        # Never turn an absent CHARGE or DROP into a made-up milestone.
-        if 'charge' in marks:
-            for key in ('dry', 'fc', 'drop'):
-                if key in marks and times[marks[key]] <= times[marks['charge']]:
-                    del marks[key]
-        if 'drop' in marks:
-            for key in ('dry', 'fc'):
-                if key in marks and times[marks[key]] >= times[marks['drop']]:
-                    del marks[key]
-        return marks
-
-    @staticmethod
-    def _phase_durations(profile: dict, marks: dict[str, int]) -> list[float | None]:
-        times = profile.get('timex') or []
-        result = []
-        for start, end in (('charge', 'dry'), ('dry', 'fc'), ('fc', 'drop')):
-            duration = times[marks[end]] - times[marks[start]] if start in marks and end in marks else 0
-            result.append(duration if duration > 0 else None)
-        return result
-
-    @staticmethod
-    def _turning_point(profile: dict, marks: dict[str, int]) -> int | None:
-        tp = (profile.get('computed') or {}).get('TP_idx')
-        if isinstance(tp, int) and marks['charge'] < tp < marks['drop']:
-            return tp
-        return None
-
-    @staticmethod
-    def _lanes(profile: dict, marks: dict[str, int], colors: list | None = None) -> list[_Lane]:
-        """Each setting played between CHARGE and DROP, with the value it had at CHARGE."""
-        times = profile.get('timex') or []
-        names = profile.get('etypes') or []
-        charge, drop = marks['charge'], marks['drop']
-        t0 = times[charge]
-        steps: dict[int, list[tuple[float, int]]] = {}
-        before: dict[int, int] = {}
-        for idx, kind, value in zip(profile.get('specialevents') or [],
-                                    profile.get('specialeventstype') or [],
-                                    profile.get('specialeventsvalue') or [], strict=False):
-            if kind not in _LANE_COLORS or not isinstance(idx, int) or not 0 <= idx < len(times):
-                continue
-            pct = events_internal_to_external_value(_number(value))
-            if idx <= charge:
-                before[kind] = pct
-            elif idx <= drop:
-                steps.setdefault(kind, []).append((times[idx] - t0, pct))
-        lanes = []
-        for kind in _LANE_ORDER:
-            played = ([(0.0, before[kind])] if kind in before else []) + steps.get(kind, [])
-            name = decodeLocalStrict(names[kind]).strip() if kind < len(names) else ''
+    def _lane_colours(colors: list | None) -> dict[int, str]:
+        """The operator's event colour of each setting, by event type; ours where it has none."""
+        result = {}
+        for kind, fallback in _LANE_COLORS.items():
             colour = QColor(colors[kind]) if colors and kind < len(colors) else QColor()
-            if played and name:
-                lanes.append(_Lane(kind, name, colour.name() if colour.isValid() else _LANE_COLORS[kind], played))
-        return lanes
-
-    @staticmethod
-    def _gestures(lanes: list[_Lane]) -> list[_Moment]:
-        """Settings changes after CHARGE; a setting moved again within a few seconds keeps its last value."""
-        moments = []
-        for lane in lanes:
-            changes = [s for s in lane.steps if s[0] > 0]
-            # a value equal to the one held at CHARGE is no gesture
-            previous = lane.steps[0][1] if lane.steps[0][0] == 0 else None
-            kept: list[tuple[float, int]] = []
-            for i, (t, value) in enumerate(changes):
-                if i + 1 < len(changes) and changes[i + 1][0] - t < _SETTLE_S:
-                    continue
-                if t <= _SETTLE_S:   # set with the charge: the opening value, not a gesture
-                    previous = value
-                elif value != previous:
-                    kept.append((t, value))
-                    previous = value
-            moments.extend(_Moment(t, f'{lane.name} {value} %', lane.color, kind=lane.kind) for t, value in kept)
-        return moments
-
-    @staticmethod
-    def _fit_moments(milestones: list[_Moment], gestures: list[_Moment], lanes: list[_Lane],
-                     capacity: int) -> list[_Moment]:
-        """Every gesture when the column holds them; otherwise the least decisive settings go first."""
-        room = capacity - len(milestones)
-        order = [lane.kind for lane in lanes]
-        while len(gestures) > room and len(order) > 1:
-            dropped = order.pop()
-            gestures = [g for g in gestures if g.kind != dropped]
-        if len(gestures) > room:
-            gestures = sorted(gestures, key=lambda g: g.t)[:max(0, room)]
-        return sorted(milestones + gestures, key=lambda m: (m.t, not m.milestone))
+            result[kind] = colour.name() if colour.isValid() else fallback
+        return result
 
     # ── painting helpers ─────────────────────────────────────────────────────
     @staticmethod
@@ -246,10 +121,7 @@ class RoastSocialCard(CardPainter):
                 segment.append(point)
 
     # ── header ───────────────────────────────────────────────────────────────
-    def _header(self, p: QPainter, profile: dict, bean, marks: dict[str, int],
-                duration: float | None, energy: str) -> None:
-        bt = profile.get('temp2') or []
-        unit = '°F' if profile.get('mode') == 'F' else '°C'
+    def _header(self, p: QPainter, profile: dict, bean, marks: dict[str, int], energy: str) -> None:
         country = str(getattr(bean, 'country', '') or '').strip()
         process = str(getattr(bean, 'process', '') or '').strip()
         self._draw(p, 64, 82, ' · '.join(v for v in (country, process) if v).upper(),
@@ -265,46 +137,22 @@ class RoastSocialCard(CardPainter):
         p.setPen(QPen(QColor(_BORDER), 2))
         p.drawLine(QPointF(640, 56), QPointF(640, 210))
 
-        dash = '—'
-        phases = self._phase_durations(profile, marks)
-        development = dash
-        if phases[2] is not None and duration:
-            development = f'{_mmss(phases[2])} · {phases[2] / duration * 100:.1f} %'
-        rise = dash
-        if 'fc' in marks and 'drop' in marks:
-            fc_bt, drop_bt = _number(bt[marks['fc']]), _number(bt[marks['drop']])
-            if fc_bt is not None and drop_bt is not None and fc_bt > 0 and drop_bt > 0:
-                rise = f'{drop_bt - fc_bt:+.1f} {unit}'
-        weight = profile.get('weight') or []
-        incoming = _number(weight[0]) if len(weight) >= 3 else None
-        outgoing = _number(weight[1]) if len(weight) >= 3 else None
-        wunit = decodeLocalStrict(weight[2], 'g') if len(weight) >= 3 else 'g'
-        loss = dash
-        if incoming and outgoing and incoming > 0 and outgoing > 0:
-            loss = f'{(incoming - outgoing) / incoming * 100:.1f} %'
-        agtron = self.agtron_of(profile)
-        basis = roast_colour(profile)[1]
+        dash = rc.DASH
+        shown = rc.figures(profile, marks)
+        agtron, basis = rc.colour(profile)
         colour_label = (QApplication.translate('tilauscope_common', 'Colour') if not agtron else
                         {'ground': QApplication.translate('tilauscope_roast_review', 'Colour · ground'),
                          'estimated': QApplication.translate('tilauscope_roast_review', 'Colour · ground (est.)'),
                          }.get(basis, QApplication.translate('tilauscope_roast_review', 'Colour · whole bean')))
-        ambient = []
-        for key, fmt in (('ambientTemp', '{:.0f} ' + unit), ('ambient_humidity', '{:.0f} %'),
-                         ('ambient_pressure', '{:.0f} hPa')):
-            value = _number(profile.get(key))
-            if value:
-                ambient.append(fmt.format(value))
+        ambient = shown['ambient']
         dev = _PHASE_COLORS[2]
         columns = [
-            [(QApplication.translate('tilauscope_roast_review', 'Total duration'),
-              _mmss(duration) if duration else dash, _TEXT),
-             (QApplication.translate('Label', 'Development'), development, dev),
-             (QApplication.translate('tilauscope_roast_review', 'Development rise'), rise, dev)],
-            [(QApplication.translate('tilauscope_common', 'Green weight'),
-              f'{incoming:g} {wunit}' if incoming else dash, _TEXT),
-             (QApplication.translate('tilauscope_common', 'Roasted weight'),
-              f'{outgoing:g} {wunit}' if outgoing else dash, _TEXT),
-             (QApplication.translate('tilauscope_common', 'Weight loss'), loss, _TEXT)],
+            [(QApplication.translate('tilauscope_roast_review', 'Total duration'), shown['duration'], _TEXT),
+             (QApplication.translate('Label', 'Development'), shown['development'], dev),
+             (QApplication.translate('tilauscope_roast_review', 'Development rise'), shown['rise'], dev)],
+            [(QApplication.translate('tilauscope_common', 'Green weight'), shown['green'], _TEXT),
+             (QApplication.translate('tilauscope_common', 'Roasted weight'), shown['roasted'], _TEXT),
+             (QApplication.translate('tilauscope_common', 'Weight loss'), shown['loss'], _TEXT)],
             [(colour_label, QApplication.translate('tilauscope_roast_review', 'Agtron')
               + f" {agtron_text(agtron, basis)}"
               if agtron else dash, _TEXT),
@@ -325,7 +173,7 @@ class RoastSocialCard(CardPainter):
 
     # ── curve, phases, lanes ─────────────────────────────────────────────────
     def _chart(self, p: QPainter, profile: dict, marks: dict[str, int], ror: list[float | None],
-               lanes: list[_Lane]) -> None:
+               lanes: list[rc.Lane]) -> None:
         self._rrect(p, QRectF(32, 248, 1790, 1040), 18, fill=_SURFACE, stroke=_BORDER)
         times = profile.get('timex') or []
         bt, et = profile.get('temp2') or [], profile.get('temp1') or []
@@ -337,21 +185,11 @@ class RoastSocialCard(CardPainter):
         def X(t):
             return _X0 + (t - t0) / total * (_X1 - _X0)
 
-        def valid(series, i):
-            v = _number(series[i]) if i < len(series) else None
-            return v if v is not None and v != -1 else None
-
         span = range(charge, drop + 1)
-        temps = [v for s in (bt, et) for i in span if (v := valid(s, i)) is not None]
-        low = math.floor((min(temps) - 10) / 20) * 20 if temps else 0
-        top = max(temps) if temps else 100
-        step = 20 if top - low <= 180 else 40
-        high = math.ceil((top + 0.2 * (top - low)) / step) * step
+        axes = rc.scales(profile, marks, ror)
+        low, high, step, rhigh, rstep = axes.low, axes.high, axes.step, axes.rhigh, axes.rstep
         def Y(v):
             return y1 - (v - low) / (high - low) * (y1 - _Y0)
-        rvalues = [r for r in ror[charge:drop + 1] if r is not None]
-        rstep = 4 if not rvalues or max(rvalues) <= 20 else 8
-        rhigh = max(2 * rstep, math.ceil(max(rvalues, default=0) * 1.6 / rstep) * rstep)
         def R(v):
             return y1 - v / rhigh * (y1 - _Y0)
 
@@ -372,7 +210,7 @@ class RoastSocialCard(CardPainter):
         self._draw(p, _X0 - 14, _Y0 - 24, unit, self._font(22), _FAINT, 'right')
         self._draw(p, _X1 + 14, _Y0 - 24, f'{unit}/min', self._font(22), _RISE)
 
-        tp = self._turning_point(profile, marks)
+        tp = rc.turning_point(profile, marks)
         moments = [('charge', charge, QApplication.translate('Tooltip', 'Charge'))]
         if tp is not None:
             moments.append(('tp', tp, QApplication.translate('Label', 'TP')))
@@ -388,19 +226,19 @@ class RoastSocialCard(CardPainter):
         # curves, clipped to the plot
         p.save()
         p.setClipRect(QRectF(_X0 - 8, _Y0 - 8, _X1 - _X0 + 16, y1 - _Y0 + 8))
-        start = tp if tp is not None else charge
+        start = rc.rise_start(profile, marks)
         self._polyline(p, [QPointF(X(times[i]), R(ror[i])) if i >= start and ror[i] is not None else None
                            for i in span], _RISE, 2.7)
-        self._polyline(p, [QPointF(X(times[i]), Y(v)) if (v := valid(et, i)) is not None else None
+        self._polyline(p, [QPointF(X(times[i]), Y(v)) if (v := rc.reading(et, i)) is not None else None
                            for i in span], _PEACH, 2.4)
-        self._polyline(p, [QPointF(X(times[i]), Y(v)) if (v := valid(bt, i)) is not None else None
+        self._polyline(p, [QPointF(X(times[i]), Y(v)) if (v := rc.reading(bt, i)) is not None else None
                            for i in span], _BLUE, 3.4)
         p.restore()
 
         # peak rate of rise after the turning point
-        after = [(r, i) for i in range(start, drop + 1) if (r := ror[i]) is not None]
-        if after:
-            r, i = max(after)
+        peak = rc.peak_rise(profile, marks, ror)
+        if peak:
+            r, i = peak
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(_RISE))
             p.drawEllipse(QPointF(X(times[i]), R(r)), 5, 5)
@@ -408,7 +246,7 @@ class RoastSocialCard(CardPainter):
 
         # milestones: dot on the bean curve and a callout on two alternating rows
         for n, (key, idx, label) in enumerate(moments):
-            v = valid(bt, idx)
+            v = rc.reading(bt, idx)
             if v is None:
                 continue
             x, y = X(times[idx]), Y(v)
@@ -431,7 +269,7 @@ class RoastSocialCard(CardPainter):
             p.setBrush(Qt.BrushStyle.NoBrush)
 
         # phase strip
-        phases = self._phase_durations(profile, marks)
+        phases = rc.phase_durations(profile, marks)
         names = (QApplication.translate('Label', 'Drying'), QApplication.translate('Label', 'Maillard'),
                  QApplication.translate('Label', 'Development'))
         sy = y1 + 20
@@ -501,11 +339,9 @@ class RoastSocialCard(CardPainter):
 
     # ── key moments ──────────────────────────────────────────────────────────
     def _moments(self, p: QPainter, profile: dict, marks: dict[str, int], ror: list[float | None],
-                 lanes: list[_Lane]) -> None:
+                 lanes: list[rc.Lane]) -> None:
         self._rrect(p, QRectF(1846, 248, 522, 1040), 18, fill=_SURFACE, stroke=_BORDER)
-        times, bt = profile.get('timex') or [], profile.get('temp2') or []
-        charge = marks['charge']
-        t0 = times[charge]
+        bt = profile.get('temp2') or []
         self._draw(p, 1874, 300, QApplication.translate('tilauscope_roast_review', 'Key moments'),
                    self._font(26, True), _TEXT)
         for label, x, align in ((QApplication.translate('Label', 'Time'), 1874, 'left'),
@@ -514,59 +350,49 @@ class RoastSocialCard(CardPainter):
                                 (QApplication.translate('Label', 'Event'), 2168, 'left')):
             self._draw(p, x, 344, label, self._font(20), _FAINT, align)
 
-        milestones = [_Moment(0.0, QApplication.translate('Tooltip', 'Charge'), _TEXT, True)]
-        tp = self._turning_point(profile, marks)
-        if tp is not None:
-            milestones.append(_Moment(times[tp] - t0, QApplication.translate('Label', 'TP'), _MUTED, True))
-        for key, label, colour in (('dry', QApplication.translate('tilauscope_common', 'Dry end'), _PHASE_COLORS[0]),
-                                   ('fc', QApplication.translate('tilauscope_common', 'First crack'), _PHASE_COLORS[1]),
-                                   ('drop', QApplication.translate('Tooltip', 'Drop'), _PHASE_COLORS[2])):
-            if key in marks:
-                milestones.append(_Moment(times[marks[key]] - t0, label, colour, True))
-        # the rise is only meaningful from the turning point on, as on the curve
-        start = tp if tp is not None else charge
-        capacity = (_ROW_LAST - _ROW_Y0) // _ROW_STEP + 1
-        rows = self._fit_moments(milestones, self._gestures(lanes), lanes, capacity)
-
+        named = {'charge': (QApplication.translate('Tooltip', 'Charge'), _TEXT),
+                 'tp': (QApplication.translate('Label', 'TP'), _MUTED),
+                 'dry': (QApplication.translate('tilauscope_common', 'Dry end'), _PHASE_COLORS[0]),
+                 'fc': (QApplication.translate('tilauscope_common', 'First crack'), _PHASE_COLORS[1]),
+                 'drop': (QApplication.translate('Tooltip', 'Drop'), _PHASE_COLORS[2])}
+        start = rc.rise_start(profile, marks)
         figures = self._mono(22)
-        for n, row in enumerate(rows):
-            y = _ROW_Y0 + n * _ROW_STEP
-            # sample at that moment
-            i = min(range(charge, marks['drop'] + 1), key=lambda k: abs(times[k] - t0 - row.t))
+        for n, row in enumerate(rc.key_moments(profile, marks, lanes)):
+            y = rc.ROW_Y0 + n * rc.ROW_STEP
+            i = rc.sample_at(profile, marks, row.t)
+            text, colour = named[row.key] if row.milestone else (row.text, row.color)
             if row.milestone:
                 shade = QColor(_BORDER)
                 shade.setAlpha(140)
                 path = QPainterPath()
                 path.addRoundedRect(QRectF(1860, y - 27, 494, 36), 6, 6)
                 p.fillPath(path, shade)
-            temp = _number(bt[i]) if i < len(bt) else None
+            temp = rc.number(bt[i]) if i < len(bt) else None
             self._draw(p, 1874, y, _mmss(row.t), figures, _MUTED)
             self._draw(p, 2036, y, f'{temp:.1f}' if temp is not None and temp != -1 else '—', figures, _BLUE, 'right')
             rise = ror[i] if i >= start else None
             self._draw(p, 2136, y, f'{rise:.1f}' if rise is not None else '—', figures, _RISE, 'right')
-            self._draw(p, 2168, y, row.text, self._font(22, row.milestone), row.color, max_w=190)
+            self._draw(p, 2168, y, text, self._font(22, row.milestone), colour, max_w=190)
 
     # ── entry points ─────────────────────────────────────────────────────────
     def render(self, profile: dict, bean=None, deltabt=None, ror_unit: str | None = None,
                energy: str = '', lane_colors: list | None = None) -> QImage:
-        marks = self._milestones(profile)
+        marks = rc.milestones(profile)
         times = profile.get('timex') or []
-        has_frame = 'charge' in marks and 'drop' in marks and times[marks['drop']] > times[marks['charge']]
-        duration = times[marks['drop']] - times[marks['charge']] if has_frame else None
         # RoR supplied by the viewer uses the current display unit, unlike stored BT.
         factor = 1.0
         if ror_unit and ror_unit != profile.get('mode', 'C'):
             factor = 1 / 1.8 if ror_unit == 'F' else 1.8
-        ror = [v * factor if (v := _number(raw)) is not None else None for raw in (deltabt or [])]
+        ror = [v * factor if (v := rc.number(raw)) is not None else None for raw in (deltabt or [])]
         ror += [None] * (len(times) - len(ror))
         img = QImage(round(_W * _SCALE), round(_H * _SCALE), QImage.Format.Format_RGB32)
         img.fill(QColor(_BG))
         p = self._begin(img)
         p.scale(_SCALE, _SCALE)
         try:
-            self._header(p, profile, bean, marks, duration, energy)
-            if has_frame:
-                lanes = self._lanes(profile, marks, lane_colors)
+            self._header(p, profile, bean, marks, energy)
+            if rc.has_frame(profile, marks):
+                lanes = rc.lanes(profile, marks, self._lane_colours(lane_colors))
                 self._chart(p, profile, marks, ror, lanes)
                 self._moments(p, profile, marks, ror, lanes)
             else:

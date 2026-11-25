@@ -54,4 +54,6 @@ in Settings › General › About TilauScope:
     licence (libffi-MIT.txt, mpdecimal-BSD-2-Clause.txt, XZ-0BSD.txt,
     Zstandard-BSD-3-Clause.txt, bzip2.txt);
   * the DejaVu Sans fonts of the roast label: Bitstream Vera Fonts licence and
-    public domain (DejaVu-Fonts.txt).
+    public domain (DejaVu-Fonts.txt);
+  * the JetBrains Mono fonts of the roast card: SIL Open Font License 1.1
+    (JetBrainsMono-OFL.txt).

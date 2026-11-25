@@ -1,4 +1,8 @@
 ## [4.4] 2026-11-14
+build 12
+* 🐛 [fix(result)] : the Batch block of the result form at the end of a roast reads in full (batch number, assigned, n°, pos) instead of being cut to its first letters
+* ⚡ [feat(labels)] : labels, PDF or Niimbot, are printed from BeanCave only, once a green coffee or a roast is selected: the result form no longer prints the roast label nor asks for it on saving, and the Print a Coffee Label window is gone from the TilauScope menu
+* ⚡ [feat(android)] : on the Android prototype and the iPad app, the desktop's roast card (Roasts › Export › Roast card) is shared as an image from a roast's buttons in BeanCave › Roasts and from Roast complete at the end of a roast: the same 3200 × 1800 picture, drawn from the same figures, handed to the tablet's share sheet
 build 11
 * ⚡ [feat(android)] : on the Android prototype and the iPad app, an alarm's extractor command is chosen by touch: power on or off, catalyst off, normal or strong, and the fan's speed; the list reads it in words ("Extractor on · catalyst normal · fan 60 %")
 * 🐛 [fix(android)] : on the Android prototype and the iPad app, an alarm condition on a device only the computer reads shows the computer's name for it (Burner, Air, T3…) instead of "skywalker_pf 1"

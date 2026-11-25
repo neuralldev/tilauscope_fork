@@ -17,8 +17,13 @@ import shutil
 
 from tilaucore.alog_index import _UUID_RE, load_index, read_alog_metadata, save_index, scan_directory
 from tilaucore.artisan_compat import events_internal_to_external_value, fromCtoFstrict, fromFtoCstrict
+from tilaucore.display_colours import LEVER_COLOURS
 from tilaucore.energy_model import ESTIMATED, MEASURED, MIXED, NONE
+from tilaucore import roast_card as rc
+from tilaucore.roast_colour import agtron_text, get_agtron_color
 from tilaucore.roast_summary import english, roast_facts, roast_tiles
+from tilaucore.roasters import canonical_roaster_name
+from tilaucore.ror import RoRSettings, rate_of_rise
 
 from .alog import EVENT_TYPE, curves_c
 from .energy import bill
@@ -90,6 +95,58 @@ def profile_detail(profile: dict, unit: str = "C") -> dict:
     return {"title": profile.get("title") or "", "epoch": profile.get("roastepoch") or 0,
             "bean_uuid": found.group(1) if found else "", "roast_uuid": str(profile.get("roastUUID") or ""),
             "tiles": tiles, "curve": curve, "marks": marks, "points": sorted(points, key=lambda p: p["t"]), "lanes": lanes}
+
+
+def _figure(value: float | None, digits: int = 2) -> float | None:
+    return None if value is None else round(value, digits)
+
+
+def card_data(profile: dict, bean=None, ror_settings: RoRSettings | None = None) -> dict:
+    """The desktop's roast card (Roasts › Export › Roast card) as mobile/web/roast-card.js draws it: what
+    tilaucore.roast_card says, in the roast's unit, the curve from CHARGE to DROP in seconds from CHARGE."""
+    marks = rc.milestones(profile)
+    agtron, basis = rc.colour(profile)
+    energy = energy_tile(profile)["value"]
+    country, process = (str(getattr(bean, k, "") or "").strip() for k in ("country", "process"))
+    card = {"kicker": " · ".join(v for v in (country, process) if v).upper(),
+            "name": str(getattr(bean, "name", "") or profile.get("title") or "").strip(),
+            "epoch": rc.number(profile.get("roastepoch")) or 0, "date": str(profile.get("roastdate") or "").strip(),
+            "roaster": canonical_roaster_name(str(profile.get("roastertype") or "")),
+            "figures": rc.figures(profile, marks), "agtron": agtron, "basis": basis,
+            "agtron_text": agtron_text(agtron, basis) if agtron else "", "swatch": get_agtron_color(agtron) if agtron else "",
+            "energy": "" if energy == rc.DASH else energy, "frame": rc.has_frame(profile, marks)}
+    if not card["frame"]:
+        return card
+    times, bt, et = profile.get("timex") or [], profile.get("temp2") or [], profile.get("temp1") or []
+    # The limits are in °C/min; a °F roast's RoR is 1.8 times larger, as on the desktop (library_tab._roast_ror)
+    s = ror_settings or RoRSettings()
+    if str(profile.get("mode") or "C").upper() == "F":
+        s = replace(s, limit_min=s.limit_min * 1.8, limit_max=s.limit_max * 1.8)
+    ror = rate_of_rise(times, bt, s) + [None] * len(times)
+    charge, drop = marks["charge"], marks["drop"]
+    t0, start = times[charge], rc.rise_start(profile, marks)
+    span = range(charge, drop + 1)
+    tp = rc.turning_point(profile, marks)
+    moments = [("charge", charge)] + ([("tp", tp)] if tp is not None else [])
+    moments += [(k, marks[k]) for k in ("dry", "fc") if k in marks] + [("drop", drop)]
+    played = rc.lanes(profile, marks, {kind: LEVER_COLOURS[lever] for lever, kind in EVENT_TYPE.items()})
+    peak = rc.peak_rise(profile, marks, ror)
+    rows = []
+    for row in rc.key_moments(profile, marks, played):
+        i = rc.sample_at(profile, marks, row.t)
+        temp = rc.number(bt[i]) if i < len(bt) else None
+        rows.append({"t": row.t, "text": row.text, "key": row.key, "color": row.color, "milestone": row.milestone,
+                     "bean": None if temp is None or temp == -1 else round(temp, 1),
+                     "rise": _figure(ror[i], 1) if i >= start else None})
+    card.update({"total": times[drop] - t0, "t": [round(times[i] - t0, 2) for i in span],
+                 "bt": [_figure(rc.reading(bt, i)) for i in span], "et": [_figure(rc.reading(et, i)) for i in span],
+                 "ror": [_figure(ror[i]) if i >= start else None for i in span],
+                 "scales": vars(rc.scales(profile, marks, ror)), "phases": rc.phase_durations(profile, marks),
+                 "moments": [{"key": k, "t": times[i] - t0, "bt": _figure(rc.reading(bt, i))} for k, i in moments],
+                 "peak": {"t": times[peak[1]] - t0, "r": round(peak[0], 2)} if peak else None,
+                 "lanes": [{"name": lane.name, "color": lane.color, "steps": lane.steps} for lane in played],
+                 "rows": rows})
+    return card
 
 
 

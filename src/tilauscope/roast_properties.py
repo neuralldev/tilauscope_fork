@@ -57,7 +57,7 @@ from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics, QIcon
 from artisanlib.util import fromCtoFstrict, convertWeight, weight_units, events_internal_to_external_value
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label, roast_batch_tag,
-    open_in_os_viewer, ensure_color_system, resolve_color_system, call_later,
+    open_in_os_viewer, ensure_color_system, call_later,
     get_agtron_color, decode_alog_text, SCREEN_SIZE_RANGES, operator_level,
     park_until_finished,
 )
@@ -265,9 +265,12 @@ class _BatchBlock(QFrame):
         )
         qmc = aw.qmc
 
-        root = QHBoxLayout(self)
-        root.setContentsMargins(14, 10, 14, 10)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(14, 10, 14, 10)
+        outer.setSpacing(8)
+        root = QHBoxLayout()
         root.setSpacing(14)
+        outer.addLayout(root)
 
         # ── Big identity badge (left) ─────────────────────────────────────
         self._badge = QLabel()
@@ -329,12 +332,19 @@ class _BatchBlock(QFrame):
             self._lock_btn.toggled.connect(self._set_unlocked)
             self._lock_btn.setStyleSheet(self._lock_style())
 
-            root.addWidget(_field_label_compact(QApplication.translate("tilauscope_roast_setup", "n°")))
-            root.addWidget(self._prefix_edit)
-            root.addWidget(self._nr_spin)
-            root.addWidget(_field_label_compact(QApplication.translate("tilauscope_roast_setup", "pos")))
-            root.addWidget(self._pos_spin)
-            root.addWidget(self._lock_btn)
+            # A row of their own under the badge: on the badge's row they need twice the card's width
+            # and Qt squeezed every label to its first letters.
+            edit_row = QHBoxLayout()
+            edit_row.setSpacing(6)
+            edit_row.addWidget(_field_label_compact(QApplication.translate("tilauscope_roast_setup", "n°")))
+            edit_row.addWidget(self._prefix_edit)
+            edit_row.addWidget(self._nr_spin)
+            edit_row.addSpacing(6)
+            edit_row.addWidget(_field_label_compact(QApplication.translate("tilauscope_roast_setup", "pos")))
+            edit_row.addWidget(self._pos_spin)
+            edit_row.addStretch(1)
+            edit_row.addWidget(self._lock_btn)
+            outer.addLayout(edit_row)
             self._set_unlocked(False)  # locked by default
 
         self._refresh()
@@ -4574,8 +4584,6 @@ class RoastResultDialog(QDialog):
         self._cleaned = False  # done() has unwired the form
 
         self._drag_pos: object = None
-        # drives the "print the label before closing?" reminder on save
-        self._label_printed = False
 
         self.setStyleSheet(base_qss(ground=False) + _local_style())
         self._connect_scale()
@@ -5192,7 +5200,6 @@ class RoastResultDialog(QDialog):
         batch_lay.addWidget(_section_label(QApplication.translate("Label", "Batch")))
         self._batch_block = _BatchBlock(self._aw, _BatchBlock.MODE_EDIT)
         batch_lay.addWidget(self._batch_block)
-        batch_card.setFixedWidth(270)
         identity_row.addWidget(batch_card)
         bl.addLayout(identity_row)
 
@@ -5498,17 +5505,6 @@ class RoastResultDialog(QDialog):
                 btn_row.addWidget(ai_btn)
         except Exception as exc:  # noqa: BLE001
             _log.warning("RoastResultDialog: AI button init failed: %s", exc)
-        # Roast label — printable straight from the values typed above, without
-        # waiting for the profile to reach the disk (see _label_profile_snapshot)
-        label_btn = QPushButton(
-            QApplication.translate("tilauscope_roast_setup", "🏷  Label PDF")
-        )
-        label_btn.setProperty('variant', 'outline')
-        label_btn.setToolTip(QApplication.translate(
-            "tilauscope_roast_setup",
-            "Generate the roast label as a PDF from the values entered above"))
-        label_btn.clicked.connect(self._on_print_label)
-        btn_row.addWidget(label_btn)
         btn_row.addStretch()
         btn_row.addWidget(cancel_btn)
         btn_row.addWidget(ok_btn)
@@ -5815,115 +5811,6 @@ class RoastResultDialog(QDialog):
             self._color_window.move(x, y_base)
             self._color_window.show()
 
-    # ── Roast label (PDF) ────────────────────────────────────────────────────
-
-    def _label_profile_snapshot(self) -> dict:
-        """Profile dict feeding the label renderer.
-
-        The label printer only needs a profile dictionary — on the live path the
-        roast has not been written to disk yet, so it cannot be read back from an
-        .alog like BeanCave does: getProfile() returns the very same structure
-        from memory, 'computed' block included.
-
-        The values typed in this dialog are overridden on the snapshot only —
-        qmc stays untouched so that printing has no side effect and a later
-        Cancel really cancels.
-        """
-        profile = dict(self._aw.getProfile())
-
-        try:
-            roasted = float(self._roasted_weight_edit.text().replace(',', '.') or '0')
-        except ValueError:
-            roasted = 0.0
-        try:
-            whole_color = float(self._colour_whole_edit.text().replace(',', '.') or '0')
-        except ValueError:
-            whole_color = 0.0
-        try:
-            ground_color = float(self._colour_ground_edit.text().replace(',', '.') or '0')
-        except ValueError:
-            ground_color = 0.0
-
-        weight = list(profile.get('weight') or [0.0, 0.0, 'g'])
-        while len(weight) < 3:
-            weight.append('g')
-        try:
-            green = float(weight[0])
-        except (TypeError, ValueError):
-            green = 0.0
-        # The form's figures are grams; the profile keeps its own unit.
-        if green <= 0:
-            green = _from_grams(self._green_grams(), weight[2])
-        roasted = _from_grams(roasted, weight[2])
-        profile['weight'] = [green, roasted, weight[2]]
-
-        profile['whole_color']  = whole_color
-        profile['ground_color'] = ground_color
-        # The scale travels with the reading: a snapshot taken before OK would
-        # otherwise carry the unset scale of the profile it was copied from.
-        profile['color_system'] = resolve_color_system(
-            str(profile.get('color_system') or ''), ground_color, whole_color)
-
-        computed = dict(profile.get('computed') or {})
-        if green > 0 and roasted > 0:
-            computed['total_loss'] = round((1.0 - (roasted / green)) * 100.0, 1)
-        profile['computed'] = computed
-
-        return profile
-
-    @pyqtSlot()
-    def _on_print_label(self) -> None:
-        try:
-            from tilauscope.label_printer import RoastedBeanLabelPrinter, get_downloads_dir
-
-            profile = self._label_profile_snapshot()
-
-            bean_name = (self._bean.name if self._bean and self._bean.name else "roast")
-            safe_name = bean_name.replace(" ", "_").replace("/", "-")
-            date_str  = str(profile.get('roastisodate') or profile.get('roastdate') or "").replace(" ", "_")
-            default   = str(get_downloads_dir() / f"roast_label_{safe_name}_{date_str}.pdf".replace("__", "_"))
-
-            file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                QApplication.translate("tilauscope_common", "Save Label PDF"),
-                default,
-                QApplication.translate("tilauscope_common", "PDF Files (*.pdf)"))
-            if not file_path:
-                return
-
-            ok = RoastedBeanLabelPrinter().print_to_label(profile, self._bean, file_path)
-            if not ok:
-                show_styled_message(
-                    self,
-                    QApplication.translate("Error Message", "Error"),
-                    QApplication.translate("tilauscope_common", "PDF file was not generated."),
-                    QMessageBox.Icon.Warning)
-                return
-
-            self._label_printed = True
-            self._open_file(file_path)
-            _log.info("RoastResultDialog: roast label written to %s", file_path)
-        except Exception as exc:  # noqa: BLE001
-            _log.error("RoastResultDialog: label printing failed: %s", exc)
-            show_styled_message(
-                self,
-                QApplication.translate("Error Message", "Error"),
-                QApplication.translate("tilauscope_roast_setup",
-                    "Could not generate the roast label:<br><b>{0}</b>").format(exc),
-                QMessageBox.Icon.Warning, rich=True)
-
-    def _open_file(self, file_path: str) -> None:
-        """Hand the generated PDF to the OS viewer, in front of this dialog.
-
-        This dialog is created WindowStaysOnTopHint and its helper windows float
-        on their own, so the viewer would open underneath all of them — that is
-        what open_in_os_viewer takes care of. The dialog stays modal meanwhile,
-        so nothing behind it becomes reachable.
-        """
-        open_in_os_viewer(
-            file_path, self,
-            helpers=[w for w in (self._scale_window, self._color_window) if w is not None])
-
     # ── OK / Cancel ──────────────────────────────────────────────────────────
 
     #: What saving the form writes into qmc — put back when the save fails.
@@ -5935,28 +5822,6 @@ class RoastResultDialog(QDialog):
 
     @pyqtSlot()
     def _on_ok(self) -> None:
-        # Last chance to print the label: once this dialog closes the
-        # batch is done and the label has to be re-generated from BeanCave.
-        if not self._label_printed:
-            choice = show_styled_message(
-                self,
-                QApplication.translate("tilauscope_roast_setup", "Roast label"),
-                QApplication.translate("tilauscope_roast_setup",
-                    "You have not generated the label for this roast yet.<br>"
-                    "Do you want to print it before closing?"),
-                QMessageBox.Icon.Question, rich=True,
-                buttons=[
-                    QApplication.translate("tilauscope_roast_setup", "🏷  Label PDF"),
-                    QApplication.translate("tilauscope_roast_setup", "Save without label"),
-                ])
-            if choice == 0:
-                self._on_print_label()
-                # file dialog cancelled or generation failed → stay open
-                if not self._label_printed:
-                    return
-            elif choice != 1:
-                return  # dialog dismissed — do not close behind the user's back
-
         try:
             roasted_w = float(self._roasted_weight_edit.text().replace(',', '.') or '0')
         except ValueError:

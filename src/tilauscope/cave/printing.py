@@ -518,40 +518,6 @@ class PrintingMixin:
             if bean is None:
                 return
 
-        # ── Vérifications imprimante ─────────────────────────────────────────
-        if self.np is not None and self.np.remaining_labels == 0:
-            self._show_message(self,
-                QApplication.translate("HelpDlg", "Print"),
-                QApplication.translate("tilauscope_beancave",
-                    "There is no more labels on the roll, please load a new roll"),
-                QMessageBox.Icon.Warning)
-            return
-
-        paper_height = 0 if self.np is None else self.np.paper_height
-        paper_width  = 0 if self.np is None else self.np.paper_width
-
-        if self.np is not None and (
-            self.np.paperstyle == Niimprint_PaperType.UNKNOWN
-            or paper_width == 0 or paper_height == 0
-        ):
-            self._show_message(self,
-                QApplication.translate("HelpDlg", "Print"),
-                QApplication.translate("tilauscope_beancave",
-                    "Label size or type of paper was not correctly detected, "
-                    "please close and retry to open bean cave"),
-                QMessageBox.Icon.Warning)
-            return
-
-        if paper_height not in (30, 80):
-            self._show_message(self,
-                QApplication.translate("HelpDlg", "Print"),
-                QApplication.translate("tilauscope_beancave", "unsupported paper size")
-                + f" {paper_width}x{paper_height}",
-                QMessageBox.Icon.Warning)
-            return
-
-        labeltype = self.np.paperstyle  # type: ignore[union-attr]
-
         filepath = self.selected_roast_path()
         if filepath is None:
             return
@@ -560,157 +526,15 @@ class PrintingMixin:
             data = self.get_alog_data(filepath)
             if data is None:
                 raise ValueError("Failed to load alog data")
-
-            # ── Construction de l'image déléguée à NiimbotLabelBuilder ──────
-            from tilauscope.label_printer import NiimbotLabelBuilder
-            builder = NiimbotLabelBuilder()
-            img = builder.build(bean, data, paper_height)
-
-            # ── Prévisualisation — style TilauScope ──────────────────────────
-            WIDTH_PX, HEIGHT_PX = img.size
-            from PIL.ImageQt import ImageQt
-            qimage = ImageQt(img)
-            pixmap = QPixmap.fromImage(qimage)
-            pixmap = pixmap.scaled(
-                int(WIDTH_PX * 1.0), int(HEIGHT_PX * 1.0),
-                Qt.AspectRatioMode.KeepAspectRatio,
-            )
-
-            # ── Dialog frameless + card THEME ────────────────────────────────
-            preview_dialog = QDialog(self)
-            preview_dialog.setWindowTitle(
-                QApplication.translate("tilauscope_beancave", "Preview for Niimbot B21S")
-            )
-            preview_dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-            preview_dialog.setWindowFlags(
-                Qt.WindowType.Dialog |
-                Qt.WindowType.FramelessWindowHint
-            )
-
-            outer_layout = QVBoxLayout(preview_dialog)
-            outer_layout.setContentsMargins(0, 0, 0, 0)
-
-            card = QFrame()
-            card.setObjectName("NiimbotPreviewCard")
-            card.setStyleSheet(f"""
-                #NiimbotPreviewCard {{
-                    background-color : {THEME['BG']};
-                    border           : 2px solid {THEME['ACCENT']};
-                    border-radius    : 14px;
-                }}
-            """)
-            outer_layout.addWidget(card)
-
-            root = QVBoxLayout(card)
-            root.setContentsMargins(20, 18, 20, 18)
-            root.setSpacing(14)
-
-            # Titre
-            title_lbl = QLabel(
-                QApplication.translate("tilauscope_beancave", "Preview for Niimbot B21S")
-            )
-            title_lbl.setStyleSheet(f"""
-                color        : {THEME['ACCENT']};
-                font-size    : 13px;
-                font-weight  : 800;
-                letter-spacing: 1px;
-            """)
-            root.addWidget(title_lbl)
-
-            # Séparateur
-            sep = QFrame()
-            sep.setFrameShape(QFrame.Shape.HLine)
-            sep.setStyleSheet(f"color: {THEME['BORDER']};")
-            root.addWidget(sep)
-
-            # Image de prévisualisation
-            img_lbl = QLabel()
-            img_lbl.setPixmap(pixmap)
-            img_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            img_lbl.setStyleSheet(f"""
-                background-color : {THEME['SURFACE']};
-                border           : 1px solid {THEME['BORDER']};
-                border-radius    : 6px;
-                padding          : 8px;
-            """)
-            root.addWidget(img_lbl)
-
-            # Boutons
-            btn_print  = QPushButton("🖨  " + QApplication.translate("tilauscope_beancave", "Print now"))
-            btn_cancel = QPushButton(QApplication.translate("Button", "Cancel"))
-
-            btn_print.setMinimumHeight(36)
-            btn_cancel.setMinimumHeight(36)
-
-            btn_print.setStyleSheet(f"""
-                QPushButton {{
-                    background-color : {THEME['ACCENT']};
-                    color            : {THEME['BG']};
-                    border           : none;
-                    border-radius    : 6px;
-                    padding          : 8px 18px;
-                    font-size        : 11px;
-                    font-weight      : 700;
-                }}
-                QPushButton:hover {{
-                    background-color : {THEME['LAVENDER']};
-                }}
-                QPushButton:pressed {{
-                    background-color : {THEME['SURFACE']};
-                    color            : {THEME['ACCENT']};
-                    border           : 1px solid {THEME['ACCENT']};
-                }}
-            """)
-            btn_cancel.setStyleSheet(f"""
-                QPushButton {{
-                    background-color : transparent;
-                    color            : {THEME['OVERLAY1']};
-                    border           : none;
-                    padding          : 6px 12px;
-                    font-size        : 10px;
-                }}
-                QPushButton:hover {{
-                    color : {THEME['TEXT']};
-                }}
-            """)
-
-            # Copies counter (default 1) — prints the same label N times.
-            copies_lbl = QLabel(QApplication.translate("tilauscope_beancave", "Copies"))
-            copies_lbl.setStyleSheet(
-                f"color:{THEME['SUBTEXT']};font-size:11px;border:none;")
-            copies_spin = QSpinBox()
-            copies_spin.setRange(1, 50)
-            copies_spin.setValue(1)
-            copies_spin.setFixedWidth(70)
-            copies_spin.setStyleSheet(f"""
-                QSpinBox {{
-                    background:{THEME['SURFACE']}; color:{THEME['TEXT']};
-                    border:1px solid {THEME['BORDER']}; border-radius:6px;
-                    padding:4px 6px; font-size:12px;
-                }}
-            """)
-
-            btn_row = QHBoxLayout()
-            btn_row.addWidget(copies_lbl)
-            btn_row.addWidget(copies_spin)
-            btn_row.addStretch()
-            btn_row.addWidget(btn_print)
-            btn_row.addWidget(btn_cancel)
-            root.addLayout(btn_row)
-
-            btn_print.clicked.connect(preview_dialog.accept)
-            btn_cancel.clicked.connect(preview_dialog.reject)
-
-            accepted = preview_dialog.exec() == QDialog.DialogCode.Accepted
-            preview_dialog.deleteLater()   # deferred: copies_spin is still read below
-            if accepted:
+            img = self.roast_label_image(bean, data)
+            copies = self.preview_roast_label(img, self)
+            if copies:
                 # Progression dans la pastille flottante (host A) : la barre
                 # d'état garde l'état imprimante au lieu d'être détournée.
-                copies = int(copies_spin.value())
                 self._roast_print_copies = copies
                 self.niimbot_thread = QThread()
                 self._roast_print_out = 0
-                self.niimbot_worker = NiimbotWorker(self.np, img, labeltype, copies=copies)
+                self.niimbot_worker = NiimbotWorker(self.np, img, self.np.paperstyle, copies=copies)
                 self._print_pill = print_progress_pill(
                     self.container, copies, self.niimbot_worker.cancel)
                 self._print_pill.set_margin(28, 28)   # clear of the size grip
@@ -728,7 +552,6 @@ class PrintingMixin:
                 self.niimbot_worker.print_unconfirmed.connect(self.niimbot_thread.quit)
                 self.niimbot_thread.finished.connect(self.niimbot_thread.deleteLater)
                 self.niimbot_thread.start()
-
         except ValueError as e:
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Niimbot B21S Print"),
@@ -740,6 +563,170 @@ class PrintingMixin:
                 QApplication.translate("Error Message", "Error") + f" : {e}",
                 QMessageBox.Icon.Critical)
             _logd.error(f"Label printing error: {e}")
+
+    def roast_label_image(self, bean, data: dict):
+        """The roast's Niimbot label for the roll in the printer: BeanCave's roast print and the result form at
+        the end of a roast. ValueError, in the operator's words, when the printer cannot print it."""
+        if self.np is not None and self.np.remaining_labels == 0:
+            raise ValueError(QApplication.translate("tilauscope_beancave",
+                "There is no more labels on the roll, please load a new roll"))
+        paper_height = 0 if self.np is None else self.np.paper_height
+        paper_width  = 0 if self.np is None else self.np.paper_width
+        if self.np is not None and (
+            self.np.paperstyle == Niimprint_PaperType.UNKNOWN
+            or paper_width == 0 or paper_height == 0
+        ):
+            raise ValueError(QApplication.translate("tilauscope_beancave",
+                "Label size or type of paper was not correctly detected, "
+                "please close and retry to open bean cave"))
+        if paper_height not in (30, 80):
+            raise ValueError(QApplication.translate("tilauscope_beancave", "unsupported paper size")
+                             + f" {paper_width}x{paper_height}")
+        # ── Construction de l'image déléguée à NiimbotLabelBuilder ──────────
+        from tilauscope.label_printer import NiimbotLabelBuilder
+        return NiimbotLabelBuilder().build(bean, data, paper_height)
+
+    def preview_roast_label(self, img, parent) -> int:
+        """The label as it will print, over `parent` (BeanCave, or the result form): the copies asked for,
+        0 when the operator cancels."""
+        WIDTH_PX, HEIGHT_PX = img.size
+        from PIL.ImageQt import ImageQt
+        qimage = ImageQt(img)
+        pixmap = QPixmap.fromImage(qimage)
+        pixmap = pixmap.scaled(
+            int(WIDTH_PX * 1.0), int(HEIGHT_PX * 1.0),
+            Qt.AspectRatioMode.KeepAspectRatio,
+        )
+
+        # ── Dialog frameless + card THEME ────────────────────────────────
+        preview_dialog = QDialog(parent)
+        preview_dialog.setWindowTitle(
+            QApplication.translate("tilauscope_beancave", "Preview for Niimbot B21S")
+        )
+        preview_dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        preview_dialog.setWindowFlags(
+            Qt.WindowType.Dialog |
+            Qt.WindowType.FramelessWindowHint
+        )
+
+        outer_layout = QVBoxLayout(preview_dialog)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+
+        card = QFrame()
+        card.setObjectName("NiimbotPreviewCard")
+        card.setStyleSheet(f"""
+            #NiimbotPreviewCard {{
+                background-color : {THEME['BG']};
+                border           : 2px solid {THEME['ACCENT']};
+                border-radius    : 14px;
+            }}
+        """)
+        outer_layout.addWidget(card)
+
+        root = QVBoxLayout(card)
+        root.setContentsMargins(20, 18, 20, 18)
+        root.setSpacing(14)
+
+        # Titre
+        title_lbl = QLabel(
+            QApplication.translate("tilauscope_beancave", "Preview for Niimbot B21S")
+        )
+        title_lbl.setStyleSheet(f"""
+            color        : {THEME['ACCENT']};
+            font-size    : 13px;
+            font-weight  : 800;
+            letter-spacing: 1px;
+        """)
+        root.addWidget(title_lbl)
+
+        # Séparateur
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet(f"color: {THEME['BORDER']};")
+        root.addWidget(sep)
+
+        # Image de prévisualisation
+        img_lbl = QLabel()
+        img_lbl.setPixmap(pixmap)
+        img_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        img_lbl.setStyleSheet(f"""
+            background-color : {THEME['SURFACE']};
+            border           : 1px solid {THEME['BORDER']};
+            border-radius    : 6px;
+            padding          : 8px;
+        """)
+        root.addWidget(img_lbl)
+
+        # Boutons
+        btn_print  = QPushButton("🖨  " + QApplication.translate("tilauscope_beancave", "Print now"))
+        btn_cancel = QPushButton(QApplication.translate("Button", "Cancel"))
+
+        btn_print.setMinimumHeight(36)
+        btn_cancel.setMinimumHeight(36)
+
+        btn_print.setStyleSheet(f"""
+            QPushButton {{
+                background-color : {THEME['ACCENT']};
+                color            : {THEME['BG']};
+                border           : none;
+                border-radius    : 6px;
+                padding          : 8px 18px;
+                font-size        : 11px;
+                font-weight      : 700;
+            }}
+            QPushButton:hover {{
+                background-color : {THEME['LAVENDER']};
+            }}
+            QPushButton:pressed {{
+                background-color : {THEME['SURFACE']};
+                color            : {THEME['ACCENT']};
+                border           : 1px solid {THEME['ACCENT']};
+            }}
+        """)
+        btn_cancel.setStyleSheet(f"""
+            QPushButton {{
+                background-color : transparent;
+                color            : {THEME['OVERLAY1']};
+                border           : none;
+                padding          : 6px 12px;
+                font-size        : 10px;
+            }}
+            QPushButton:hover {{
+                color : {THEME['TEXT']};
+            }}
+        """)
+
+        # Copies counter (default 1) — prints the same label N times.
+        copies_lbl = QLabel(QApplication.translate("tilauscope_beancave", "Copies"))
+        copies_lbl.setStyleSheet(
+            f"color:{THEME['SUBTEXT']};font-size:11px;border:none;")
+        copies_spin = QSpinBox()
+        copies_spin.setRange(1, 50)
+        copies_spin.setValue(1)
+        copies_spin.setFixedWidth(70)
+        copies_spin.setStyleSheet(f"""
+            QSpinBox {{
+                background:{THEME['SURFACE']}; color:{THEME['TEXT']};
+                border:1px solid {THEME['BORDER']}; border-radius:6px;
+                padding:4px 6px; font-size:12px;
+            }}
+        """)
+
+        btn_row = QHBoxLayout()
+        btn_row.addWidget(copies_lbl)
+        btn_row.addWidget(copies_spin)
+        btn_row.addStretch()
+        btn_row.addWidget(btn_print)
+        btn_row.addWidget(btn_cancel)
+        root.addLayout(btn_row)
+
+        btn_print.clicked.connect(preview_dialog.accept)
+        btn_cancel.clicked.connect(preview_dialog.reject)
+
+        accepted = preview_dialog.exec() == QDialog.DialogCode.Accepted
+        copies = int(copies_spin.value())
+        preview_dialog.deleteLater()
+        return copies if accepted else 0
 
     @pyqtSlot(int, int)
     def _on_print_progress(self, done: int, total: int) -> None:

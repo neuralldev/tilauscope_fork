@@ -10,10 +10,10 @@ plugins {
     id("com.chaquo.python")
 }
 
-// The roast label's fonts are the desktop's (src/includes), copied in at build time rather than kept twice.
+// The roast label's and the roast card's fonts are the desktop's (src/includes), copied in at build time rather than kept twice.
 val labelFonts = layout.buildDirectory.dir("generated/labelFonts")
 val copyLabelFonts by tasks.registering(Copy::class) {
-    from("../../src/includes") { include("DejaVuSans.ttf", "DejaVuSans-Bold.ttf") }
+    from("../../src/includes") { include("DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "JetBrainsMono-Regular.ttf", "JetBrainsMono-Bold.ttf") }
     into(labelFonts.map { it.dir("fonts") })
 }
 // The machines' Artisan setups (.aset) the tablet reads, the desktop's, packaged at build time
@@ -29,7 +29,7 @@ val copyMachineSetups by tasks.registering(Copy::class) {
 val bundledLicences = layout.buildDirectory.dir("generated/licences")
 val copyLicences by tasks.registering(Copy::class) {
     from("../../LICENSE") { rename { "TilauScope-AGPL-3.0.txt" } }
-    from("../../licenses/DejaVu-Fonts.txt", "../NOTICE")
+    from("../../licenses/DejaVu-Fonts.txt", "../../licenses/JetBrainsMono-OFL.txt", "../NOTICE")
     into(bundledLicences.map { it.dir("licenses") })
 }
 tasks.named("preBuild") { dependsOn(copyLabelFonts, copyMachineSetups, copyLicences) }

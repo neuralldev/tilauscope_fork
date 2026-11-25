@@ -259,6 +259,29 @@ class MainActivity : Activity() {
             .putExtra(Intent.EXTRA_TITLE, file.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), file.name))
     }
 
+    /** The roast card the page drew ({file, png}: base64), written off the UI thread, then the share sheet; the page is told. */
+    private fun shareCard(argument: String) {
+        val request = runCatching { JSONObject(argument) }.getOrNull()
+        val name = request?.optString("file")?.let { File(it).name }?.takeIf { it.endsWith(".png") }
+        if (request == null || name == null) { cardShared(false); return }
+        Thread {
+            val file = runCatching {
+                File(RoastFiles.shareFolder(cacheDir, folder = RoastFiles.CARD_FOLDER), name)
+                    .apply { writeBytes(Base64.decode(request.optString("png"), Base64.DEFAULT)) }
+            }.getOrNull()
+            runOnUiThread {
+                if (file != null) startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/png")
+                    .putExtra(Intent.EXTRA_STREAM, RoastFiles.cardUri(packageName, file))
+                    .putExtra(Intent.EXTRA_TITLE, file.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), file.name))
+                cardShared(file != null)
+            }
+        }.start()
+    }
+
+    private fun cardShared(done: Boolean) {
+        if (pageLoaded) web.evaluateJavascript("window.onCardShared && onCardShared($done)", null)
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (!rendererGone) web.saveState(outState) // a dead page has nothing to keep: the default page opens
@@ -313,6 +336,7 @@ class MainActivity : Activity() {
             }
             "save" -> service.execute("export_alog", File(filesDir, RoastFiles.FOLDER).absolutePath)
             "share_log" -> shareLog()
+            "card_share" -> shareCard(argument) // the roast card drawn by the page (roast-card.js)
             // Settings › General › About: a licence text beside the pages (assets licenses/), and the published source.
             "licence" -> if (Regex("[A-Za-z0-9_-][A-Za-z0-9._-]*").matches(argument)) {
                 val text = try { assets.open("licenses/$argument").bufferedReader().use { it.readText() } } catch (error: IOException) { null }
@@ -324,7 +348,7 @@ class MainActivity : Activity() {
             "cave_pick" -> startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), PICK_CAVE)
             "cave_import" -> pickedCave?.let { (stage, name) -> service.execute("cave_import", stage, name) }
             "cave_export" -> sendCave()
-            "save_setup", "save_mqtt", "choose_coffee", "save_coffee", "set_roast_setup", "get_roast", "get_plan", "set_plan_choice", "save_tasting", "roast_label", "get_roast_energy" ->
+            "save_setup", "save_mqtt", "choose_coffee", "save_coffee", "set_roast_setup", "get_roast", "get_plan", "set_plan_choice", "save_tasting", "roast_label", "roast_card", "get_roast_energy" ->
                 service.execute(method, argument)
             "get_roasts", "resume_preheat", "resume_follow", "get_alarms", "exit_simulation", "get_energy",
             "resume_auto", "cancel_auto_drop" -> service.execute(method)

@@ -142,6 +142,9 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 #skipbar i{display:block;height:100%;width:0;background:var(--peach);transition:width 2.5s linear}
 #printlabel{margin-left:auto;width:48px;height:48px;flex:none;border-radius:24px;border:2px solid;display:flex;align-items:center;justify-content:center}
 #printlabel.working{animation:pulse 1.8s ease-out infinite}
+#cardshare{margin-left:auto;width:48px;height:48px;flex:none;border-radius:24px;border:2px solid var(--teal);color:var(--teal);background:rgba(148,226,213,.12);display:flex;align-items:center;justify-content:center}
+#printlabel:not(.hidden)+#cardshare{margin-left:0}
+#cardshare.working{animation:pulse 1.8s ease-out infinite}
 
 /* Overlays over the right panel */
 .overlay{position:absolute;inset:-6px;z-index:5;background:rgba(17,17,27,.8);border-radius:22px;display:flex;align-items:center}
@@ -273,6 +276,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
 <script src="common.js"></script>
 <script src="label-metrics.js"></script>
 <script src="label.js"></script>
+<script src="roast-card.js"></script>
 <script src="energy-sheet.js"></script>
 <div id="app">
  <header>
@@ -344,6 +348,7 @@ aside{width:392px;flex:none;display:flex;flex-direction:column;gap:10px;position
       <svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="rgba(166,227,161,.16)"/><path d="M12 20.5l5.5 5.5L28.5 15" fill="none" stroke="#A6E3A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span style="font-size:24px;font-weight:600" id="endtitle">Roast complete</span>
       <button class="hidden" id="printlabel" aria-label="Print label"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path id="labelicon" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="hidden" id="cardshare" aria-label="Share the roast card"></button>
      </div>
      <div class="sumgrid" id="summary"></div>
     </div>
@@ -996,6 +1001,7 @@ window.onSnapshot = function (method, d) {
     return;
   }
   if (method === "roast_label") { labelPrinter.print(d && d.reply); return; }
+  if (method === "roast_card") { cardSharer.reply(d && d.reply); return; }
   if (method === "get_energy") { if (d && d.reply) EnergySheet.show(d.reply); return; }
   if (method === "get_plan") { planReply = d && d.reply; plan = planReply && planReply.state === "ready" ? planReply : null; if (snap) render(); return; }
   if (method === "set_lever") leverAsked.shift(); // its answer, taken or refused: the session's value counts again
@@ -1277,6 +1283,7 @@ function render() {
   $("saveglyph").setAttribute("d", saved ? CHECK : "M13 5v12M7 11l6 6 6-6M6 21h14");
   $("save").style.background = saved ? "rgba(166,227,161,.22)" : "rgba(166,227,161,.12)";
   renderLabel();
+  $("cardshare").classList.toggle("hidden", stageOf(d) !== 6); // the roast over: its card, as in BeanCave › Roasts
 
   // Overlays
   $("lost").style.display = lost || denied ? "flex" : "none";
@@ -1781,6 +1788,10 @@ $("coffee").onclick = function () { go(snap && snap.state === "idle" ? "roast-se
 $("save").onclick = function () { if (askedSave && snap && needsSave(snap)) saveThenNew = true; send("save"); };
 $("resumefollow").onclick = function () { send("resume_follow"); };
 $("prechip").onclick = function () { if (this.classList.contains("resume")) send("resume_preheat"); };
+// The roast card of the roast just over, drawn by roast-card.js and handed to the share sheet.
+var cardSharer = RoastCard.sharer(function (m, a) { send(m, a); }, function (text) { toast(text); });
+$("cardshare").innerHTML = RoastCard.ICON;
+$("cardshare").onclick = function () { cardSharer.ask(this); };
 $("printlabel").onclick = function () {
   var m = snap.milestone_s;
   if (m.dry_end == null || m.first_crack == null || m.drop == null) { toast("The label needs Dry end, First crack and Drop marked"); return; }

@@ -12,6 +12,7 @@ var RoastsTab = (function () {
   var SORTS = [["recent", "Most recent"], ["oldest", "Oldest first"], ["coffee", "Coffee A–Z"]];
   var rows = [], sort = "recent", filter = null, query = "", selected = null, detail = null, box = null, onOpenCoffee = null;
   var labelPrinter = Label.printer(drawPrint, function (text) { toast(text); });
+  var cardSharer = RoastCard.sharer(function (m, a) { send(m, a); }, function (text) { toast(text); }); // the roast card's icon, beside the share
 
   function plainText(t) { return (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
   function key(r) { return r.origin + "/" + r.name; }
@@ -233,6 +234,7 @@ var RoastsTab = (function () {
         '<path id="rprinticon" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : "") +
       // A roast this tablet recorded goes to the library from here; the computer's, from the computer (Tilau, 2026-11-24)
       (d.origin === "tablet" ? '<button class="rpub" id="rpub" aria-label="Publish to the library">' + LibraryTab.ICON.cloud + "</button>" : "") +
+      '<button class="rcard" id="rcard" aria-label="Share the roast card">' + RoastCard.ICON + "</button>" +
       '<button class="rshare" id="rshare" aria-label="Share the roast"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/>' +
       '<circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/>' +
       '<path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>';
@@ -307,6 +309,7 @@ var RoastsTab = (function () {
     if ($("rtaste")) $("rtaste").onclick = function () { tasteSheet(d); };
     if ($("rcoffee")) $("rcoffee").onclick = function () { closeFull(); onOpenCoffee(d.bean_uuid); };
     $("rshare").onclick = function () { send("roast_share", d.origin + "/" + d.name); };
+    $("rcard").onclick = function () { cardSharer.ask(this, JSON.stringify({ origin: d.origin, name: d.name })); };
     if ($("rpub")) $("rpub").onclick = function () { send("library_publish_check", JSON.stringify({ origin: d.origin, name: d.name })); };
     $("rsim").onclick = function () { send("simulate", JSON.stringify({ origin: d.origin, name: d.name })); };
     $("rfollow").onclick = function () { send("set_follow", JSON.stringify({ origin: d.origin, name: d.name })); };
@@ -355,6 +358,7 @@ var RoastsTab = (function () {
     hide: function () { labelPrinter.watch(false); },
     setPrinter: function (device) { labelPrinter.device = device && device.enabled ? device : null; },
     label: function (lines) { labelPrinter.print(lines); },
+    card: function (card) { cardSharer.reply(card); },
     rows: function (list) { rows = list; renderList(); },
     roast: function (d) { if (d && d.origin + "/" + d.name === selected) showDetail(d); else if (!d) $("rdetail").innerHTML = '<div class="none">This roast could not be read.</div>'; }
   };

@@ -18,10 +18,9 @@ tracks — the pool of ids, assigning and releasing one — is covered in
 
 | Label | Printed from | What it shows | Its QR opens |
 |---|---|---|---|
-| **Roast label** | The Roasts tab → **Export** → **Label (PDF)** or **Print label**, or the result form at the end of a roast → **🏷 Label PDF** | Bean, origin, roast date, key roast figures, flavour notes, a QR | The roast's record |
+| **Roast label** | The Roasts tab → **Export** → **Label (PDF)** or **Print label** | Bean, origin, roast date, key roast figures, flavour notes, a QR | The roast's record |
 | **Green bean label** | A coffee's record → **Print label** | Supplier, crop, process, variety, altitude, moisture, water activity, cupping notes, a QR | The coffee's record |
 | **Sack label** | The sack labels tool (see [Sacks, stock and conservation](sacks-and-storage.md)) | A label id and a QR — nothing else | Whichever coffee currently holds that id |
-| **Coffee label** | **TilauScope → Print a Coffee Label…** | Whatever is typed in: name, roaster, origin, process, roast level, roast date, weight, tasting notes | Nothing — it carries no QR |
 
 Roast and bean labels print as a PDF sized to the label itself — 10×15 cm by default, or 7×9 cm
 for a compact pochette, set once in [Configuration → 🖨 Printing](configuration.md) — so any
@@ -32,12 +31,9 @@ roll.
 In the Roasts tab, select a roast and choose **Export → Label (PDF)**, then choose where to
 save it. The label uses that roast's saved data and linked coffee, independently of the curve preview.
 
-A roast label can be printed the moment the roast ends, from the result form itself, without
-waiting for the roast to be filed — it uses the roasted weight and colour just entered, so
-the weight loss and colour on the label are the ones being recorded. Printing changes
-nothing in the record: the form can still be corrected and printed again, or abandoned. If
-the form is saved without a label having been printed, TilauScope asks once whether to print
-one before closing.
+Labels are printed from BeanCave only, once a coffee or a roast is selected there. At the end
+of a roast, save the result form first: the roast then appears in the Roasts tab, with the
+weight and colour just entered.
 
 When the coffee is a blend, both the roast label and the green bean label carry a blend
 chip followed by its composition: each component with its share, or its name alone when
@@ -113,39 +109,6 @@ why.
 
 ---
 
-## A label for a coffee bought already roasted
-
-A bag bought from a roaster has no roast of its own to print from, and there is no reason to
-file it among the green coffees. **TilauScope → Print a Coffee Label…** opens a window where
-the label is simply typed out, and prints it on the Niimbot's 50×30 mm roll.
-
-Only the **coffee name** is required. Everything else — who roasted it, origin, process,
-roast level, roast date, weight, tasting notes — is optional, and anything left empty is left
-off the label rather than printed as a blank or a dash. The calendar button beside the date
-switches it off: struck through, the date is left off the label. The fewer fields are filled, the
-larger the remaining lines are set, so a bag labelled with a name and a weight reads from
-across the room.
-
-The preview is the label itself, at print size and magnified: what is on screen is what comes
-out of the printer. It follows the typing, so nothing needs to be printed to be checked.
-
-The window stays open after printing, with the fields still filled — several bags from the
-same lot are one click each. **Clear** empties the form for the next coffee, and **Recall
-last** brings back the label printed most recently, which survives closing the window and
-quitting the application. Nothing is added to the coffee catalogue: this label is printed and
-forgotten.
-
-The **⚖** button beside the weight reads it straight off a paired scale, as every other weight
-field in TilauScope does.
-
-<!-- CAPTURE 4.6 [scene:label] — the Print a Coffee Label window, filled in with a full example
-     (name, roaster, origin, process, roast level, date, weight, tasting notes) so
-     the preview shows a complete label, printer connected with the 50×30 roll. -->
-
-![the coffee label window with its live preview](assets/labels-and-qr-4.6.png)
-
----
-
 ## What a label can spell
 
 Labels print the text as it was typed. Accents and other marks are kept, and a name written
@@ -185,7 +148,6 @@ whichever coffee currently holds that label. A label not currently attached to a
 says so plainly rather than opening a blank or wrong record.
 
 ![a print blocked with a plain-language reason](assets/labels-and-qr-4.5.png)
-![SCAN camera preview](assets/labels-and-qr-4.6.png)
 ![a bean record page open in a phone's browser](assets/labels-and-qr-4.7.png)
 
 ---

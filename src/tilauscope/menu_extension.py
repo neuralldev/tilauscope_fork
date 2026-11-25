@@ -93,12 +93,6 @@ class TilauMenuExtension:
         self.act_beancave.setShortcut('Shift+B')
         self.act_beancave.triggered.connect(aw.handleBeancave)
 
-        # Free-entry label: for a coffee bought already roasted, so it needs no
-        # bean record and no open BeanCave window.
-        self.act_custom_label = QAction(
-            QApplication.translate('Menu', 'Print a Coffee Label...'), aw)
-        self.act_custom_label.triggered.connect(self._open_custom_label)
-
         self.act_profile_maintenance = QAction(
             QApplication.translate('Menu', 'Roast Profile Maintenance...'), aw)
         self.act_profile_maintenance.triggered.connect(self._open_profile_maintenance)
@@ -150,7 +144,6 @@ class TilauMenuExtension:
         # menu. Pin NoRole on every action, matching Artisan's own treatment
         # (main.py:2219 and below).
         for _action in (self.act_main, self.act_beancave,
-                        self.act_custom_label,
                         self.act_profile_maintenance, self.act_custom_buttons,
                         self.act_devices, self.act_config,
                         self.act_first_config, self.act_debug,
@@ -172,14 +165,6 @@ class TilauMenuExtension:
             bc.open_profile_maintenance()
         except Exception:  # pylint: disable=broad-except
             _log.exception('opening roast profile maintenance failed')
-
-    def _open_custom_label(self, _checked: bool = False) -> None:
-        """Open the hand-typed label window; BeanCave supplies the printer."""
-        try:
-            from tilauscope.custom_label_dialog import open_custom_label_dialog
-            open_custom_label_dialog(self._aw)
-        except Exception:  # pylint: disable=broad-except
-            _log.exception('opening the custom label dialog failed')
 
     def _open_custom_buttons(self, _checked: bool = False) -> None:
         """Open the TilauScope master-detail editor for custom event buttons."""
@@ -245,7 +230,6 @@ class TilauMenuExtension:
         menu = QMenu('&TilauScope', self._aw)
         menu.addAction(self.act_main)
         menu.addAction(self.act_beancave)
-        menu.addAction(self.act_custom_label)
         menu.addAction(self.act_profile_maintenance)
         menu.addAction(self.act_custom_buttons)
         menu.addSeparator()

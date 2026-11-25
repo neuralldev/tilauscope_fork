@@ -150,6 +150,8 @@
 .rsim{margin-left:auto;width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--accent);color:var(--accent);background:rgba(203,166,247,.12);display:flex;align-items:center;justify-content:center}
 .rsim+.rprint,.rfollow+.rprint{margin-left:0}
 .rfollow{width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--blue);color:var(--blue);background:rgba(137,180,250,.12);display:flex;align-items:center;justify-content:center}
+.rcard{width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--teal);color:var(--teal);background:rgba(148,226,213,.12);display:flex;align-items:center;justify-content:center}
+.rcard.working{animation:rpulse 1.8s ease-out infinite}
 .rshare{width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--line);color:var(--sub);display:flex;align-items:center;justify-content:center}
 .rprint{margin-left:auto;width:44px;height:44px;flex:none;border-radius:22px;border:2px solid;display:flex;align-items:center;justify-content:center}
 @keyframes rpulse{0%{box-shadow:0 0 0 0 rgba(205,214,244,.45)}70%{box-shadow:0 0 0 8px rgba(205,214,244,0)}100%{box-shadow:0 0 0 0 rgba(205,214,244,0)}}
@@ -217,6 +219,7 @@
 <script src="flavour-dial.js"></script>
 <script src="label-metrics.js"></script>
 <script src="label.js"></script>
+<script src="roast-card.js"></script>
 <script src="roasts.js"></script>
 <script src="library.js"></script>
 <script src="energy-sheet.js"></script>
@@ -303,6 +306,7 @@ window.onSnapshot = function (method, d) {
   }
   if (method === "get_setup") { if (d && d.reply) { CaveEdit.setDevices(d.reply.config.devices); LibraryTab.setColours(d.reply.catalogue.colours); RoastsTab.setPrinter(d.reply.config.devices.printer); } return; }
   if (method === "roast_label") { RoastsTab.label(d && d.reply); return; }
+  if (method === "roast_card") { RoastsTab.card(d && d.reply); return; }
   // The roast screen opens on the replay; refused while a roast is on screen
   if (method === "set_follow") { // START offers to follow it, on the roast screen
     if (!d || !d.reply) toast("This roast cannot be followed now: finish the roast on screen first");

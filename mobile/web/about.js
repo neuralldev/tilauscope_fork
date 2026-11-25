@@ -16,6 +16,7 @@ var BUILT_WITH = [
   { name: "Certificate authorities (certifi)", role: "Trusted sites for the community library", licence: "Mozilla Public License 2.0", file: "certifi-MPL-2.0.txt", v: { ios: "", android: "" } },
   { name: "SQLite", role: "Part of Python on Android", licence: "Public domain", file: "SQLite-public-domain.txt", v: { android: "3.50.4" } },
   { name: "DejaVu Sans", role: "The roast label's font", licence: "Bitstream Vera licence", file: "DejaVu-Fonts.txt", v: { ios: "", android: "" } },
+  { name: "JetBrains Mono", role: "The roast card's figures", licence: "SIL Open Font License 1.1", file: "JetBrainsMono-OFL.txt", v: { ios: "", android: "" } },
   { name: "libffi", role: "Part of Python", licence: "MIT License", file: "libffi-MIT.txt", v: { ios: "3.4.7", android: "" } },
   { name: "mpdecimal", role: "Part of Python: decimal numbers", licence: "BSD 2-Clause License", file: "mpdecimal-BSD-2-Clause.txt", v: { ios: "4.0.0", android: "" } },
   { name: "XZ Utils", role: "Part of Python: compression", licence: "BSD Zero Clause License", file: "XZ-0BSD.txt", v: { ios: "5.6.4", android: "" } },

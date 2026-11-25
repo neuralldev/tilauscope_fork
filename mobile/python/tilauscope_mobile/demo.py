@@ -56,7 +56,7 @@ from .cave import Cave, chosen, lists, roast_setup, view
 from .plan import LEVELS, ROAST_DESTINATION_KEYS, ROOM_DEFAULT, TabletPlan, apply_colour_gap, generate as plan_generate, view as plan_view
 from .guided import Guide, Pilot
 from tilaucore.autopilot import burner_may_rise
-from .roasts import Roasts
+from .roasts import Roasts, card_data
 from .journal import AMBIENT_KEYS, Journal, append_after_stop, recover
 from .session import EXTRA_CHANNELS, Reading, Session
 
@@ -990,19 +990,35 @@ class Demo:
 
         ValueError when Dry end, First crack or Drop is not marked, as on the desktop.
         """
-        if data:
-            request = json.loads(data)
-            profile = ast.literal_eval(self.roasts.path(request["origin"], request["name"]).read_text(encoding="utf-8"))
-        elif self.session.state == "stopped" and self.session.samples:
-            profile = self._profile()
-        else:
-            raise ValueError("A label is printed once the roast is over")
-        found = _UUID_RE.search(str(profile.get("beans") or ""))
-        bean = next((b for b in self.cave.beans() if found and b.uuid == found.group(1)), None) if self.cave else None
+        profile = self._roast_over(data, "A label is printed once the roast is over")
+        bean = self._bean_of(profile)
         if bean is None:
             raise ValueError("The roast's coffee is not in the BeanCave")
         roast_data, _qr, _phases = label_data(bean, profile, lambda: "")  # no QR on 30 mm
         return json.dumps(lines_30mm(roast_data))
+
+    def roast_card(self, data: str = "") -> str:
+        """What the desktop's roast card shows (roasts.card_data), of a listed roast ({origin, name}), else of the
+        roast just over; `file` names the image. The roast's coffee gives its name and origin when the BeanCave has it."""
+        profile = self._roast_over(data, "The roast card is made once the roast is over")
+        name = json.loads(data)["name"] if data else self.session.exported or str(profile.get("title") or "roast")
+        stem = "".join(c if c.isalnum() or c in " -_." else "_" for c in Path(name).stem).strip(" .") or "roast"
+        ror = machine.setup(self._machine()).ror if self._machine() else RoRSettings()
+        return json.dumps({**card_data(profile, self._bean_of(profile), ror), "file": stem + ".png"})
+
+    def _roast_over(self, data: str, refused: str) -> dict:
+        """The profile of a listed roast ({origin, name}), else of the roast just over; ValueError(`refused`) before."""
+        if data:
+            request = json.loads(data)
+            return ast.literal_eval(self.roasts.path(request["origin"], request["name"]).read_text(encoding="utf-8"))
+        if self.session.state == "stopped" and self.session.samples:
+            return self._profile()
+        raise ValueError(refused)
+
+    def _bean_of(self, profile: dict) -> GreenBean | None:
+        """The roast's coffee in the BeanCave, by the uuid its beans text carries."""
+        found = _UUID_RE.search(str(profile.get("beans") or ""))
+        return next((b for b in self.cave.beans() if found and b.uuid == found.group(1)), None) if self.cave else None
 
     def advance(self, seconds: int = 1) -> str:
         if type(seconds) is not int or not 1 <= seconds <= 3600:

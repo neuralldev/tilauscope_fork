@@ -478,10 +478,8 @@ point for notes, not a replacement for judging the cup.
 **What is sent** in the same panel shows the exact text the request would carry, cleaned as it
 will be sent, along with a line naming what was taken out of it; reading it sends nothing.
 
-**🏷 Label PDF** prints the roast's label straight from the form, using the weight and colour
-just entered, so the bag can be labelled while the batch is still cooling. Saving the form
-without having printed one asks the question once. See
-[Labels and QR](labels-and-qr.md#what-each-label-carries).
+The roast's label is printed from BeanCave once the form is saved: select the roast in the
+Roasts tab. See [Labels and QR](labels-and-qr.md#what-each-label-carries).
 
 <!-- CAPTURE 8.8b [scene:result] — the result form, two columns: weight and colour filled in on the left, notes written on the right, and Tipping marked (lit, with its ✓) under the Seen on the beans caption, below the notes box -->
 
