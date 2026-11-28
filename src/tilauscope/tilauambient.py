@@ -219,6 +219,9 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         self.pressure: float = 0
         
         self.crackcounterstarted:bool = False
+        # link state set by on_connect/on_disconnect; shadows ClientBLE.is_connected() like the other fork BLE devices.
+        # Set before start(): the BLE loop may connect, and set it True, before __init__ returns.
+        self.is_connected:bool = False
 
         # last poller readings as (monotonic time, data)
         self._cache_lock = threading.Lock()
@@ -243,7 +246,6 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         self.add_read(TILAUAMBIENT_UUID.TILAU_AMBIENT_SERVICE_UUID, TILAUAMBIENT_UUID.TILAU_DROP_DOOR_UUID)
         self.start(case_sensitive=False, address=uuid)
 
-        self.is_connected = False
         self._poller.start()
         
     def notify_callback(self, _sender:'BleakGATTCharacteristic', data:bytearray) -> None:

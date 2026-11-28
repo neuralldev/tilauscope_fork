@@ -52,7 +52,9 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
     QHeaderView, QSizeGrip, QSplitter, QAbstractItemView, QFileDialog,
 )
-from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics, QIcon
+from PyQt6.QtGui import QColor, QFont, QKeyEvent, QFontMetrics, QIcon, QPainter, QLinearGradient, QPen
+from PyQt6.QtCore import QEvent, QRectF
+from tilaucore.roast_colour import ColourSeries, agtron_scale_for
 
 from artisanlib.util import fromCtoFstrict, convertWeight, weight_units, events_internal_to_external_value
 from tilauscope.tilauscope_types import (
@@ -4331,23 +4333,78 @@ def _defect_mark_chip(svg_template: str, text: str, tooltip: str, marked: bool) 
     return chip
 
 
+class _ColourTrack(QWidget):
+    """Dark-to-light band around the readings: one tick per reading, a frame on the average."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFixedHeight(26)
+        self._readings: list[float] = []
+        self._mean: float | None = None
+        self._lo = 0.0
+        self._hi = 1.0
+
+    def set_readings(self, readings: list[float], mean: float | None) -> None:
+        self._readings = list(readings)
+        self._mean = mean
+        if readings and mean is not None:
+            self._lo = float(int(min(*readings, mean - 6) - 2))
+            self._hi = float(int(max(*readings, mean + 6) + 2) + 1)
+        self.update()
+
+    @property
+    def bounds(self) -> tuple[float, float]:
+        return self._lo, self._hi
+
+    def _x(self, value: float, left: float, width: float) -> float:
+        return left + (value - self._lo) / (self._hi - self._lo) * width
+
+    def paintEvent(self, _event) -> None:  # noqa: ANN001
+        if not self._readings or self._mean is None:
+            return
+        try:
+            p = QPainter(self)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            left, width, top, h = 8.0, self.width() - 16.0, 7.0, 12.0
+            grad = QLinearGradient(left, 0, left + width, 0)
+            for at, v in ((0.0, self._lo), (0.5, (self._lo + self._hi) / 2), (1.0, self._hi)):
+                grad.setColorAt(at, QColor(get_agtron_color(v)))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(grad)
+            p.drawRoundedRect(QRectF(left, top, width, h), 6, 6)
+            p.setBrush(QColor(THEME['TEXT']))
+            for v in self._readings:
+                x = self._x(v, left, width)
+                p.drawRoundedRect(QRectF(x - 1, top - 4, 2, h + 8), 1, 1)
+            x = self._x(self._mean, left, width)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(QColor(THEME['MAUVE']), 2))
+            p.drawRoundedRect(QRectF(x - 6, 1, 12, self.height() - 2), 4, 4)
+            p.end()
+        except Exception as exc:  # noqa: BLE001  # an exception in a virtual closes the app
+            _log.warning("ColourTrack paint: %s", exc)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # _ColorFloatWindow – floating colour meter card for RoastResultDialog
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _ColorFloatWindow(QDialog):
     """
-    Small always-on-top card that shows the live Agtron reading from the
-    paired colour meter.
+    Always-on-top card that collects one to five readings of the same sample
+    from the paired colour meter and averages them.
 
-    When the user clicks the live value the parent dialog fills the whole or
-    ground field: the one the meter names, else the one picked in a small popup.
+    The operator says up front whether the sample is whole beans or ground (a
+    meter that tells sets it itself). Once the series is full, the next reading
+    overwrites the first slot and goes round. Only Save writes the average into
+    the parent dialog's field; Cancel, or closing the dialog, drops the series.
 
     The colour meter is created here and torn down on close, mirroring
     how _AmbientFloatWindow manages TilauAmbient.
     """
 
-    CARD_WIDTH: Final[int] = 150
+    CARD_WIDTH: Final[int] = 340
+    COUNT_KEY: Final[str] = "tilauscope/colour_reading_count"
 
     def __init__(self, parent: 'RoastResultDialog') -> None:
         super().__init__(
@@ -4360,11 +4417,13 @@ class _ColorFloatWindow(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._parent_dialog = parent
         self._aw            = parent._aw
-        self._color_value: float | None = None
-        self._color_basis: str | None = None   # 'whole' / 'ground' when the meter tells, else None
+        self._series = ColourSeries(QSettings().value(self.COUNT_KEY, 3, type=int))
+        self._basis: str | None = None   # whole or ground: chosen by the operator or said by the meter, never assumed
+        self._saved: float | None = None   # the average just saved, until a new series starts
         self._device: object | None = None   # ColorMeter of the configured model
 
         self._build_ui()
+        self._refresh()
         self._attach_device()
 
     # ── Device wiring ─────────────────────────────────────────────────────────
@@ -4416,63 +4475,343 @@ class _ColorFloatWindow(QDialog):
         self._card = QFrame()
         self._card.setObjectName("colorCard")
         self._card.setFixedWidth(self.CARD_WIDTH)
+        self._set_card_border(THEME['BORDER'])
+        cl = QVBoxLayout(self._card)
+        cl.setContentsMargins(18, 14, 18, 14)
+        cl.setSpacing(12)
+
+        head = QHBoxLayout()
+        header = QLabel(QApplication.translate("tilauscope_roast_setup", "◉  COLOR"))
+        header.setProperty('variant', 'eyebrow')
+        head.addWidget(header)
+        head.addStretch()
+        self._status_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "connecting…"))
+        self._status_lbl.setProperty('variant', 'caption')
+        head.addWidget(self._status_lbl)
+        cl.addLayout(head)
+
+        seg_qss = (
+            f"QPushButton {{ color: {THEME['SUBTEXT']}; background: transparent; border: none;"
+            f"border-radius: 8px; font-size: 13px; padding: 6px 0; }}"
+            f"QPushButton:hover {{ background: {THEME['BORDER']}; }}"
+            f"QPushButton:checked {{ color: {THEME['BG']}; background: {THEME['MAUVE']}; font-weight: bold; }}"
+            f"QPushButton:disabled {{ color: {THEME['SURFACE1']}; }}"
+            f"QPushButton:checked:disabled {{ color: {THEME['BG']}; background: {THEME['SURFACE2']}; }}"
+        )
+        basis_box = QFrame()
+        basis_box.setStyleSheet(f"QFrame {{ background: {THEME['CRUST']}; border-radius: 10px; }}")
+        basis_row = QHBoxLayout(basis_box)
+        basis_row.setContentsMargins(3, 3, 3, 3)
+        basis_row.setSpacing(3)
+        self._basis_group = QButtonGroup(self)
+        self._basis_group.setExclusive(True)
+        self._basis_buttons: dict[str, QPushButton] = {}
+        for key, label in (
+            ('whole', QApplication.translate("tilauscope_common", "Whole bean")),
+            ('ground', QApplication.translate("Label", "Ground")),
+        ):
+            b = QPushButton(label)
+            b.setCheckable(True)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setStyleSheet(seg_qss)
+            b.clicked.connect(lambda _c=False, k=key: self._on_basis(k))
+            self._basis_group.addButton(b)
+            self._basis_buttons[key] = b
+            basis_row.addWidget(b)
+        cl.addWidget(basis_box)
+
+        count_row = QHBoxLayout()
+        count_row.setSpacing(4)
+        count_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Readings"))
+        count_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+        count_row.addWidget(count_lbl)
+        count_row.addStretch()
+        self._count_group = QButtonGroup(self)
+        self._count_group.setExclusive(True)
+        self._count_buttons: list[QPushButton] = []
+        for n in range(1, ColourSeries.MAX_SIZE + 1):
+            b = QPushButton(str(n))
+            b.setCheckable(True)
+            b.setFixedSize(30, 30)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setStyleSheet(seg_qss + f"QPushButton {{ border: 1px solid {THEME['BORDER']}; padding: 0; }}"
+                            f"QPushButton:checked {{ border: none; }}")
+            b.clicked.connect(lambda _c=False, k=n: self._on_count(k))
+            self._count_group.addButton(b)
+            self._count_buttons.append(b)
+            count_row.addWidget(b)
+        cl.addLayout(count_row)
+
+        slots_row = QHBoxLayout()
+        slots_row.setSpacing(6)
+        self._slots: list[tuple[QPushButton, QLabel, QFrame, QLabel, QLabel]] = []
+        for i in range(ColourSeries.MAX_SIZE):
+            btn = QPushButton()
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setMinimumHeight(78)
+            btn.clicked.connect(lambda _c=False, k=i: self._on_slot(k))
+            sl = QVBoxLayout(btn)
+            sl.setContentsMargins(4, 6, 4, 4)
+            sl.setSpacing(3)
+            no = QLabel(QApplication.translate("tilauscope_roast_setup", "NO.{0}").format(i + 1))
+            swatch = QFrame()
+            swatch.setFixedHeight(6)
+            value = QLabel()
+            hint = QLabel()
+            for w in (no, swatch, value, hint):
+                w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            for w in (no, value, hint):
+                w.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            no.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 10px; background: transparent;")
+            hint.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 10px; background: transparent;")
+            sl.addWidget(no)
+            sl.addWidget(swatch)
+            sl.addWidget(value)
+            sl.addWidget(hint)
+            self._slots.append((btn, no, swatch, value, hint))
+            slots_row.addWidget(btn)
+        cl.addLayout(slots_row)
+
+        self._track = _ColourTrack()
+        cl.addWidget(self._track)
+        ends = QHBoxLayout()
+        self._lo_lbl = QLabel()
+        self._hi_lbl = QLabel()
+        for w in (self._lo_lbl, self._hi_lbl):
+            w.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 10px;")
+        ends.addWidget(self._lo_lbl)
+        ends.addStretch()
+        ends.addWidget(self._hi_lbl)
+        self._ends = QWidget()
+        self._ends.setLayout(ends)
+        ends.setContentsMargins(0, 0, 0, 0)
+        cl.addWidget(self._ends)
+
+        sep = QFrame()
+        sep.setFixedHeight(1)
+        sep.setStyleSheet(f"background: {THEME['BORDER']};")
+        cl.addWidget(sep)
+
+        result = QHBoxLayout()
+        left = QVBoxLayout()
+        left.setSpacing(2)
+        self._mean_caption = QLabel()
+        self._mean_caption.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        self._mean_lbl = QLabel()
+        self._mean_lbl.setProperty('variant', 'readout')
+        self._level_lbl = QLabel()
+        self._level_lbl.setTextFormat(Qt.TextFormat.RichText)
+        self._level_lbl.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 13px;")
+        left.addWidget(self._mean_caption)
+        left.addWidget(self._mean_lbl)
+        left.addWidget(self._level_lbl)
+        result.addLayout(left)
+        result.addStretch()
+        right = QVBoxLayout()
+        right.setSpacing(2)
+        right.addStretch()
+        spread_cap = QLabel(QApplication.translate("tilauscope_roast_setup", "Spread"))
+        spread_cap.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        spread_cap.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self._spread_lbl = QLabel()
+        self._spread_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self._spread_lbl.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 16px; font-weight: bold;")
+        right.addWidget(spread_cap)
+        right.addWidget(self._spread_lbl)
+        result.addLayout(right)
+        cl.addLayout(result)
+
+        self._actions = QWidget()
+        actions = QHBoxLayout(self._actions)
+        actions.setContentsMargins(0, 0, 0, 0)
+        actions.setSpacing(8)
+        self._cancel_btn = QPushButton(QApplication.translate("Button", "Cancel"))
+        self._cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._cancel_btn.setFixedHeight(40)
+        self._cancel_btn.setStyleSheet(
+            f"QPushButton {{ color: {THEME['SUBTEXT']}; background: transparent;"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 10px; padding: 0 14px; font-size: 13px; }}"
+            f"QPushButton:hover {{ background: {THEME['BORDER']}; }}"
+            f"QPushButton:disabled {{ color: {THEME['SURFACE1']}; }}")
+        self._cancel_btn.clicked.connect(self._on_cancel)
+        self._save_btn = QPushButton()
+        self._save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._save_btn.setFixedHeight(40)
+        self._save_btn.clicked.connect(self._on_save)
+        self._save_btn.installEventFilter(self)   # its width is known once laid out: the text is fitted then
+        self._save_qss = ""
+        actions.addWidget(self._cancel_btn)
+        actions.addWidget(self._save_btn, 1)
+        cl.addWidget(self._actions)
+
+        self._saved_row = QFrame()
+        self._saved_row.setStyleSheet(
+            f"QFrame {{ background: {tint('SUCCESS', 0.12)}; border-radius: 10px; }}")
+        saved_l = QHBoxLayout(self._saved_row)
+        saved_l.setContentsMargins(12, 4, 6, 4)
+        self._saved_lbl = QLabel()
+        self._saved_lbl.setStyleSheet(
+            f"color: {THEME['SUCCESS']}; font-size: 13px; font-weight: bold; background: transparent;")
+        again = QPushButton(QApplication.translate("tilauscope_roast_setup", "Measure again"))
+        again.setCursor(Qt.CursorShape.PointingHandCursor)
+        again.setStyleSheet(
+            f"QPushButton {{ color: {THEME['TEXT']}; background: transparent;"
+            f"border: 1px solid {THEME['SURFACE1']}; border-radius: 8px; padding: 6px 12px; font-size: 12px; }}"
+            f"QPushButton:hover {{ background: {THEME['BORDER']}; }}")
+        again.clicked.connect(self._on_restart)
+        saved_l.addWidget(self._saved_lbl, 1)
+        saved_l.addWidget(again)
+        cl.addWidget(self._saved_row)
+
+        outer.addWidget(self._card)
+
+    def _set_card_border(self, color: str) -> None:
         self._card.setStyleSheet(f"""
             QFrame#colorCard {{
                 background-color: {THEME['SURFACE']};
-                border: 2px solid {THEME['BORDER']};
+                border: 2px solid {color};
                 border-radius: 16px;
             }}
         """)
-        cl = QVBoxLayout(self._card)
-        cl.setContentsMargins(16, 12, 16, 12)
-        cl.setSpacing(6)
 
-        header = QLabel(QApplication.translate("tilauscope_roast_setup", "◉  COLOR"))
-        header.setProperty('variant', 'eyebrow')
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cl.addWidget(header)
+    @staticmethod
+    def _level_name(value: float) -> str:
+        scale = agtron_scale_for(value)
+        if scale is None:
+            return ""
+        names = {
+            "Extremely Dark": QApplication.translate("tilauscope_roast_setup", "Extremely Dark"),
+            "Very Dark": QApplication.translate("tilauscope_roast_setup", "Very Dark"),
+            "Dark": QApplication.translate("tilauscope_roast_setup", "Dark"),
+            "Medium Dark": QApplication.translate("tilauscope_common", "Medium Dark"),
+            "Medium": QApplication.translate("tilauscope_roast_setup", "Medium"),
+            "Medium Light": QApplication.translate("tilauscope_common", "Medium Light"),
+            "Light": QApplication.translate("tilauscope_roast_setup", "Light"),
+            "Very Light": QApplication.translate("tilauscope_common", "Very Light"),
+        }
+        return names.get(scale.name, scale.name)
 
-        # Live colour swatch bar
-        self._swatch = QFrame()
-        self._swatch.setFixedHeight(8)
-        self._swatch.setStyleSheet(f"background: {THEME['BORDER']}; border-radius: 4px;")
-        cl.addWidget(self._swatch)
+    def _refresh(self) -> None:
+        """Redraw the whole card from the series; runs on a reading or a tap only."""
+        s = self._series
+        n = len(s.readings)
+        saved = self._saved is not None
+        self._basis_group.setExclusive(False)   # an exclusive group cannot show no choice
+        for key, b in self._basis_buttons.items():
+            b.setChecked(key == self._basis)
+            b.setEnabled(not saved)
+        self._basis_group.setExclusive(True)
+        for i, b in enumerate(self._count_buttons):
+            b.setChecked(i + 1 == s.size)
+            b.setEnabled(not saved and i + 1 >= n)
 
-        self._color_lbl = QLabel("–– ")
-        self._color_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._color_lbl.setProperty('variant', 'readout')
-        self._color_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']};")
-        self._color_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._color_lbl.setToolTip(
-            QApplication.translate("tilauscope_roast_setup", "Click to assign this reading")
-        )
-        self._color_lbl.mousePressEvent = self._on_value_clicked  # type: ignore[method-assign]
-        cl.addWidget(self._color_lbl)
+        for i, (btn, _no, swatch, value, hint) in enumerate(self._slots):
+            btn.setVisible(i < s.size)
+            has = i < n
+            nxt = not saved and i == s.next_slot
+            v = s.readings[i] if has else None
+            btn.setEnabled(has and not saved)
+            border = (f"2px dashed {THEME['SURFACE2']}" if nxt
+                      else f"2px solid {THEME['BORDER'] if has else THEME['SURFACE']}")
+            btn.setStyleSheet(f"QPushButton {{ background: {THEME['CRUST']}; border: {border}; border-radius: 10px; }}"
+                              f"QPushButton:hover {{ border-color: {THEME['MAUVE']}; }}")
+            swatch.setStyleSheet(
+                f"background: {get_agtron_color(v) if v is not None else THEME['BORDER']}; border-radius: 3px;")
+            value.setText(f"{v:.1f}" if v is not None else "—")
+            value.setStyleSheet(
+                f"color: {THEME['TEXT'] if has else THEME['SURFACE2']}; font-size: 16px; font-weight: bold;"
+                f"background: transparent;")
+            if nxt:
+                hint.setText(QApplication.translate("tilauscope_roast_setup", "next") if has
+                             else QApplication.translate("tilauscope_roast_setup", "measure"))
+            elif has and not saved:
+                hint.setText(QApplication.translate("tilauscope_roast_setup", "tap to redo"))
+            else:
+                hint.setText("")
 
-        tap_hint = QLabel(QApplication.translate("tilauscope_roast_setup", "tap to capture"))
-        tap_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        tap_hint.setProperty('variant', 'caption')
-        cl.addWidget(tap_hint)
+        mean = s.mean
+        self._track.set_readings(s.readings, mean)
+        self._track.setVisible(n > 0)
+        self._ends.setVisible(n > 0)
+        if n:
+            lo, hi = self._track.bounds
+            self._lo_lbl.setText(QApplication.translate("tilauscope_roast_setup", "{0} darker").format(f"{lo:.0f}"))
+            self._hi_lbl.setText(QApplication.translate("tilauscope_roast_setup", "lighter {0}").format(f"{hi:.0f}"))
 
-        self._status_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "connecting…"))
-        self._status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._status_lbl.setProperty('variant', 'caption')
-        cl.addWidget(self._status_lbl)
+        if n == 0:
+            self._mean_caption.setText(QApplication.translate("tilauscope_roast_setup", "Measure on the colour meter"))
+        elif n == 1:
+            self._mean_caption.setText(QApplication.translate("tilauscope_roast_setup", "Reading"))
+        else:
+            self._mean_caption.setText(QApplication.translate("tilauscope_roast_setup", "Average of {0}").format(n))
+        self._mean_lbl.setText(f"{mean:.1f}" if mean is not None else "—")
+        self._mean_lbl.setStyleSheet(f"color: {THEME['MAUVE'] if n else THEME['SURFACE1']};")
+        if mean is not None:
+            self._level_lbl.setText(
+                f"<span style='color:{get_agtron_color(mean)}'>●</span>&nbsp;{self._level_name(mean)}")
+        else:
+            self._level_lbl.setText("")
+        self._spread_lbl.setText(f"± {s.spread:.1f}" if s.spread is not None else "—")
 
-        outer.addWidget(self._card)
+        self._actions.setVisible(not saved)
+        self._saved_row.setVisible(saved)
+        if saved:
+            sample = (QApplication.translate("tilauscope_common", "Whole bean") if self._basis == 'whole'
+                      else QApplication.translate("Label", "Ground"))
+            self._saved_lbl.setText(f"✓  {sample}  {self._saved:.1f}")
+        self._cancel_btn.setEnabled(n > 0)
+        self._save_btn.setEnabled(n > 0 and self._basis is not None)
+        if self._basis is None:
+            text = QApplication.translate("tilauscope_roast_setup", "Choose whole bean or ground")
+        elif self._basis == 'whole':
+            text = QApplication.translate("tilauscope_roast_setup", "Save as whole bean")
+        else:
+            text = QApplication.translate("tilauscope_roast_setup", "Save as ground")
+        if n and self._basis is not None and not s.full:
+            text += f"  ({n}/{s.size})"
+        self._save_btn.setText(text)
+        if n == 0 or self._basis is None:
+            qss = (f"color: {THEME['SURFACE1']}; background: transparent; border: 1px solid {THEME['BORDER']};")
+        elif s.full:
+            qss = f"color: {THEME['BG']}; background: {THEME['MAUVE']}; border: none;"
+        else:
+            qss = (f"color: {THEME['MAUVE']}; background: {tint('MAUVE', 0.12)};"
+                   f"border: 1px solid {THEME['MAUVE']};")
+        self._save_qss = qss
+        self._fit_save_text()
         self.adjustSize()
+
+    def _fit_save_text(self) -> None:
+        """The Save text in one line: 14 px, down to 10 px for a long translation."""
+        b = self._save_btn
+        room = b.width() - 26   # padding 12 px each side, border
+        font = QFont(b.font())
+        font.setBold(True)
+        px = 14
+        while px > 10:
+            font.setPixelSize(px)
+            if QFontMetrics(font).horizontalAdvance(b.text()) <= room:
+                break
+            px -= 1
+        sheet = (f"QPushButton {{ {self._save_qss} border-radius: 10px; font-size: {px}px; font-weight: bold;"
+                 f" padding: 0 12px; }}")
+        if b.styleSheet() != sheet:   # a new sheet relays out the button: only when it changes
+            b.setStyleSheet(sheet)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: ANN001
+        # a virtual: an exception escaping it closes the app
+        try:
+            if obj is self._save_btn and event.type() == QEvent.Type.Resize:
+                self._fit_save_text()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: Save text not fitted: %s", exc)
+        return super().eventFilter(obj, event)
 
     # ── Slots ─────────────────────────────────────────────────────────────────
 
     @pyqtSlot()
     def _on_connected(self) -> None:
-        self._card.setStyleSheet(f"""
-            QFrame#colorCard {{
-                background-color: {THEME['SURFACE']};
-                border: 2px solid {THEME['ACCENT']};
-                border-radius: 16px;
-            }}
-        """)
+        self._set_card_border(THEME['MAUVE'])
         self._set_status(
             QApplication.translate("tilauscope_roast_setup", "live"),
             THEME['SUCCESS'],
@@ -4480,17 +4819,7 @@ class _ColorFloatWindow(QDialog):
 
     @pyqtSlot()
     def _on_disconnected(self) -> None:
-        self._card.setStyleSheet(f"""
-            QFrame#colorCard {{
-                background-color: {THEME['SURFACE']};
-                border: 2px solid {THEME['BORDER']};
-                border-radius: 16px;
-            }}
-        """)
-        self._color_lbl.setText("––")
-        self._color_lbl.setProperty('variant', 'readout')
-        self._color_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']};")
-        self._swatch.setStyleSheet(f"background: {THEME['BORDER']}; border-radius: 4px;")
+        self._set_card_border(THEME['BORDER'])
         self._set_status(
             QApplication.translate("tilauscope_roast_setup", "offline"),
             THEME['SUBTEXT'],
@@ -4498,37 +4827,73 @@ class _ColorFloatWindow(QDialog):
 
     @pyqtSlot(object)
     def _on_reading(self, reading) -> None:  # noqa: ANN001
-        self._color_basis = reading.basis
-        self._on_color_changed(reading.value)
+        try:
+            if self._saved is not None:   # a reading after Save starts the next series
+                self._saved = None
+                self._series.clear()
+                self._basis = None   # the next sample may be the other one
+            if reading.basis in ('whole', 'ground'):
+                self._basis = reading.basis
+            self._series.add(reading.value)
+            self._refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: reading not shown: %s", exc)
 
-    def _on_color_changed(self, value: float) -> None:
-        self._color_value = value
-        # Colour the number to reflect Agtron range
-        hue_color = self._agtron_hue(value)
-        self._color_lbl.setText(f"{value:.1f}")
-        self._color_lbl.setProperty('variant', 'readout')
-        self._color_lbl.setStyleSheet(f"color: {hue_color};")
-        self._swatch.setStyleSheet(
-            f"background: {hue_color}; border-radius: 4px;"
-        )
+    # Button slots: an exception escaping one of them closes the app, so each logs instead.
+    def _on_basis(self, key: str) -> None:
+        try:
+            self._basis = key
+            self._refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: basis not applied: %s", exc)
 
-    def _on_value_clicked(self, _event) -> None:  # noqa: ANN001
-        if self._color_value is None:
-            return
-        self._parent_dialog.receive_color_reading(self._color_value, self._color_basis)
+    def _on_count(self, n: int) -> None:
+        try:
+            self._series.resize(n)
+            QSettings().setValue(self.COUNT_KEY, self._series.size)
+            self._refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: count not applied: %s", exc)
+
+    def _on_slot(self, index: int) -> None:
+        try:
+            self._series.redo(index)
+            self._refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: slot not set to redo: %s", exc)
+
+    def _on_cancel(self) -> None:
+        try:
+            self._series.clear()
+            self._refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: series not cleared: %s", exc)
+
+    def _on_save(self) -> None:
+        try:
+            mean = self._series.mean
+            if mean is None or self._basis is None:
+                return
+            self._parent_dialog.receive_color_reading(mean, self._basis)
+            self._saved = mean
+            self._refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: colour not saved: %s", exc)
+
+    def _on_restart(self) -> None:
+        try:
+            self._saved = None
+            self._series.clear()
+            self._basis = None   # the next sample may be the other one
+            self._refresh()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("ColorCard: series not restarted: %s", exc)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    @staticmethod
-    def _agtron_hue(agtron: float) -> str:
-        """The colour of that Agtron number, from the application's roast scale."""
-        return get_agtron_color(agtron)
-
     def _set_status(self, text: str, color: str) -> None:
-        self._status_lbl.setText(text)
-        self._status_lbl.setStyleSheet(
-            f"color: {color}; font-size: 9px; "
-        )
+        self._status_lbl.setText(f"● {text}")
+        self._status_lbl.setStyleSheet(f"color: {color}; font-size: 11px;")
 
     def closeEvent(self, event) -> None:  # noqa: ANN001
         self._detach_device()
@@ -4831,42 +5196,11 @@ class RoastResultDialog(QDialog):
                 self._roasted_weight_edit.setText(f"{weight:.0f}")
                 self._update_loss_label()
 
-    def receive_color_reading(self, value: float, basis: str | None = None) -> None:
-        """
-        Called when the user taps the floating colour card.
-        Populates the whole-bean or ground field: the one the meter names in
-        *basis*, else the one picked in a small context dialog.
-        """
-        if basis in ("whole", "ground"):
-            edit = self._colour_whole_edit if basis == "whole" else self._colour_ground_edit
-            edit.setText(f"{value:.1f}")
-            self._update_color_diff()
-            return
-        reply = show_styled_message(
-            self,
-            QApplication.translate("tilauscope_roast_setup", "Which sample?"),
-            QApplication.translate("tilauscope_roast_setup",
-                "Reading: <b>{0}</b><br><br>"
-                "Is this a <b>Whole bean</b> or <b>Ground</b> measurement?"
-            ).format(f"{value:.1f}"),
-            QMessageBox.Icon.Question,
-            rich=True,
-            width=380,
-            buttons=[
-                QApplication.translate("tilauscope_common", "Whole bean"),
-                QApplication.translate("Label", "Ground"),
-                QApplication.translate("Button", "Cancel"),
-            ],
-        )
-        # show_styled_message returns a StandardButton; map text via index
-        # We rely on the button index: 0=Whole, 1=Ground, 2=Cancel
-        # Since show_styled_message may return Ok/Cancel, we handle both styles
-        if reply in (QMessageBox.StandardButton.Ok, 0):
-            self._colour_whole_edit.setText(f"{value:.1f}")
-            self._update_color_diff()
-        elif reply in (QMessageBox.StandardButton.Save, 1):
-            self._colour_ground_edit.setText(f"{value:.1f}")
-            self._update_color_diff()
+    def receive_color_reading(self, value: float, basis: str) -> None:
+        """The colour card saved an average: fill the whole-bean or ground field."""
+        edit = self._colour_whole_edit if basis == "whole" else self._colour_ground_edit
+        edit.setText(f"{value:.1f}")
+        self._update_color_diff()
 
     # ── Drag support ──────────────────────────────────────────────────────────
 

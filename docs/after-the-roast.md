@@ -445,8 +445,9 @@ fits, the rate of rise at first crack and the overall slope of both rates of ris
 
 The result form — whether filled at DROP or reopened later — records roasted weight and any
 defect weight, whole-bean and ground colour, free notes, and the burns visible on the beans.
-Colour can be typed, judged by eye against named roast levels, or read live from a colour
-meter where one is paired.
+Colour can be typed, judged by eye against named roast levels, or read from a colour meter
+where one is paired: up to five readings of the same sample, averaged before they are saved (see
+[Colour meter](hardware.md#colour-meter)).
 
 Next to the roasted weight, the form shows the [weight loss](glossary.md#weight-loss) as soon as
 the weight is typed, beside the loss to aim for and its range — the same aim the review uses,

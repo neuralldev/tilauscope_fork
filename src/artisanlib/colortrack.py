@@ -25,6 +25,8 @@
 # AUTHOR
 # Marko Luther, 2024
 
+__lazy_modules__ = { 'asyncio' }
+
 import asyncio
 import logging
 import numpy as np
@@ -43,7 +45,6 @@ if TYPE_CHECKING:
 
 from artisanlib.async_comm import AsyncComm
 from artisanlib.ble_port import ClientBLE
-from artisanlib.filters import LiveMean, LiveMedian
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -122,6 +123,8 @@ class ColorTrackBLE(ClientBLE):
                        disconnected_handler:Callable[[], None]|None = None):
         super().__init__()
 
+        from artisanlib.filters import LiveMean, LiveMedian
+
         # handlers
         self._connected_handler = connected_handler
         self._disconnected_handler = disconnected_handler
@@ -165,7 +168,7 @@ class ColorTrackBLE(ClientBLE):
 
     # second result is the raw average
     def getColor(self) -> tuple[float, float]:
-#        read_res = self.read(self.COLORTRACK_READ_NOTIFY_LASER_UUID) # returns 20 bytes (same format as via the notifications)
+#        read_res = self.read(self.COLORTRACK_READ_NOTIFY_LASER_UUID, timeout=1) # returns 20 bytes (same format as via the notifications)
 #        _log.debug('getLaser: %s',read_res)
 
 #        try:

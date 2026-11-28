@@ -45,23 +45,22 @@ if TYPE_CHECKING:
     from PyQt6.QtGui import QStandardItem, QKeyEvent, QDropEvent, QDragEnterEvent, QCloseEvent # pylint: disable=unused-import
     from PyQt6.QtCore import QMimeData # pylint: disable=unused-import
 
-from artisanlib.util import (deltaLabelUTF8, decodeLocal, decodeLocalStrict, stringfromseconds, fromFtoCstrict,
-        fromCtoFstrict, fill_gaps, float2float, deserialize, float2str, smooth_list)
 from artisanlib.suppress_errors import suppress_stdout_stderr
-from artisanlib.dialogs import ArtisanDialog
-from artisanlib.widgets import MyQComboBox
-from artisanlib.qcheckcombobox import CheckComboBox
-from artisanlib.table_style import horizontal_header_style, vertical_header_style
-
 with suppress_stdout_stderr():
     from matplotlib import colormaps # pyrefly:ignore[missing-module-attribute]
 
 from PyQt6.QtCore import (Qt, pyqtSignal, pyqtSlot, QSettings, QFile, QTextStream, QUrl,
     QFileInfo, QDate, QTime, QDateTime)
 from PyQt6.QtGui import (QColor, QDesktopServices, QStandardItemModel)
-from PyQt6.QtWidgets import (QApplication, QWidget, QLabel, QTableWidget, QPushButton,
-    QComboBox, QSizePolicy, QHBoxLayout, QVBoxLayout, QHeaderView, QTableWidgetItem, QCheckBox)
+from PyQt6.QtWidgets import (QApplication, QWidget, QLabel, QTableWidget, QCheckBox,
+    QComboBox, QSizePolicy, QHBoxLayout, QVBoxLayout, QHeaderView, QTableWidgetItem)
 
+from artisanlib.util import (deltaLabelUTF8, decodeLocal, decodeLocalStrict, stringfromseconds, fromFtoCstrict,
+        fromCtoFstrict, fill_gaps, float2float, deserialize, float2str, smooth_list)
+from artisanlib.dialogs import ArtisanDialog
+from artisanlib.widgets import MyQComboBox, ArtisanMinorPushButton
+from artisanlib.qcheckcombobox import CheckComboBox
+from artisanlib.styles import horizontal_header_style, vertical_header_style, table_style
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -104,12 +103,12 @@ class RoastProfile:
         ch:float = hslf[0]
         cl:float = hslf[2]
         ca:float = hslf[3]
-        g0 = QColor.fromHslF(ch,0,cl,ca)
+        g0_color:QColor = QColor.fromHslF(ch,0.0,cl,ca) # pyright:ignore[reportUnknownArgumentType]
         self.gray = (
-                g0.redF(),
-                g0.greenF(),
-                g0.blueF(),
-                g0.alphaF())
+                g0_color.redF(),
+                g0_color.greenF(),
+                g0_color.blueF(),
+                g0_color.alphaF())
         self.label:str = ''
         self.title:str = ''
         #
@@ -218,7 +217,7 @@ class RoastProfile:
                     self.extraDelta1 = delta1
                     self.extraDelta2 = delta2
         # temperature conversion
-        m = str(profile['mode']) if 'mode' in profile else self.aw.qmc.mode
+        m = profile.get('mode', self.aw.qmc.mode)
         self.ambientTemp: float
         if 'ambientTemp' in profile:
             self.ambientTemp = profile['ambientTemp']
@@ -246,7 +245,7 @@ class RoastProfile:
             try:
                 batchprefix:str|None = decodeLocal(profile['roastbatchprefix']) # pyright:ignore[reportTypedDictNotRequiredAccess]
                 if batchprefix is not None:
-                    self.label = batchprefix + str(int(profile['roastbatchnr']))[:10] # pyright:ignore[reportTypedDictNotRequiredAccess]
+                    self.label = batchprefix + str(profile['roastbatchnr'])[:10] # pyright:ignore[reportTypedDictNotRequiredAccess]
             except Exception: # pylint: disable=broad-except
                 pass
         if 'specialevents' in profile:
@@ -278,7 +277,7 @@ class RoastProfile:
                 roastdate_str:str|None = decodeLocal(profile['roastdate'])
                 if roastdate_str is not None:
                     date = QDate.fromString(roastdate_str)
-                    if not date.isValid(): # ty:ignore[no-matching-overload]
+                    if not date.isValid():
                         date = QDate.currentDate()
                 else:
                     date = QDate.currentDate()
@@ -972,13 +971,15 @@ class roastCompareDlg(ArtisanDialog):
     __slots__ = [ 'foreground', 'background', 'maxentries', 'basecolors', 'profiles', 'label_number', 'l_align', 'legend', 'legendloc_pos', 'addButton',
         'deleteButton', 'alignnames', 'alignComboBox', 'eventsComboBox', 'cb', 'model',
         'pick_handler_id', 'modeComboBox', 'buttonCONTROL_org_state_hidden', 'buttonONOFF_org_state_hidden',
-        'buttonRESET_org_state_hidden', 'buttonSTARTSTOP_org_state_hidden', 'profileTable', 'delta_axis_visible' ]
+        'buttonRESET_org_state_hidden', 'buttonSTARTSTOP_org_state_hidden', 'profileTable', 'delta_axis_visible', 'dashboard_was_active_on_open']
 
     def __init__(self, parent:QWidget, aw:'ApplicationWindow', foreground:str|None = None, background:str|None = None) -> None:
         super().__init__(parent, aw)
 
         if platform.system() == 'Darwin':
             self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow) # show tool window even if app is in background (see https://bugreports.qt.io/browse/QTBUG-57581)
+
+        self.dashboard_was_active_on_open = self.aw.dashboard.dashboard_active()
 
         self.setAcceptDrops(True)
 
@@ -998,12 +999,20 @@ class roastCompareDlg(ArtisanDialog):
         self.legendloc_pos:tuple[float,float]|None = None
         # table
         self.profileTable = CompareTableWidget()
+        self.profileTable.setStyleSheet(table_style(self.aw.app.darkmode))
+        self.profileTable.setShowGrid(False)
         self.createProfileTable()
         # buttons
-        self.addButton = QPushButton(QApplication.translate('Button','Add'))
+        self.addButton = ArtisanMinorPushButton(QApplication.translate('Button','Add'),
+            'add-01-stroke-rounded-white.svg',
+            'add-01-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         self.addButton.clicked.connect(self.add)
         self.addButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.deleteButton = QPushButton(QApplication.translate('Button','Delete'))
+        self.deleteButton = ArtisanMinorPushButton(QApplication.translate('Button','Delete'),
+            'delete-02-stroke-rounded-white.svg',
+            'delete-02-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         self.deleteButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.deleteButton.clicked.connect(self.delete)
         # configurations
@@ -1077,6 +1086,7 @@ class roastCompareDlg(ArtisanDialog):
         settingsLayout.addLayout(settings2Layout)
         settingsLayout.addLayout(settings1Layout)
         settingsLayout.setSpacing(2)
+        settingsLayout.setContentsMargins(0, 5, 0, 10)
 
         buttonLayout = QHBoxLayout()
         buttonLayout.addStretch()
@@ -1084,12 +1094,13 @@ class roastCompareDlg(ArtisanDialog):
         buttonLayout.addSpacing(10)
         buttonLayout.addWidget(self.deleteButton)
         buttonLayout.addStretch()
+        buttonLayout.setContentsMargins(0, 10, 0, 10)
         mainLayout = QVBoxLayout()
         mainLayout.addLayout(settingsLayout)
         mainLayout.addWidget(self.profileTable)
         mainLayout.addLayout(buttonLayout)
         mainLayout.setSpacing(0)
-        mainLayout.setContentsMargins(0, 0, 0, 0)
+        mainLayout.setContentsMargins(5, 0, 5, 0)
         self.setLayout(mainLayout)
 
         # we want minimize and close buttons, but no maximize buttons
@@ -1107,7 +1118,7 @@ class roastCompareDlg(ArtisanDialog):
         self.buttonRESET_org_state_hidden = self.aw.buttonRESET.isHidden() # RESET
         self.buttonONOFF_org_state_hidden = self.aw.buttonONOFF.isHidden() # ON/OFF
         self.buttonSTARTSTOP_org_state_hidden = self.aw.buttonSTARTSTOP.isHidden() # START/STOP
-        self.buttonCONTROL_org_state_hidden = self.aw.buttonCONTROL.isHidden() # CONTROL
+        self.buttonCONTROL_org_state_hidden = self.aw.buttonCONTROLwidget.isHidden() # CONTROL
 
         self.disableButtons()
         self.aw.disableEditMenus(compare=True)
@@ -1126,7 +1137,7 @@ class roastCompareDlg(ArtisanDialog):
     def keyPressEvent(self, a0: 'QKeyEvent|None') -> None:
         try:
             if a0 is not None:
-                k = int(a0.key())
+                k = a0.key()
                 if k == 71:                       #G (toggle time auto axis mode)
                     self.modeComboBox.setCurrentIndex((self.modeComboBox.currentIndex()+1) % 3)
                 else:
@@ -1170,13 +1181,13 @@ class roastCompareDlg(ArtisanDialog):
         if not self.buttonSTARTSTOP_org_state_hidden:
             self.aw.buttonSTARTSTOP.show() # START/STOP
         if not self.buttonCONTROL_org_state_hidden:
-            self.aw.buttonCONTROL.show() # CONTROL
+            self.aw.buttonCONTROLwidget.show() # CONTROL
 
     def disableButtons(self) -> None:
         self.aw.buttonRESET.hide() # RESET
         self.aw.buttonONOFF.hide() # ON/OFF
         self.aw.buttonSTARTSTOP.hide() # START/STOP
-        self.aw.buttonCONTROL.hide() # CONTROL
+        self.aw.buttonCONTROLwidget.hide() # CONTROL
 
     ### DRAWING
 
@@ -1475,9 +1486,9 @@ class roastCompareDlg(ArtisanDialog):
 
     def setProfileTableRow(self, i:int) -> None:
         profile = self.profiles[i]
-        c = QColor.fromRgbF(*profile.color)
+        c_color:QColor = QColor.fromRgbF(*profile.color)
         color = QTableWidgetItem()
-        color.setBackground(c)
+        color.setBackground(c_color) # pyright:ignore[reportUnknownArgumentType]
         color.setFlags(Qt.ItemFlag.ItemIsEnabled) # do not change background color on row selection of the color items
         self.profileTable.setItem(i,0,color)
         flag = QCheckBox()
@@ -1788,7 +1799,7 @@ class roastCompareDlg(ArtisanDialog):
                 dmax = int(dmax) + 1
                 if self.aw.qmc.delta_ax is not None:
                     self.aw.qmc.delta_ax.set_ylim(top=dmax) # we only autoadjust the upper limit
-                self.aw.qmc.zlimit = int(round(dmax))
+                self.aw.qmc.zlimit = round(dmax)
 
     def recompute(self) -> None:
         for rp in self.profiles:
@@ -1908,11 +1919,12 @@ class roastCompareDlg(ArtisanDialog):
         for i,p in enumerate(self.profiles):
             w = self.profileTable.item(i,0)
             if w is not None:
+                c_color:QColor
                 if p.active:
-                    c = QColor.fromRgbF(*p.color)
+                    c_color = QColor.fromRgbF(*p.color)
                 else:
-                    c = QColor.fromRgbF(*p.gray)
-                w.setBackground(c)
+                    c_color = QColor.fromRgbF(*p.gray)
+                w.setBackground(c_color) # pyright:ignore[reportUnknownArgumentType]
         if self.aw.qpc is not None:
             self.aw.qpc.update_phases(self.getPhasesData())
 
@@ -2103,7 +2115,7 @@ class roastCompareDlg(ArtisanDialog):
     def getPhasesData(self) -> list[tuple[str, float, tuple[float,float,float], bool, bool, str,
             tuple[float,float,float], tuple[float,float,float]]]:
         data:list[tuple[str, float, tuple[float,float,float], bool, bool, str,
-                tuple[float,float,float], tuple[float,float,float]]]= []
+            tuple[float,float,float], tuple[float,float,float]]]= []
         profiles:list[RoastProfile] = self.getProfilesVisualOrder()
         for p in reversed(profiles):
             if p.visible:
@@ -2115,7 +2127,7 @@ class roastCompareDlg(ArtisanDialog):
                 p1:float = dry
                 p3:float = total - fcs if fcs != 0 else 0
                 p2:float = total - p1 - p3 if p1 != 0 and p3 != 0 else 0
-                c:QColor = QColor.fromRgbF(*p.color)
+                c_color:QColor = QColor.fromRgbF(*p.color)
                 t1:float = p.temp2[p.timeindex[1]] if len(p.temp2) > p.timeindex[1] > 0 else -1
                 t2:float = p.temp2[p.timeindex[2]] if len(p.temp2) > p.timeindex[2] > 0 else -1
                 t3:float = p.temp2[p.timeindex[6]] if len(p.temp2) > p.timeindex[6] > 0 else (p.temp2[-1] if len(p.temp2)>0 else -1)
@@ -2132,7 +2144,7 @@ class roastCompareDlg(ArtisanDialog):
                     r = p.delta2[p.timeindex[6]] if p.timeindex[6] != 0 and len(p.delta2) > p.timeindex[6] else (p.delta2[-1] if len(p.delta2)>0 else -1)
                     if r is not None:
                         r3 = float(r)
-                data.append((p.label, total, (p1, p2, p3), p.active, p.aligned, c.name(),
+                data.append((p.label, total, (p1, p2, p3), p.active, p.aligned, c_color.name(), # pyright:ignore[reportUnknownArgumentType]
                     (t1, t2, t3), (r1, r2, r3)))
         return data
 
@@ -2197,3 +2209,7 @@ class roastCompareDlg(ArtisanDialog):
             _log.exception(e)
         if self.aw.qpc is not None:
             self.aw.qpc.update_phases(None)
+        self.aw.dashboard.enable_dashboard_toggle_toolbutton()
+        # show dashboard again if it was shown on starting the Comparato
+        if self.dashboard_was_active_on_open:
+            self.aw.dashboard.show_dashboard()

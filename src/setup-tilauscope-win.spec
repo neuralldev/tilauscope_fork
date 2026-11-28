@@ -156,6 +156,8 @@ hiddenimports_list=['charset_normalizer.md__mypyc',
                     'scipy.special.cython_special',
                     'scipy._lib.messagestream',
                     'scipy.special._cdflib',
+                    'aiohttp_retry',  # plus.uploader, imported lazily
+                    'libusb_package',  # Aillio R1/R2 USB, imported under Windows only
                     'pywintypes',
                     'win32cred',
                     'win32timezone',

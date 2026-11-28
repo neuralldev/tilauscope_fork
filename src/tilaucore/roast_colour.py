@@ -224,3 +224,71 @@ def get_agtron_color(agtron: float) -> str:
     """
     scale = agtron_scale_for(agtron)
     return scale.color_map if scale is not None else "#9E9E9E"  # grey — out of range / sensor not ready
+
+
+class ColourSeries:
+    """One to five readings of the same sample, averaged.
+
+    When the series is full, the next reading overwrites the first slot and the
+    following ones go round the list. A slot tapped to redo takes the next
+    reading in place; its old value counts until then.
+    """
+
+    MAX_SIZE = 5
+
+    def __init__(self, size: int = 3) -> None:
+        self.size = min(max(int(size), 1), self.MAX_SIZE)
+        self.readings: list[float] = []
+        self._next = 0   # slot the next reading overwrites once full
+        self._redo: int | None = None   # slot tapped to redo: the next reading lands there
+
+    def add(self, value: float) -> None:
+        if self._redo is not None:
+            self.readings[self._redo] = float(value)
+            if self.full:
+                self._next = (self._redo + 1) % self.size
+            self._redo = None
+            return
+        if len(self.readings) < self.size:
+            self.readings.append(float(value))
+            return
+        self.readings[self._next] = float(value)
+        self._next = (self._next + 1) % self.size
+
+    def redo(self, index: int) -> None:
+        if 0 <= index < len(self.readings):
+            self._redo = index
+
+    def resize(self, size: int) -> None:
+        """A size below the readings taken is refused."""
+        size = min(max(int(size), 1), self.MAX_SIZE)
+        if size >= len(self.readings):
+            self.size = size
+            self._next = 0
+
+    def clear(self) -> None:
+        self.readings = []
+        self._next = 0
+        self._redo = None
+
+    @property
+    def full(self) -> bool:
+        return len(self.readings) == self.size
+
+    @property
+    def next_slot(self) -> int:
+        """The slot the next reading lands in."""
+        if self._redo is not None:
+            return self._redo
+        return self._next if self.full else len(self.readings)
+
+    @property
+    def mean(self) -> "float | None":
+        return round(sum(self.readings) / len(self.readings), 1) if self.readings else None
+
+    @property
+    def spread(self) -> float | None:
+        """Half the gap between the highest and lowest reading; None below two."""
+        if len(self.readings) < 2:
+            return None
+        return (max(self.readings) - min(self.readings)) / 2

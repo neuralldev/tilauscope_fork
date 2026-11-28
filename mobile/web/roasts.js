@@ -132,15 +132,24 @@ var RoastsTab = (function () {
   }
 
   // ---------- one roast ----------
-  function tiles(d) {
+  // A roast of this tablet takes its roasted weight and colour again: those tiles open the shared panels
+  // (measure-sheets.js). A copy of a computer roast and a roast of the library stay read only.
+  var MEASURED = { "Roasted weight": "weigh", "Colour": "colour" };
+  // A figure and its unit never part at a line end: "182 °C", "412 g", "13 %"
+  function glued(text) { return esc(text).replace(/(\d) (°[CF]|g\b|%|kWh)/g, "$1\u00a0$2"); }
+  function tiles(d, editable) {
     return '<div class="tiles">' + d.tiles.map(function (t) {
       var sw = t.swatch ? '<i class="' + (t.filled ? "" : "ring") + '" style="background:' + t.swatch + ";border-color:" + t.swatch + '"></i>' : "";
+      if (editable && MEASURED[t.caption])
+        return '<button class="tile mtap" data-m="' + MEASURED[t.caption] + '"><span class="cap">' + esc(t.caption) +
+          '<svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+          '<span class="val num">' + sw + esc(t.value) + '</span><span class="sub">' + glued(t.sub) + "</span></button>";
       if (t.caption === "Energy" && t.value !== "—") // the roast's energy: the tile opens its sheet, as the desktop's ›
         return '<button class="tile etap" aria-label="Energy of the roast"><span class="cap">' + esc(t.caption) +
-          '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
-          '<span class="val num">' + esc(t.value.replace(" kWh", "")) + '<small>kWh</small></span><span class="sub">' + esc(t.sub) + "</span></button>";
+          '<svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+          '<span class="val num">' + esc(t.value.replace(" kWh", "")) + '<small>kWh</small></span><span class="sub">' + glued(t.sub) + "</span></button>";
       return '<div class="tile' + (t.value === "—" ? " nr" : "") + '"><span class="cap">' + esc(t.caption) + '</span><span class="val num">' + sw + esc(t.value) +
-        '</span><span class="sub">' + esc(t.sub) + "</span></div>";
+        '</span><span class="sub">' + glued(t.sub) + "</span></div>";
     }).join("") + "</div>";
   }
   document.addEventListener("click", function (e) {
@@ -148,6 +157,43 @@ var RoastsTab = (function () {
     var i = selected.indexOf("/");
     send("get_roast_energy", JSON.stringify({ origin: selected.slice(0, i), name: selected.slice(i + 1) }));
   });
+  // Woken by a panel: let go when it closes. A device already connected (the coffee editor's scale) stays.
+  var devices = {}, woke = { scale: false, colour: false }, live = { scale: false, colour: false }, seenReading = null;
+  // Only the tablet's own roasts: a change to its copy of a computer roast would never reach the computer.
+  function editable(d) { return d.origin === "tablet"; }
+  function wake(kind, message, argument) {
+    if (!live[kind]) { woke[kind] = true; send(message, argument); }
+  }
+  function letGo(kind) { if (woke[kind]) { woke[kind] = false; send(kind + "_disconnect"); } }
+  function edit(d, field, value) {
+    send("edit_roast", JSON.stringify({ origin: d.origin, name: d.name, field: field, value: value }));
+  }
+  document.addEventListener("click", function (e) {
+    var tile = detail && e.target.closest && e.target.closest(".mtap");
+    if (!tile) return;
+    var d = detail;
+    if (tile.dataset.m === "weigh") {
+      var scale = devices.scale;
+      if (scale) wake("scale", "scale_connect", JSON.stringify({ address: scale.address, name: scale.name }));
+      MeasureSheets.weigh({ configured: !!scale, saved: tile.querySelector(".val").textContent,
+        onUse: function (g) { edit(d, "roasted", g); },
+        onClose: function () { letGo("scale"); } }); // as the desktop: the scale it woke is let go
+    } else {
+      var meter = devices.colour;
+      if (meter) wake("colour", "colour_connect", meter.address);
+      MeasureSheets.colour({ levels: d.colour_levels || [], configured: !!meter,
+        onSave: function (basis, v) { edit(d, basis, v); }, onClose: function () { letGo("colour"); } });
+    }
+  });
+  window.onColour = function (s) {
+    live.colour = s.state === "connected";
+    MeasureSheets.meter(s);
+    if (s.reading_id == null) return;
+    if (seenReading == null) seenReading = s.reading_id; // older than this screen
+    else if (s.reading_id !== seenReading) { seenReading = s.reading_id; MeasureSheets.reading(s.reading); }
+  };
+  var scaleBefore = window.onScale; // the coffee editor's stock and density cards read the scale too
+  window.onScale = function (s) { live.scale = s.state === "connected"; MeasureSheets.scale(s); if (scaleBefore) scaleBefore(s); };
   function curve(d, W, H) {
     var c = d.colours, pts = d.curve, end = Math.max(60, (d.marks.drop || (pts.length ? pts[pts.length - 1][0] : 600)) + 60);
     var levers = Object.keys(d.lanes).filter(function (k) { return c.levers[k]; }), laneH = 30, gap = 6;
@@ -320,7 +366,7 @@ var RoastsTab = (function () {
   function showDetail(d) {
     detail = d;
     $("rdetail").innerHTML = '<div><h3>' + esc(d.title) + '</h3><span class="when num">' + esc(when(d)) + "</span></div>" + banner(d) +
-      '<div class="mini">' + curve(d, 760, 330) + "</div>" + tiles(d) + actions(d);
+      '<div class="mini">' + curve(d, 760, 330) + "</div>" + tiles(d, editable(d)) + actions(d);
     wireActions(d);
     doubleTap($("rdetail").querySelector(".mini"), function () { full(d); }); // the curve opens full screen
     if (labelPrinter.state !== "working") labelPrinter.state = null; // "printed" was another roast's label
@@ -355,8 +401,11 @@ var RoastsTab = (function () {
       $("rsearch").oninput = function () { query = this.value; renderList(); };
     },
     show: function (coffee) { filter = coffee || null; selected = null; send("get_roasts"); },
-    hide: function () { labelPrinter.watch(false); },
+    hide: function () { labelPrinter.watch(false); MeasureSheets.close(); }, // a panel left open would save to a roast no longer shown
     setPrinter: function (device) { labelPrinter.device = device && device.enabled ? device : null; },
+    setDevices: function (d) {
+      devices = { scale: d.scale && d.scale.enabled ? d.scale : null, colour: d.colour && d.colour.enabled ? d.colour : null };
+    },
     label: function (lines) { labelPrinter.print(lines); },
     card: function (card) { cardSharer.reply(card); },
     rows: function (list) { rows = list; renderList(); },

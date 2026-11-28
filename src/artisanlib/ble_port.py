@@ -25,6 +25,8 @@
 # AUTHOR
 # Marko Luther, 2024, updated by Tilau
 
+__lazy_modules__ = { 'asyncio' }
+
 import asyncio
 from asyncio import CancelledError  # <--- Add this line
 import logging
@@ -44,7 +46,7 @@ from PyQt6.QtCore import QObject
 from artisanlib.async_comm import AsyncLoopThread
 
 from collections.abc import Callable, Awaitable
-from typing import Final, TYPE_CHECKING
+from typing import Final, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from bleak.backends.device import BLEDevice # pylint: disable=unused-import
@@ -479,7 +481,7 @@ class BLE:
             blacklist:set[str], # list of client addresses to ignore as they don't offer the required service
             case_sensitive:bool=True,
             disconnected_callback:Callable[[BleakClient], None]|None = None,
-            scan_timeout:float=6,
+            scan_timeout:float=10,
             connect_timeout:float=6,
             address:str|None = None # if given, connect only to the device with this ble address
             ) -> tuple[BleakClient|None, str|None, str|None]:
@@ -527,13 +529,26 @@ class BLE:
                 exc = fut.exception() if not fut.cancelled() else CancelledError()
                 _log.error('exception in read: %s', exc)
 
-    def stop_notify(self, client:'BleakClient', uuid:str) -> None:
+    # returns True if the notification got stopped, False otherwise
+    def stop_notify(self, client:'BleakClient', uuid:str) -> bool:
         if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None and client.is_connected:
+            try:
+                if asyncio.get_running_loop() is self._asyncLoopThread.loop:
+                    # Called on the BLE loop thread itself, e.g. from a disconnected_callback that bleak (WinRT backend)
+                    # fires synchronously from within client.disconnect() while client.is_connected is still True.
+                    # Blocking on fut.result() below would deadlock the very loop that has to run client.stop_notify(),
+                    # leaving all later BLE scans/connects hanging until the app is restarted.
+                    # Bleak removes the notification handlers on disconnect anyway.
+                    _log.debug('stop_notify on %s skipped: called from the BLE loop thread', uuid)
+                    return False
+            except RuntimeError:
+                pass # no running event loop in this thread
             fut = asyncio.run_coroutine_threadsafe(
                 client.stop_notify(uuid),
                 self._asyncLoopThread.loop)
             try:
                 fut.result()
+                return True
             except Exception:  # pylint: disable=broad-except
                 #raise fut.exception() from e # type: ignore[misc]
                 exc = fut.exception() if not fut.cancelled() else CancelledError()
@@ -559,6 +574,7 @@ class ClientBLE(QObject):
         super().__init__()
         # internals
         self._running:bool                                   = False           # if True we keep reconnecting
+        self._connected:bool                                 = False           # True if connected
         self._async_loop_thread: AsyncLoopThread|None        = None            # the asyncio AsyncLoopThread object
         self._ble_client:BleakClient|None                    = None
         self._connected_service_uuid:str|None                = None            # set to the service UUID we are connected to
@@ -592,9 +608,6 @@ class ClientBLE(QObject):
                     _log.debug('notification on characteristic %s started', notify_uuid)
                 except BleakCharacteristicNotFoundError:
                     _log.debug('start_notifications: characteristic %s not found', notify_uuid)
-            else:
-                # without this the missing subscription is silent and the device just stays quiet
-                _log.warning('start_notifications: characteristic %s not offered by the connected device', notify_uuid)
 
     # Notifications are stopped automatically on disconnect, so this method does not need to be called
     # unless notifications need to be stopped before the device disconnects
@@ -602,8 +615,8 @@ class ClientBLE(QObject):
         for notify_uuid in self._active_notification_uuids:
             if self._ble_client is not None and self._ble_client.is_connected:
                 try:
-                    ble.stop_notify(self._ble_client, notify_uuid)
-                    _log.debug('notifications on %s stopped', notify_uuid)
+                    if ble.stop_notify(self._ble_client, notify_uuid):
+                        _log.debug('notifications on %s stopped', notify_uuid)
                 except BleakCharacteristicNotFoundError:
                     _log.debug('start_notifications: characteristic %s not found', notify_uuid)
         self._active_notification_uuids = set()
@@ -612,15 +625,18 @@ class ClientBLE(QObject):
         if self._ble_client is not None and self._ble_client.is_connected:
             ble.disconnect_ble(self._ble_client)
 
-    # returns the service UUID connected to or None
+    # returns the service UUID connected (or about to reconnect) to or None
     def connected(self) -> tuple[str|None, str|None]:
         if self._ble_client is not None and self._ble_client.is_connected:
             return self._connected_service_uuid, self._connected_device_name
         return None, None
 
+    # returns True if an active connection is established, otherwise False
+    def is_connected(self) -> bool:
+        return self._connected
 
     # connect and re-connect while self._running to BLE
-    async def _connect(self, case_sensitive:bool=True, scan_timeout:float=6, connect_timeout:float=6, address:str|None = None) -> None:
+    async def _connect(self, case_sensitive:bool=True, scan_timeout:float=10, connect_timeout:float=6, address:str|None = None) -> None:
         blacklist:set[str] = set()
         ## TILAU ## one disconnect event per session: asyncio binds an Event to the
         ## first loop that waits on it, and each start() runs on a new loop.
@@ -629,7 +645,7 @@ class ClientBLE(QObject):
             # scan and connect
             # NOTE: re-connecting a bleak client by address on reconnect can lead to instabilities thus we re-scan always
             service_uuid:str|None
-            connected:bool = False # set to True once the connected client offers the requested service
+            self._connected = False # set to True once the connected client offers the requested service
             self._connected_service_uuid = None
             self._connected_device_name = None
             # Hook : si la sous-classe définit scan_and_connect_override(),
@@ -670,11 +686,11 @@ class ClientBLE(QObject):
                     self._connected_device_name = None
                 else:
                     # successfully connected
-                    connected = True
+                    self._connected = True
             if self._ble_client is not None:
                 # start notifications
                 self.start_notifications()
-                if connected:
+                if self._connected:
                     # NOTE: on_connect() is signalled only after the notifications got established such that
                     # implementations can already send commands expecting a notified response from on_connect()
                     self.on_connect()
@@ -701,10 +717,10 @@ class ClientBLE(QObject):
 
     # this seems only to be called if disconnect from device received and not if disconnecting via API calls
     def disconnected_callback(self, _client:BleakClient) -> None:
-        self.stop_notifications()
-        self.on_disconnect()
+        self.on_disconnect() # has to be done before releasing the event lock to have the parser reset before rescanning
         if hasattr(self, '_async_loop_thread') and self._async_loop_thread is not None:
             asyncio.run_coroutine_threadsafe(self.set_event(), self._async_loop_thread.loop)
+        self.stop_notifications()
 
     ## TILAU ## returns whether the message was handed to a write characteristic and
     ## delivered; every early exit below is a silent no-op otherwise.
@@ -796,7 +812,7 @@ class ClientBLE(QObject):
         return []
 
 
-    def start(self, case_sensitive:bool=True, scan_timeout:float=6, connect_timeout:float=6, address:str|None = None) -> None:
+    def start(self, case_sensitive:bool=True, scan_timeout:float=10, connect_timeout:float=6, address:str|None = None) -> None:
         _log.debug('start')
         self._sleep_between_scans = self.SCAN_BETWEEN_SCANS_START
         if self._running:
@@ -870,7 +886,9 @@ class ClientBLE(QObject):
         elif service_uuid not in self._device_descriptions:
             self._device_descriptions[service_uuid] = { device_name }
         elif self._device_descriptions[service_uuid] is not None:
-            self._device_descriptions[service_uuid].add(device_name) # type:ignore[union-attr]
+            device_descriptions_service_uuid = self._device_descriptions[service_uuid]
+            if device_descriptions_service_uuid is not None:
+                device_descriptions_service_uuid.add(device_name)
         #
         if service_uuid is not None and device_name is not None and device_manufacturer_key is not None:
             if service_uuid not in self._device_manufacturer_keys:

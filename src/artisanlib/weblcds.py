@@ -18,6 +18,9 @@
 # AUTHOR
 # Marko Luther, 2023
 
+
+__lazy_modules__ = { 'threading', 'contextlib', 'weakref', 'jinja2', 'aiohttp_jinja2', 'aiohttp', 'asyncio' }
+
 import time
 import asyncio
 import logging
@@ -229,7 +232,7 @@ class WebGreen(WebView):
 
     __slots__ = [ '_title' ]
 
-    template_name = 'scale_widget.tpl'
+    template_name = 'green_scale_widget.tpl'
     index_path = 'green'
     ws_path = 'websocket'
 
@@ -264,7 +267,7 @@ class WebRoasted(WebView):
 
     __slots__ = [ '_title' ]
 
-    template_name = 'scale_widget.tpl'
+    template_name = 'roasted_scale_widget.tpl'
     index_path = 'roasted'
     ws_path = 'websocket'
 

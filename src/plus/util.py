@@ -1,25 +1,31 @@
 #
 # util.py
 #
-# Copyright (c) 2023, Paul Holleis, Marko Luther
-# All rights reserved.
-#
-#
 # ABOUT
-# This module connects to the artisan.plus inventory management service
-
-# LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
+# This module connects to the artisan platform
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
+# LICENSE
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
+# AUTHOR
+# Marko Luther
 
 from PyQt6.QtCore import QSize, pyqtSlot
 from PyQt6.QtGui import QIcon
@@ -365,6 +371,12 @@ def updateSchedule() -> None:
     if aw is not None:
         aw.updateSchedule()
 
+@pyqtSlot()
+def updateDashboardInventory() -> None:
+    aw = config.app_window
+    if aw is not None:
+        aw.dashboard.update_inventory_section()
+
 # takes the JSON response dict and returns the account state as tuple
 # rlimit:float, rused:float, pu:str, notifications:int
 def extractAccountState(response: dict[str,Any]) -> tuple[float, float, str, int, list[str]]:
@@ -403,39 +415,33 @@ def updateLimitsFromResponse(response: dict[str,Any]) -> None:
 
 
 def plusLink() -> str:
-#    return f'{config.web_base_url}/{getLanguage()}/'
     return f'{config.web_base_url}/'
 
 def storeLink(plus_store:str) -> str:
-#    return f'{config.web_base_url}/{getLanguage()}/stores;id={plus_store}'
     return f'{config.web_base_url}/stores;id={plus_store}'
 
 def coffeeLink(plus_coffee:str) -> str:
-#    return f'{config.web_base_url}/{getLanguage()}/coffees;id={plus_coffee}'
     return f'{config.web_base_url}/coffees;id={plus_coffee}'
 
 def blendLink(plus_blend:str) -> str:
-#    return f'{config.web_base_url}/{getLanguage()}/blends;id={plus_blend}'
     return f'{config.web_base_url}/blends;id={plus_blend}'
 
 def roastLink(plus_roast:str) -> str:
-#    return f'{config.web_base_url}/{getLanguage()}/roasts;id={plus_roast}'
     return f'{config.web_base_url}/roasts;id={plus_roast}'
 
 def remindersLink() -> str:
-#    return f'{config.web_base_url}/{getLanguage()}/reminders'
     return f'{config.web_base_url}/reminders'
 
 def schedulerLink() -> str:
-#    return f'{config.web_base_url}/{getLanguage()}/schedule'
     return f'{config.web_base_url}/schedule'
 
 
 # HiRes plus QMessageBox icon
 
-def setPlusIcon(mbox:'QMessageBox') -> None:
+def setPlusIcon(mbox:'QMessageBox', darkmode:bool=False) -> None:
     basedir = os.path.join(getResourcePath(),'Icons')
-    p = os.path.join(basedir, 'plus-notification.svg')
+#    p = os.path.join(basedir, 'artisan-notification.svg')
+    p = os.path.join(basedir, ('plus-connected.svg' if darkmode else 'white_plus-connected.svg'))
     app_style:QStyle|None = QApplication.style()
     if app_style is not None:
         icon_size = app_style.pixelMetric(QStyle.PixelMetric.PM_MessageBoxIconSize)

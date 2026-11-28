@@ -26,7 +26,7 @@ import time as libtime
 import xlrd
 import logging
 from collections.abc import Callable
-from typing import Final
+from typing import Final, cast, Any
 
 from PyQt6.QtCore import QDateTime, Qt
 
@@ -123,7 +123,7 @@ def extractProfileCropsterXLS(file:str,
 
     # list of Artisan tags for strings associated to tuple of (fixed) column nr (or Null) and list of tag translations
     string_tag_labels_trans:list[tuple[str,int|None,list[str]]] = [
-        ('beans', 1, [
+        ('title', 1, [
             'Lot name',                 # EN
             'Chargenname',              # DE
             'Nombre del lote',          # ES
@@ -136,17 +136,30 @@ def extractProfileCropsterXLS(file:str,
             '\u6279\u6b21\u540d\u79f0', # CN Simplified
             '\u6279\u6b21\u540d\u7a31', # CN Traditional
             ]),
-        ('title', 2, [
-            'Profile',         # EN
-            'Profil',          # DE, FR
-            'Perfil',          # ES, pT
-            'Profilo',         # IT
-            '\u041f\u0440\u043e\u0444\u0438\u043b\u044c', # RU
-            '\ud504\ub85c\ud30c\uc77c',                   # KO
-            '\u30d7\u30ed\u30d5\u30a1\u30a4\u30eb',       # JP
-            '\u66f2\u7ebf\u6863\u6848',                   # CN Simplified
-            '\u66f2\u7dda\u6a94\u6848',                   # CN Traditional
+        ('beans', 1, [
+            'Green lots',               # EN
+            'Rohkaffeechargen',         # DE
+            'Lotes de café verde',      # ES
+            'Lots de café vert',        # FR
+            'Lotti di verde',           # IT
+            'Lotes verdes',             # PT
+            '\u041b\u043e\u0442\u044b\u0020\u0437\u0435\u043b\u0435\u043d\u043e\u0433\u043e\u0020\u043a\u043e\u0444\u0435', # RU
+            '\uc0dd\ub450\u0020\u004c\u006f\u0074', # KO
+            '\u751f\u8c46\u30ed\u30c3\u30c8', # JP
+            '\u751f\u8c46\u6279\u6b21', # CN Simplified
+            '\u751f\u8c46\u6279\u6b21', # CN Traditional
             ]),
+#        ('template', 2, [
+#            'Profile',         # EN
+#            'Profil',          # DE, FR
+#            'Perfil',          # ES, pT
+#            'Profilo',         # IT
+#            '\u041f\u0440\u043e\u0444\u0438\u043b\u044c', # RU
+#            '\ud504\ub85c\ud30c\uc77c',                   # KO
+#            '\u30d7\u30ed\u30d5\u30a1\u30a4\u30eb',       # JP
+#            '\u66f2\u7ebf\u6863\u6848',                   # CN Simplified
+#            '\u66f2\u7dda\u6a94\u6848',                   # CN Traditional
+#            ]),
         ('roastertype', 3,[
             'Machine',            # EN, FR
             'Maschine',           # DE
@@ -857,7 +870,7 @@ def extractProfileCropsterXLS(file:str,
     general_sh = book.sheet_by_index(0)
     if general_sh.nrows >= 1:
         row1 = general_sh.row(1)
-        general_data = dict(zip([x.value for x in general_sh.row(0)], row1, strict=True))
+        general_data:dict[str, Any] = dict(zip([cast(str, x.value) for x in general_sh.row(0)], row1, strict=True))
 
         res['samplinginterval'] = 1.0
 
@@ -871,7 +884,7 @@ def extractProfileCropsterXLS(file:str,
                     break
             # 2. take the first value of row1
             if id_tag_value is None and len(row1)>0:
-                id_tag_value = str(row1[0].value)
+                id_tag_value = str(row1[0].value) # pyright:ignore[reportUnknownArgumentType]
             if id_tag_value is not None:
                 batch_prefix = id_tag_value.rstrip('0123456789')
                 batch_number = int(id_tag_value[len(batch_prefix):])
@@ -922,7 +935,7 @@ def extractProfileCropsterXLS(file:str,
                     break
             # 2. take the first value of row1
             if date_tag_value is None:
-                date_tag_value = float(row1[7].value)
+                date_tag_value = float(row1[7].value) # pyright:ignore[reportUnknownArgumentType]
             date_tuple = xlrd.xldate_as_tuple(date_tag_value, book.datemode)
             date = QDateTime(*date_tuple)
             if date.isValid():
@@ -935,7 +948,7 @@ def extractProfileCropsterXLS(file:str,
                 roasttime:str|None = encodeLocal(date.time().toString())
                 if roasttime is not None:
                     res['roasttime'] = roasttime
-                res['roastepoch'] = int(date.toSecsSinceEpoch())
+                res['roastepoch'] = date.toSecsSinceEpoch()
                 res['roasttzoffset'] = libtime.timezone
         except Exception: # pylint: disable=broad-except
             pass
@@ -1068,12 +1081,12 @@ def extractProfileCropsterXLS(file:str,
                     time = BT_sh.col(0)
                     temp = BT_sh.col(1)
                     if len(time) > 0 and len(temp) > 0 and len(time) == len(temp):
-                        if 'FAHRENHEIT' in str(temp[0].value):
+                        if 'FAHRENHEIT' in str(temp[0].value):  # pyright:ignore[reportUnknownArgumentType]
                             res['mode'] = 'F'
                         else:
                             res['mode'] = 'C'
-                        res['timex'] = [float(t.value) for t in time[1:]]
-                        res['temp2'] = [float(t.value) for t in temp[1:]]
+                        res['timex'] = [float(t.value) for t in time[1:]] # pyright:ignore[reportUnknownArgumentType]
+                        res['temp2'] = [float(t.value) if float(t.value)>-1 else -float(t.value) for t in temp[1:]] # pyright:ignore[reportUnknownArgumentType]
                         res['temp1'] = [-1.0]*len(res['timex'])
                         charge_idx = 0
                         try:
@@ -1096,15 +1109,25 @@ def extractProfileCropsterXLS(file:str,
                         time = ET_sh.col(0)
                         temp = ET_sh.col(1)
                         if len(time) > 0 and len(temp) > 0 and len(time) == len(temp):
-                            if 'FAHRENHEIT' in str(temp[0].value):
+                            if 'FAHRENHEIT' in str(temp[0].value): # pyright:ignore[reportUnknownArgumentType]
                                 res['mode'] = 'F'
                             else:
                                 res['mode'] = 'C'
-                            res['temp1'] = [float(t.value) for t in temp[1:]]
+                            # we invert negative readings (might stem from wrongly connected TCs)
+                            res['temp1'] = [float(t.value) if float(t.value)>-1 else -float(t.value) for t in temp[1:]] # pyright:ignore[reportUnknownArgumentType]
+                            timex_ET = [float(t.value) for t in time[1:]] # pyright:ignore[reportUnknownArgumentType]
+                            if 'timex' not in res or len(timex_ET) > len(res['timex']):
+                                # we take the longer ET timeline
+                                res['timex'] = timex_ET
+                            # ensure that timex and temp1 lists are equal length
                             if len(res['timex']) != len(res['temp1']):
-                                res['timex'] = [float(t.value) for t in time[1:]]
-                            if 'temp2' not in res or len(res['temp2']) != len(res['timex']):
+                                res['temp1'] = res['temp1'][:len(res['timex'])] + [-1]*(max(0,len(res['timex'])-len(res['temp1'])))
+                            # ensure that timex and temp2 lists are equal length
+                            if 'temp2' not in res:
                                 res['temp2'] = [-1.0]*len(res['timex'])
+                            if len(res['timex']) != len(res['temp2']):
+                                res['temp2'] = res['temp2'][:len(res['timex'])] + [-1]*(max(0,len(res['timex'])-len(res['temp2'])))
+
                             charge_idx = 0
                             try:
                                 charge_idx = res['timex'].index(0)
@@ -1116,8 +1139,6 @@ def extractProfileCropsterXLS(file:str,
                 break
     except Exception: # pylint: disable=broad-except
         pass
-
-#    ordered_sheet_names:Sequence[str|None]
 
     ordered_sheet_names:list[str] = sheet_names
 
@@ -1149,10 +1170,12 @@ def extractProfileCropsterXLS(file:str,
                 for r in range(COMMENTS_sh.nrows):
                     if r>0:
                         try:
-                            time_epoc = float(COMMENTS_sh.cell(r, 0).value)
-                            comment_type = str(COMMENTS_sh.cell(r, 2).value).strip()
+#                            time_epoc = float(COMMENTS_sh.cell(r, 0).value) # pyright:ignore[reportUnknownArgumentType]
+                            time_epoc = float(COMMENTS_sh.cell_value(r, 0)) # pyright:ignore[reportUnknownArgumentType]
+                            comment_type = str(COMMENTS_sh.cell(r, 2).value).strip() # pyright:ignore[reportUnknownArgumentType]
                             if comment_type not in turning_point_trans: # TP is ignored as it is automatically assigned
-                                comment_value = COMMENTS_sh.cell(r, 3).value
+#                                comment_value = COMMENTS_sh.cell(r, 3).value # pyright:ignore[reportUnknownArgumentType]
+                                comment_value = COMMENTS_sh.cell_value(r, 3) # pyright:ignore[reportUnknownArgumentType]
                                 c = takeClosest(time_epoc,res['timex'])
                                 timex_idx = res['timex'].index(c)
                                 if comment_type in color_change_trans:
@@ -1183,7 +1206,7 @@ def extractProfileCropsterXLS(file:str,
                                         specialeventstype.append(4)
                                     try:
                                         v = float(comment_value)
-                                        specialeventsvalue.append(eventsExternal2InternalValue(int(round(v))))
+                                        specialeventsvalue.append(eventsExternal2InternalValue(round(v)))
                                     except Exception: # pylint: disable=broad-except
                                         specialeventsvalue.append(0)
                                     if not ae and not ge and comment_type not in comment_trans:
@@ -1216,10 +1239,10 @@ def extractProfileCropsterXLS(file:str,
                         if CT_sh.ncols >= 1:
                             for timex, control_curve in zip(CT_sh.col(0), CT_sh.col(1), strict=False):
                                 try:
-                                    time_epoc = float(timex.value)
+                                    time_epoc = float(timex.value) # pyright:ignore[reportUnknownArgumentType]
                                     c = takeClosest(time_epoc,res['timex'])
                                     timex_idx = res['timex'].index(c)
-                                    value = int(round(float(control_curve.value)))
+                                    value = round(float(control_curve.value)) # pyright:ignore[reportUnknownArgumentType]
                                     if event_value is None or event_value != value:
                                         # value changed
                                         event_value = value
@@ -1321,8 +1344,8 @@ def extractProfileCropsterXLS(file:str,
                             name1 = encodeLocalStrict(extra_curve_name)
                             res['extraname1'].append(name1)
 
-                            res['extratimex'].append([float(t.value) for t in time[1:]])
-                            res['extratemp1'].append([float(t.value) for t in temp[1:]])
+                            res['extratimex'].append([float(t.value) for t in time[1:]]) # pyright:ignore[reportUnknownArgumentType]
+                            res['extratemp1'].append([float(t.value) for t in temp[1:]]) # pyright:ignore[reportUnknownArgumentType]
                             res['extramathexpression1'].append('')
                             res['extraCurveVisibility1'].append(curve_visible)
                         elif (len(time) -1) == len(res['extratimex'][-1]): # only if time lengths is same as of channel 1
@@ -1338,7 +1361,7 @@ def extractProfileCropsterXLS(file:str,
                             name2 = encodeLocalStrict(extra_curve_name)
                             res['extraname2'].append(name2)
 
-                            res['extratemp2'].append([float(t.value) for t in temp[1:]])
+                            res['extratemp2'].append([float(t.value) for t in temp[1:]]) # pyright:ignore[reportUnknownArgumentType]
                             res['extramathexpression2'].append('')
                             res['extraCurveVisibility2'].append(curve_visible)
             except Exception: # pylint: disable=broad-except
@@ -1360,11 +1383,11 @@ def extractProfileCropsterXLS(file:str,
     # extra device data can be shorter, make them all equal in length to main device
     if 'timex' in res and 'extradevices' in res and 'samplinginterval' in res:
         main_data_len = len(res['timex'])
-        sampling_interval = int(round(res['samplinginterval']))
+        sampling_interval = round(res['samplinginterval'])
         for i,_ in enumerate(res['extradevices']):
             if 'extratimex' in res and len(res['extratimex'])>i:
-                missing_timex = [float(tx) for tx in range(int(round(res['extratimex'][i][-1]))+sampling_interval,
-                        int(round(res['extratimex'][i][-1])) + (main_data_len - len(res['extratimex'][i]))+sampling_interval,
+                missing_timex = [float(tx) for tx in range(round(res['extratimex'][i][-1])+sampling_interval,
+                        round(res['extratimex'][i][-1]) + (main_data_len - len(res['extratimex'][i]))+sampling_interval,
                         sampling_interval)]
                 res['extratimex'][i].extend(missing_timex)
                 res['extratimex'][i] = res['extratimex'][i][:main_data_len] # ensure that the list is not too long

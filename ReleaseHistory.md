@@ -1,4 +1,15 @@
+## [5.0] 2026-11-28
+build 1
+* ⚡ [feat(artisan)] : built on Artisan 5.0 (changes up to 26 November 2026): a dashboard view beside the graph (Shift-Space or Esc switches between them), refreshed toolbar icons and dialog buttons, RoastPATH .rpath and Aillio CSV import, SR900 support, more reliable Acaia scale reconnection, and updated Santoker, Dutch Master and Sivetz machine setups
 ## [4.4] 2026-11-14
+build 14
+* ⚡ [feat(result)] : the colour meter card of the roast result form averages 1 to 5 readings of the same sample, shows each reading, the average with its roast level and the spread, takes a clicked reading again in its own slot, and writes the average only on Save; Save stays greyed until whole bean or ground is chosen (or stated by the meter), so the card never assumes the sample, and it no longer asks "Which sample?" after each reading
+* ⚡ [feat(android)] : on the Android prototype and the iPad app, the colour meter's readings fill a panel of 1 to 5 readings averaged, readings can also be typed in, a touched reading is taken again in its own slot, Save waits for whole beans or ground to be chosen, and only Save keeps the average; in BeanCave › Roasts, the roasted weight and the colour of a roast recorded on the tablet are given again from their tiles, with the scale, the colour meter or by hand (a roast from the computer is changed on the computer)
+* 🐛 [fix(android)] : on the Android prototype and the iPad app, the figures of a roast in BeanCave › Roasts read smaller and never part from their unit at a line end ("182 °C"), the › of a tile sits in its corner, and the roast list takes the same share of the screen on every tablet
+* 🐛 [fix(android)] : on the Android prototype and the iPad app, a colour reading taken before or during a roast no longer counts in that roast's colour, a reading arriving while a value is typed no longer wipes it, a roasted weight under 50 g can be typed, and closing a measure panel no longer disconnects a scale another screen was using
+* 🐛 [fix(android)] : on the Android prototype and the iPad app, a roasted weight given again on a roast recorded in kg or lb is stored in grams as the desktop reads it, the yield leaves out the roasted defects, and a weight with no loss to tell no longer leaves the old weight loss behind
+* 🐛 [fix(i18n)] : in Italian, Cancel buttons read "Annulla" instead of "Elimina" (Delete)
+* ⚡ [feat(i18n)] : the colour meter card of the result form is translated into French, and by machine translation into German, Spanish, Italian and Chinese (Simplified and Traditional)
 build 13
 build 12
 * 🐛 [fix(result)] : the Batch block of the result form at the end of a roast reads in full (batch number, assigned, n°, pos) instead of being cut to its first letters

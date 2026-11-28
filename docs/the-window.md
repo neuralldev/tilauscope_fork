@@ -209,8 +209,10 @@ while monitoring or recording, since it rewrites the roast being recorded, and i
 all when neither a roast opened from a file nor a background curve is loaded — with nothing to
 move, there is nothing for it to do.
 
-<!-- CAPTURE 2.8f — the roast title area on the curve showing the swap glyph beside the title,
+<!-- CAPTURE 2.8f [scene:curve_swap] — the roast title area on the curve showing the swap glyph beside the title,
 both in its normal clickable state and greyed out while recording. -->
+
+![The roast title with the swap control beside it: clickable on a roast opened from a file (top), greyed out while recording (bottom).](assets/the-window-2.8f.png)
 
 **Colours name probes, not quantities.** Each curve carries the colour of the readout it belongs
 to — so the bean and its rate are one family, the air and its rate another. Inside a family the
@@ -284,12 +286,14 @@ The button appears only at the Guided level. At Expert the full view is the only
 operator reading the whole table has already said which face they want.
 
 <!-- CAPTURE 2.8a [scene:coach] — the curve mid-Maillard with the coach card showing and the 🎯 button visible.
-CAPTURE 2.8b [scene:data] — the same moment with the 📊 full data card. CAPTURE 2.8c — the preheat card and
+CAPTURE 2.8b [scene:data] — the same moment with the 📊 full data card. CAPTURE 2.8c [scene:preheat] — the preheat card and
 the target line, with the arrival mark in frame. -->
 
 ![Roast curve during Maillard with the coach card.](assets/the-window-2.8a.png)
 
 ![The same Maillard roast with the full data card.](assets/the-window-2.8b.png)
+
+![A TilauPID preheat: the drum climbing to its dashed target line, the arrival mark where it is due to meet it, and the preheat card.](assets/the-window-2.8c.png)
 
 ### Listening to the crack
 

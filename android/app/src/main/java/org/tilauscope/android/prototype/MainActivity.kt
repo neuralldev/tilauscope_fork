@@ -348,7 +348,7 @@ class MainActivity : Activity() {
             "cave_pick" -> startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), PICK_CAVE)
             "cave_import" -> pickedCave?.let { (stage, name) -> service.execute("cave_import", stage, name) }
             "cave_export" -> sendCave()
-            "save_setup", "save_mqtt", "choose_coffee", "save_coffee", "set_roast_setup", "get_roast", "get_plan", "set_plan_choice", "save_tasting", "roast_label", "roast_card", "get_roast_energy" ->
+            "save_setup", "save_mqtt", "choose_coffee", "save_coffee", "set_roast_setup", "get_roast", "get_plan", "set_plan_choice", "save_tasting", "roast_label", "roast_card", "get_roast_energy", "edit_roast" ->
                 service.execute(method, argument)
             "get_roasts", "resume_preheat", "resume_follow", "get_alarms", "exit_simulation", "get_energy",
             "resume_auto", "cancel_auto_drop" -> service.execute(method)
@@ -418,6 +418,7 @@ class MainActivity : Activity() {
             "scale_tare" -> service.tareScale()
             "scale_disconnect" -> service.disconnectScale()
             "colour_connect" -> withConnect { service.connectColour(argument) }
+            "colour_disconnect" -> service.disconnectColour()
             "water_connect" -> withConnect { service.connectWater(argument) }
             "water_disconnect" -> service.disconnectWater()
             "printer_connect" -> withConnect { service.connectPrinter(argument) }

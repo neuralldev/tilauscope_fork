@@ -98,6 +98,8 @@ class LebrewC1BLE(ClientBLE, C1Protocol): # pyright: ignore [reportGeneralTypeIs
         # handlers
         self.responses: queue.Queue = queue.Queue() # buffer for notifications
         self._is_stopping = False  # Drapeau d'arrêt
+        # link state set by on_connect/on_disconnect; without it getattr(dev, 'is_connected') reads ClientBLE.is_connected (a method, always true)
+        self.is_connected: bool = False
         self.color_read: float = 0.0
         self.rounding: int = decimals
 
@@ -245,6 +247,8 @@ class LebrewAGBLE(ClientBLE, AGProtocol): # pyright: ignore [reportGeneralTypeIs
         # handlers
         self.responses: queue.Queue = queue.Queue() # buffer for notifications
         self._is_stopping = False  # Drapeau d'arrêt
+        # link state set by on_connect/on_disconnect; without it getattr(dev, 'is_connected') reads ClientBLE.is_connected (a method, always true)
+        self.is_connected: bool = False
         self.water_activity_read: float = 0.0
         self.wa_changed : bool = False
         self.rounding: int = decimals

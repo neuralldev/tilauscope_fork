@@ -393,6 +393,8 @@ connection and no account. Your own coffees and roasts never depend on it.
 <!-- CAPTURE 3.14 [scene:cave_library] — the Library tab: the list of roasts on the left with My machine off, a
 roast selected, its roast card on the right, THEIR TASTING with flavours and Import this coffee below. -->
 
+![The Library tab: the community roasts on the left with My machine off, the selected roast's card on the right, their tasting and Import this coffee below.](assets/beancave-3.14.png)
+
 ### Browsing
 
 The list on the left shows every published roast, newest roast first: the coffee, the day it was

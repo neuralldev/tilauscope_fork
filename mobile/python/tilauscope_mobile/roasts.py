@@ -15,8 +15,8 @@ import os
 from pathlib import Path
 import shutil
 
-from tilaucore.alog_index import _UUID_RE, load_index, read_alog_metadata, save_index, scan_directory
-from tilaucore.artisan_compat import events_internal_to_external_value, fromCtoFstrict, fromFtoCstrict
+from tilaucore.alog_index import _UUID_RE, _to_grams, load_index, read_alog_metadata, save_index, scan_directory
+from tilaucore.artisan_compat import decodeLocalStrict, events_internal_to_external_value, fromCtoFstrict, fromFtoCstrict
 from tilaucore.display_colours import LEVER_COLOURS
 from tilaucore.energy_model import ESTIMATED, MEASURED, MIXED, NONE
 from tilaucore import roast_card as rc
@@ -24,6 +24,7 @@ from tilaucore.roast_colour import agtron_text, get_agtron_color
 from tilaucore.roast_summary import english, roast_facts, roast_tiles
 from tilaucore.roasters import canonical_roaster_name
 from tilaucore.ror import RoRSettings, rate_of_rise
+from tilaucore.units import WEIGHT_UNITS, convert_weight, weight_loss_pct
 
 from .alog import EVENT_TYPE, curves_c
 from .energy import bill
@@ -95,6 +96,45 @@ def profile_detail(profile: dict, unit: str = "C") -> dict:
     return {"title": profile.get("title") or "", "epoch": profile.get("roastepoch") or 0,
             "bean_uuid": found.group(1) if found else "", "roast_uuid": str(profile.get("roastUUID") or ""),
             "tiles": tiles, "curve": curve, "marks": marks, "points": sorted(points, key=lambda p: p["t"]), "lanes": lanes}
+
+
+EDITABLE = ("roasted", "whole", "ground")
+
+
+def edited_profile(profile: dict, field: str, value: float) -> dict:
+    """A saved roast with its roasted weight (grams) or its whole/ground colour (Agtron) given again.
+
+    The weight keeps the roast's own unit; the weight loss the desktop reads in `computed` follows."""
+    if field not in EDITABLE or not value > 0:
+        raise ValueError("Nothing to change")
+    p = dict(profile)
+    if field == "roasted":
+        w = list(p.get("weight") or [])
+        w += [0.0, 0.0, "g"][len(w):]
+        name = decodeLocalStrict(w[2], "g") # as _to_grams reads it back
+        if name not in WEIGHT_UNITS: # an unknown unit is grams for both weights
+            name = w[2] = "g"
+        unit = WEIGHT_UNITS.index(name)
+        w[1] = round(convert_weight(float(value), 0, unit), 4)
+        p["weight"] = w
+        green = _to_grams(w, 0)
+        c = dict(p["computed"]) if isinstance(p.get("computed"), dict) else {}
+        c["weightout"] = round(float(value), 1) # Artisan keeps computed weights in grams
+        loss = weight_loss_pct(green, float(value))
+        if loss:
+            defects = c.get("roast_defects_weight")
+            yielded = float(value) - (float(defects) if isinstance(defects, (int, float)) else 0.0)
+            c["weight_loss"] = round(loss, 2)
+            c["total_yield"], c["total_loss"] = round(yielded, 1), round(weight_loss_pct(green, yielded), 2)
+        else: # green unknown or roasted above green: no loss to tell, none left from before
+            for key in ("weight_loss", "total_loss", "total_yield"):
+                c.pop(key, None)
+        p["computed"] = c
+    else:
+        p[f"{field}_color"] = float(value)
+        if not str(p.get("color_system") or "").strip():
+            p["color_system"] = "Agtron"
+    return p
 
 
 def _figure(value: float | None, digits: int = 2) -> float | None:
@@ -193,6 +233,16 @@ class Roasts:
         temporary.write_text(repr(profile), encoding="utf-8")
         os.replace(temporary, target)
         return True
+
+    def edit(self, origin: str, name: str, field: str, value: float) -> None:
+        """A held roast's roasted weight or colour given again, the file rewritten whole (atomic)."""
+        if origin != "tablet": # a change to the copy of a computer roast would never reach the computer
+            raise ValueError("This roast cannot be changed")
+        target = self.path(origin, name)
+        profile = edited_profile(ast.literal_eval(target.read_text(encoding="utf-8")), field, value)
+        temporary = target.with_suffix(".tmp")
+        temporary.write_text(repr(profile), encoding="utf-8")
+        os.replace(temporary, target)
 
     def path(self, origin: str, name: str) -> Path:
         folder = self.folder(origin).resolve()

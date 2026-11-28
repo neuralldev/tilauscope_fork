@@ -68,17 +68,6 @@ more than the toggle itself.
 <!-- CAPTURE 4.4 [scene:config_general] — Configuration → GENERAL, the UI Features and Remote access groups, with
 the new record web server tick box unticked and its Port field greyed out. -->
 
-### Diagnostics
-
-**Check progress indicators…** opens a window showing every progress indicator the application
-uses — turning, filling, finished and failed — with a button for each place one can appear. It
-changes no setting and starts no work: it is there to confirm they draw and animate correctly on
-this particular computer and screen. See
-[While the app is working](the-window.md#while-the-app-is-working) for what each one means.
-
-<!-- CAPTURE 4.13 — Configuration → GENERAL, the Diagnostics group, with the progress
-indicator window open in front of it mid-run (rings turning, a count showing). -->
-
 ---
 
 ## 🎚 CONTROLS — control names and milestone commands

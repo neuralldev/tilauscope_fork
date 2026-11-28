@@ -33,7 +33,7 @@ from artisanlib.util import appFrozen, application_name, application_viewer_name
 import matplotlib as mpl
 import numpy
 
-from PyQt6.QtCore import Qt, PYQT_VERSION_STR
+from PyQt6.QtCore import PYQT_VERSION_STR
 from PyQt6.QtWidgets import QApplication, QVBoxLayout
 
 
@@ -53,7 +53,7 @@ class platformDlg(ArtisanDialog):
 
         platformdic:dict[str,str] = {}
 
-        system = str(platform.system())
+        system = platform.system()
         if system == 'Windows':
             platformdic['Win32'] = str(platform.win32_ver())
         elif system == 'Darwin':
@@ -66,34 +66,34 @@ class platformDlg(ArtisanDialog):
             except Exception: # pylint: disable=broad-except
                 pass
         platformdic['Architecture'] = str(platform.architecture())
-        platformdic['Machine'] = str(platform.machine())
-        platformdic['Platform name'] =  str(platform.platform())
-        platformdic['Processor'] = str(platform.processor())
+        platformdic['Machine'] = platform.machine()
+        platformdic['Platform name'] =  platform.platform()
+        platformdic['Processor'] = platform.processor()
         platformdic['==========='] = ''
         platformdic['Python Build'] = str(platform.python_build())
-        platformdic['Python Compiler'] = str(platform.python_compiler())
-        platformdic['Python Branch'] = str(platform.python_branch())
-        platformdic['Python Implementation'] = str(platform.python_implementation())
-        platformdic['Python Revision'] = str(platform.python_revision())
-        platformdic['Release'] = str(platform.release())
-        platformdic['System'] = str(platform.system())
-        platformdic['Version'] = str(platform.version())
-        platformdic['Python version'] = str(platform.python_version())
+        platformdic['Python Compiler'] = platform.python_compiler()
+        platformdic['Python Branch'] = platform.python_branch()
+        platformdic['Python Implementation'] = platform.python_implementation()
+        platformdic['Python Revision'] = platform.python_revision()
+        platformdic['Release'] = platform.release()
+        platformdic['System'] = platform.system()
+        platformdic['Version'] = platform.version()
+        platformdic['Python version'] = platform.python_version()
         platformdic['============'] = ''
         from PyQt6.QtCore import qVersion
-        platformdic['Qt'] = qVersion()
+        platformdic['Qt'] = (qVersion() or '??')
         platformdic['PyQt'] = PYQT_VERSION_STR
         platformdic['numpy'] = numpy.__version__
         platformdic['scipy'] = SCIPY_VERSION_STR
         platformdic['matplotlib'] = mpl.__version__
         platformdic['pymodbus'] = PYMODBUS_VERSION_STR
         try:
-            from Phidget22.Phidget import Phidget as PhidgetDriver # type: ignore[import-untyped]
+            from Phidget22.Phidget import Phidget as PhidgetDriver
             platformdic['Phidget driver'] = PhidgetDriver.getLibraryVersion()
         except Exception: # pylint: disable=broad-except
             pass
         try:
-            from Phidget22 import __version__ as phidget_lib_version # type: ignore[import-untyped] # @UnresolvedImport
+            from Phidget22 import __version__ as phidget_lib_version
             platformdic['Phidget lib'] = phidget_lib_version
         except Exception: # pylint: disable=broad-except
             pass
@@ -109,10 +109,10 @@ class platformDlg(ArtisanDialog):
         htmlplatform:str = f'<b>{(application_viewer_name if self.aw.app.artisanviewerMode else application_name)} version =</b> {__version__} ({__revision__}) {unofficial}<br>---------<br>'
         for key,value in platformdic.items():
             htmlplatform += '<b>' + key + ' = </b> <i>' + value + '</i><br>'
-        platformEdit = ArtisanPlainTextEdit()
+        platformEdit = ArtisanPlainTextEdit(self.aw.app.darkmode)
         platformEdit.appendHtml(htmlplatform)
         platformEdit.setReadOnly(True)
-        platformEdit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+#        platformEdit.setFocusPolicy(Qt.FocusPolicy.NoFocus) # NoFocus breaks copy keyboard selection and shortcuts
         layout = QVBoxLayout()
         layout.addWidget(platformEdit)
         self.setLayout(layout)

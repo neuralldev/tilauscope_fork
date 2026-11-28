@@ -1,0 +1,40 @@
+[General]
+Delay=2000
+roastertype_setup=Santoker R Series USB
+
+[Device]
+id=9
+
+[SerialPort]
+baudrate=9600
+bytesize=8
+comport=COM3
+parity=N
+stopbits=1
+timeout=0.4
+
+[ExtraComm]
+extrabaudrate=@Invalid()
+extrabytesize=@Invalid()
+extracomport=@Invalid()
+extraparity=@Invalid()
+extrastopbits=@Invalid()
+extratimeout=@Invalid()
+
+[ExtraDev]
+devicetablecolumnwidths=@Invalid()
+extraCurveVisibility1=true, true, true, true, true, true, true, true, true, true
+extraCurveVisibility2=true, true, true, true, true, true, true, true, true, true
+extraDelta1=false, false, false, false, false, false, false, false, false, false
+extraDelta2=false, false, false, false, false, false, false, false, false, false
+extraFill1=0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+extraFill2=0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+extraLCDvisibility1=false, false, false, false, false, false, false, false, false, false
+extraLCDvisibility2=false, false, false, false, false, false, false, false, false, false
+extradevicecolor1=@Invalid()
+extradevicecolor2=@Invalid()
+extradevices=@Invalid()
+extramathexpression1=@Invalid()
+extramathexpression2=@Invalid()
+extraname1=@Invalid()
+extraname2=@Invalid()

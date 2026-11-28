@@ -119,3 +119,43 @@ header{height:52px;flex:none;display:flex;align-items:center;gap:14px;padding:0 
 .etile{background:var(--surface);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
 .etile .k{font-size:13px;color:var(--sub)}.etile .v{font-size:22px;font-weight:600}.etile .d{font-size:13px;color:var(--muted)}
 .esrc{display:flex;align-items:center;gap:12px;padding:8px 2px;font-size:15px}.esrc + .esrc{border-top:1px solid var(--overlay)}
+
+/* Measure again: the colour series and the roasted weight (measure-sheets.js), on the summary and a saved roast */
+#msheet{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;background:var(--surface);border:1px solid var(--line);
+ border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);padding:18px 20px;display:flex}
+#msheet.colour{width:min(900px,calc(100vw - 48px));gap:20px}
+#msheet.weigh{width:440px;flex-direction:column;gap:12px}
+#msheet button{font:inherit}
+.ms-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.ms-head{display:flex;align-items:center;gap:8px}.ms-head .t{flex:1;font-size:15px;color:var(--sub)}.ms-head .st,#msheet .st{font-size:13px}
+.ms-head .dot{width:10px;height:10px;border-radius:5px}
+.ms-row{display:flex;gap:12px}
+.ms-seg{flex:1;display:flex;height:48px;border-radius:14px;background:#11111B;padding:4px;gap:4px}
+.ms-seg button{flex:1;border-radius:10px;font-size:16px;color:var(--sub);background:transparent}
+.ms-seg.n{flex:none}.ms-seg.n button{flex:none;width:44px}
+.ms-seg button.on{background:var(--accent);color:#11111B;font-weight:700}.ms-seg button:disabled{color:var(--overlay)}
+.ms-slots{display:grid;gap:10px}
+.ms-slot{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px 8px;border-radius:14px;background:#11111B;border:2px solid var(--overlay);color:var(--text)}
+.ms-slot.empty{border-color:var(--bg)}.ms-slot:disabled{opacity:1}
+.ms-slot.next{border-style:dashed;animation:mspulse 1.6s ease-in-out infinite}
+@keyframes mspulse{0%,100%{border-color:var(--line)}50%{border-color:var(--accent)}}
+.ms-slot i{width:100%;height:8px;border-radius:4px}.ms-slot .no{font-size:12px;color:var(--muted);height:14px}.ms-slot .sv{font-size:26px;font-weight:600}
+.ms-track{position:relative;height:18px;border-radius:9px;margin:8px 9px 0}
+.ms-track i{position:absolute;top:-4px;width:3px;height:26px;margin-left:-1px;border-radius:2px;background:var(--text)}
+.ms-track b{position:absolute;top:-8px;width:18px;height:34px;margin-left:-9px;border:3px solid var(--accent);border-radius:6px}
+.ms-ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:0 9px}
+.ms-right{width:260px;flex:none;display:flex;flex-direction:column;gap:14px}
+.ms-card{flex:1;border-radius:18px;background:var(--bg);padding:20px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.ms-card .k{font-size:14px;color:var(--sub)}.ms-card .sp{margin-top:10px}.ms-card .sp b{color:var(--text)}
+.ms-card .m{font-size:64px;line-height:1;font-weight:700;color:var(--accent)}
+.ms-lvl{display:flex;align-items:center;gap:8px;font-size:17px;height:22px}.ms-lvl i{width:12px;height:12px;border-radius:6px;border:1px solid rgba(255,255,255,.2)}
+.ms-save{height:64px;border-radius:16px;font-size:18px;font-weight:700;border:2px solid var(--accent);background:rgba(203,166,247,.12);color:var(--accent)}
+.ms-save.full{border:0;background:var(--accent);color:#11111B}.ms-save:disabled{border:1px solid var(--overlay);background:transparent;color:var(--line)}
+.ms-big{display:flex;align-items:baseline;gap:8px;padding:8px 0}.ms-big b{font-size:56px}.ms-big .u{font-size:20px;color:var(--sub)}
+.ms-btns{display:flex;gap:10px}
+.ms-btn{height:52px;padding:0 20px;border-radius:14px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:16px}
+.ms-btn.use{flex:1;border:0;background:var(--green);color:var(--bg);font-weight:700}.ms-btn:disabled{opacity:.4}
+.ms-in{flex:1;height:52px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:22px;padding:0 14px;-webkit-user-select:text;user-select:text}
+.ms-foot{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}.ms-foot b{color:var(--text)}
+.ms-link{height:40px;padding:0 10px;color:var(--sub);font-size:14px;font-weight:600;background:transparent}
+.ms-type{display:flex;gap:10px}.ms-type .ms-in{font-size:18px}.ms-type .ms-btn{flex:none}

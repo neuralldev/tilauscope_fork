@@ -18,6 +18,9 @@
 # AUTHOR
 # Marko Luther, 2023
 
+
+__lazy_modules__ = { 'asyncio', 'artisanlib.async_comm', 'pymodbus.pdu', 'pymodbus.client', 'pymodbus.client.mixin', 'pymodbus.framer' }
+
 import sys
 import time
 import asyncio
@@ -28,6 +31,7 @@ from pymodbus.client import AsyncModbusSerialClient, AsyncModbusUdpClient, Async
 from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.framer import FramerType
 
+from collections.abc import Sequence
 from typing import Final, Literal, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -202,35 +206,35 @@ class modbusport:
 ##############################
 
 
-    def convert_16bit_uint_from_registers(self, registers:list[int]) -> int:
+    def convert_16bit_uint_from_registers(self, registers:Sequence[int]) -> int:
         res = ModbusClientMixin.convert_from_registers(registers, ModbusClientMixin.DATATYPE.UINT16, word_order=self.word_order())
         if isinstance(res, int):
             return res
         return -1
 
 
-    def convert_16bit_int_from_registers(self, registers:list[int]) -> int:
+    def convert_16bit_int_from_registers(self, registers:Sequence[int]) -> int:
         res = ModbusClientMixin.convert_from_registers(registers, ModbusClientMixin.DATATYPE.INT16, word_order=self.word_order())
         if isinstance(res, int):
             return res
         return -1
 
 
-    def convert_32bit_uint_from_registers(self, registers:list[int]) -> int:
+    def convert_32bit_uint_from_registers(self, registers:Sequence[int]) -> int:
         res = ModbusClientMixin.convert_from_registers(registers, ModbusClientMixin.DATATYPE.UINT32, word_order=self.word_order())
         if isinstance(res, int):
             return res
         return -1
 
 
-    def convert_32bit_int_from_registers(self, registers:list[int]) -> int:
+    def convert_32bit_int_from_registers(self, registers:Sequence[int]) -> int:
         res = ModbusClientMixin.convert_from_registers(registers, ModbusClientMixin.DATATYPE.INT32, word_order=self.word_order())
         if isinstance(res, int):
             return res
         return -1
 
 
-    def convert_float_from_registers(self, registers:list[int]) -> float:
+    def convert_float_from_registers(self, registers:Sequence[int]) -> float:
         res = ModbusClientMixin.convert_from_registers(registers, ModbusClientMixin.DATATYPE.FLOAT32, word_order=self.word_order())
         if isinstance(res, float):
             return res
@@ -407,7 +411,7 @@ class modbusport:
         _log.debug('clearReadingsCache()')
         self.readingsCache = {}
 
-    def cacheReadings(self, code:int, device_id:int, register:int, results:list[int]) -> None:
+    def cacheReadings(self, code:int, device_id:int, register:int, results:Sequence[int]) -> None:
         if code not in self.readingsCache:
             self.readingsCache[code] = {}
         if device_id not in self.readingsCache[code]:
@@ -581,14 +585,14 @@ class modbusport:
         if isinstance(value, str):
             if '.' in value:
 #                self.writeWord(device_id, register, float(value))
-                self.writeSingleRegister(device_id, register, int(round(float(value))))
+                self.writeSingleRegister(device_id, register, round(float(value)))
             else:
                 self.writeSingleRegister(device_id, register, int(value))
         elif isinstance(value, int):
             self.writeSingleRegister(device_id, register, value)
         elif isinstance(value, float):
 #            self.writeWord(device_id,register,value)
-            self.writeSingleRegister(device_id, register, int(round(value)))
+            self.writeSingleRegister(device_id, register, round(value))
 
     # function 6 (Write Single Holding Register)
     def writeSingleRegister(self, device_id:int, register:int, value:float) -> None:
@@ -601,9 +605,9 @@ class modbusport:
             self.connect()
             if self._asyncLoopThread is not None and self.isConnected():
                 assert self._client is not None
-                self._asyncLoopThread.loop.call_soon_threadsafe(asyncio.ensure_future, self._client.write_register(register, int(round(value)), device_id=device_id))
+                self._asyncLoopThread.loop.call_soon_threadsafe(asyncio.ensure_future, self._client.write_register(register, round(value), device_id=device_id))
         except Exception as ex: # pylint: disable=broad-except
-            _log.info('writeSingleRegister(%d,%d,%s) failed', device_id, register, int(round(value)))
+            _log.info('writeSingleRegister(%d,%d,%s) failed', device_id, register, round(value))
             _log.debug(ex)
             self.disconnectOnError()
             _, _, exc_tb = sys.exc_info()
@@ -651,8 +655,8 @@ class modbusport:
         _log.debug('localMaskWriteRegister(%d,%d,%s,%s,%s)', device_id, register, and_mask, or_mask, value)
         if device_id == 0:
             return
-        new_val = (int(round(value)) & and_mask) | (or_mask & (and_mask ^ 0xFFFF))
-        self.writeSingleRegister(device_id, register, int(new_val))
+        new_val = (round(value) & and_mask) | (or_mask & (and_mask ^ 0xFFFF))
+        self.writeSingleRegister(device_id, register, new_val)
 
     # function 16 (Write Multiple Holding Registers)
     # values is a list of integers or one integer (given floats are rounded to integers
@@ -667,7 +671,7 @@ class modbusport:
             if self._asyncLoopThread is not None and self.isConnected():
                 assert self._client is not None
                 float_values:list[float] = (values if isinstance(values, list) else [float(values)])
-                int_values:list[int] = [int(round(v)) for v in float_values]
+                int_values:list[int] = [round(v) for v in float_values]
                 self._asyncLoopThread.loop.call_soon_threadsafe(asyncio.ensure_future, self._client.write_registers(register, int_values, device_id=device_id))
         except Exception as ex: # pylint: disable=broad-except
             _log.info('writeRegisters(%d,%d,%s) failed', device_id, register, values)
@@ -718,11 +722,11 @@ class modbusport:
             if self._asyncLoopThread is not None and self.isConnected():
                 assert self._client is not None
                 self.connect()
-                r = convert_to_bcd(int(round(value)))
+                r = convert_to_bcd(round(value))
                 payload: list[int] = self.convert_16bit_uint_to_registers(r)
                 self._asyncLoopThread.loop.call_soon_threadsafe(asyncio.ensure_future, self._client.write_registers(register, payload, device_id=device_id))
         except Exception as ex: # pylint: disable=broad-except
-            _log.info('writeBCD(%d,%d,%s) failed', device_id, register, int(round(value)))
+            _log.info('writeBCD(%d,%d,%s) failed', device_id, register, round(value))
             _log.debug(ex)
             self.disconnectOnError()
             _, _, exc_tb = sys.exc_info()
@@ -745,10 +749,10 @@ class modbusport:
             self.connect()
             if self._asyncLoopThread is not None and self.isConnected():
                 assert self._client is not None
-                payload:list[int] = self.convert_32bit_int_to_registers(int(round(value)))
+                payload:list[int] = self.convert_32bit_int_to_registers(round(value))
                 self._asyncLoopThread.loop.call_soon_threadsafe(asyncio.ensure_future, self._client.write_registers(register, payload, device_id=device_id))
         except Exception as ex: # pylint: disable=broad-except
-            _log.info('writeLong(%d,%d,%s) failed', device_id, register, int(round(value)))
+            _log.info('writeLong(%d,%d,%s) failed', device_id, register, round(value))
             _log.debug(ex)
             self.disconnectOnError()
             _, _, exc_tb = sys.exc_info()
@@ -791,9 +795,9 @@ class modbusport:
         return res, error_disconnect
 
     # returns register data from optimizer cache or from device_id
-    def read_registers(self, device_id:int, register:int, count:int, code:int, force:bool=False) -> tuple[list[int]|None,list[bool]|None,bool]:
-        res_registers:list[int]|None = None
-        res_bits:list[bool]|None = None
+    def read_registers(self, device_id:int, register:int, count:int, code:int, force:bool=False) -> tuple[Sequence[int]|None,Sequence[bool]|None,bool]:
+        res_registers:Sequence[int]|None = None
+        res_bits:Sequence[bool]|None = None
         error_disconnect:bool = False
         if count>0:
             if self.optimizer and not force and code not in {1,2}: # MODBUS function 1 and 2 are never optimized
@@ -839,7 +843,7 @@ class modbusport:
         error_disconnect:bool = False # set to True if a serious error requiring a disconnect was detected
         res:float|None = None
         try:
-            res_registers:list[int]|None
+            res_registers:Sequence[int]|None
             res_error_disconnect:bool
             res_registers, _, res_error_disconnect = self.read_registers(device_id, register, 2, code, force)
             error_disconnect = res_error_disconnect
@@ -880,7 +884,7 @@ class modbusport:
         error_disconnect:bool = False # set to True if a serious error requiring a disconnect was detected
         res:int|None = None
         try:
-            res_registers:list[int]|None
+            res_registers:Sequence[int]|None
             res_error_disconnect:bool
             res_registers, _, res_error_disconnect = self.read_registers(device_id, register, 2, code, force)
             error_disconnect = res_error_disconnect
@@ -920,7 +924,7 @@ class modbusport:
             self.connect()
             if self._asyncLoopThread is not None and self.isConnected():
                 assert self._client is not None
-                res, _ = asyncio.run_coroutine_threadsafe(self.read_async(int(device_id), int(register), 1, code), self._asyncLoopThread.loop).result()
+                res, _ = asyncio.run_coroutine_threadsafe(self.read_async(device_id, register, 1, code), self._asyncLoopThread.loop).result()
         except Exception as ex: # pylint: disable=broad-except
             _log.info('peekSingleRegister(%d,%d,%d) failed', device_id, register, code)
             _log.debug(ex)
@@ -957,8 +961,8 @@ class modbusport:
         error_disconnect:bool = False # set to True if a serious error requiring a disconnect was detected
         res:int|None = None
         try:
-            res_bits:list[bool]|None
-            res_registers:list[int]|None
+            res_bits:Sequence[bool]|None
+            res_registers:Sequence[int]|None
             res_error_disconnect:bool
             res_registers, res_bits, res_error_disconnect = self.read_registers(device_id, register, 1, code, force)
             error_disconnect = res_error_disconnect
@@ -1008,7 +1012,7 @@ class modbusport:
         res:int|None = None
 
         try:
-            res_registers:list[int]|None
+            res_registers:Sequence[int]|None
             res_error_disconnect:bool
             res_registers, _, res_error_disconnect = self.read_registers(device_id, register, 2, code, force)
             error_disconnect = res_error_disconnect
@@ -1056,7 +1060,7 @@ class modbusport:
         error_disconnect:bool = False # set to True if a serious error requiring a disconnect was detected
         res:int|None = None
         try:
-            res_registers:list[int]|None
+            res_registers:Sequence[int]|None
             res_error_disconnect:bool
             res_registers, _, res_error_disconnect = self.read_registers(device_id, register, 1, code, force)
             error_disconnect = res_error_disconnect
@@ -1101,9 +1105,9 @@ class modbusport:
             if self.SVwriteFloat:
                 self.writeWord(self.PID_device_ID, self.PID_SV_register, float(sv * multiplier))
             elif self.SVwriteLong:
-                self.writeLong(self.PID_device_ID, self.PID_SV_register, int(round(sv * multiplier)))
+                self.writeLong(self.PID_device_ID, self.PID_SV_register, round(sv * multiplier))
             else:
-                self.writeSingleRegister(self.PID_device_ID, self.PID_SV_register, int(round(sv * multiplier)))
+                self.writeSingleRegister(self.PID_device_ID, self.PID_SV_register, round(sv * multiplier))
 
     def setPID(self, p:float, i:float, d:float) -> None:
         _log.debug('setPID(%s,%s,%s)', p, i, d)

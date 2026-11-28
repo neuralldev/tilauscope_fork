@@ -25,6 +25,8 @@
 # AUTHOR
 # Marko Luther, 2026
 
+__lazy_modules__ = { 'contextlib', 'threading', 'asyncio', 'serial', 'serial.serialutil', 'pymodbus.transport.serialtransport' }
+
 import os
 import sys
 import time
@@ -94,7 +96,7 @@ class AsyncLoopThread:
             try:
                 drain = asyncio.run_coroutine_threadsafe(cancel_pending_tasks(), self.__loop)
                 drain.result(timeout=timeout)
-            except Exception:  # the loop may already be stopping, or draining may time out
+            except Exception:  # pylint: disable=broad-except # the loop may already be stopping, or draining may time out
                 pass
         if not self.__loop.is_closed():
             try:
@@ -269,8 +271,8 @@ async def create_serial_connection(
             _log.error(e)
 
     # in any case we open the serial port
-    if not transport.sync_serial.is_open:
-        transport.sync_serial.open()
+    if not transport.sync_serial.is_open: # ty:ignore[missing-union-attribute]
+        transport.sync_serial.open() # ty:ignore[missing-union-attribute]
 
     # and if clear_HUPCL, we immediately set the dtr/rts again
     if clear_HUPCL:

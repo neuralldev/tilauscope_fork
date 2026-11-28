@@ -26,7 +26,6 @@ from pathlib import Path
 import os
 import csv
 import re
-import requests
 import logging
 from collections.abc import Callable
 from typing import TypedDict, Final, NotRequired, TYPE_CHECKING
@@ -78,6 +77,7 @@ def getRequestToken(client_id:str, client_secret:str) -> str:
     token:str = ''
     try:
         _log.debug('requesting access token')
+        import requests
         res = requests.post(GET_TOKEN_URL,
             files = {'client_id': (None, client_id), 'client_secret': (None, client_secret), 'grant_type': (None, 'client_credentials')},
             timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
@@ -98,6 +98,7 @@ def getMachines(client_id:str, client_secret:str) -> list[RoestMachine]:
     if token:
         try:
             _log.debug('requesting machines')
+            import requests
             res = requests.get(
                 GET_MACHINES_URL,
                 timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
@@ -389,7 +390,7 @@ def extractProfileRoestCSV(file:str,
                             heater_last = None
                         heater_last = heater
                         heater = v
-                        specialeventsvalue.append(eventsExternal2InternalValue(int(round(v))))
+                        specialeventsvalue.append(eventsExternal2InternalValue(round(v)))
                         specialevents.append(i)
                         specialeventstype.append(3)
                         specialeventsStrings.append(f'{heater}' + '%')
@@ -502,7 +503,7 @@ class ROESTdialog(ArtisanDialog):
         self.buttonUpdate.clicked.connect(self.trigger_machine_update)
 
         basedir = os.path.join(getResourcePath(),'Icons')
-        p = os.path.join(basedir, ('update_dark.svg' if self.aw.app.darkmode else 'update_light.svg'))
+        p = os.path.join(basedir, ('update-dark.svg' if self.aw.app.darkmode else 'update-light.svg'))
         self.buttonUpdate.setIcon(QIcon(p))
 
         self.machinesCombo = QComboBox()
@@ -540,6 +541,7 @@ class ROESTdialog(ArtisanDialog):
         layout.addWidget(credentialsGroup)
         layout.addSpacing(5)
         layout.addWidget(machineGroup)
+        layout.addSpacing(10)
         layout.addLayout(buttonLayout)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)

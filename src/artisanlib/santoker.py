@@ -18,6 +18,8 @@
 # AUTHOR
 # Marko Luther, 2023
 
+__lazy_modules__ = { 'asyncio', 'pymodbus.framer.rtu' }
+
 import asyncio
 import logging
 

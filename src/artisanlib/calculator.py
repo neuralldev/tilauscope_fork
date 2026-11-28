@@ -19,20 +19,19 @@
 # Marko Luther, 2023
 
 from typing import override, TYPE_CHECKING
-
-from artisanlib.util import fromCtoF, fromFtoC, stringfromseconds, stringtoseconds, comma2dot, weight_units, convertWeight, convertVolume
-from artisanlib.dialogs import ArtisanDialog
+if TYPE_CHECKING:
+    from artisanlib.main import ApplicationWindow # noqa: F401 # pylint: disable=unused-import
+    from PyQt6.QtWidgets import QWidget # pylint: disable=unused-import
+    from PyQt6.QtGui import QCloseEvent # pylint: disable=unused-import
 
 from PyQt6.QtCore import pyqtSlot, QSettings, QRegularExpression
 from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtWidgets import (QApplication, QLabel, QGridLayout, QGroupBox, QLineEdit,
     QComboBox, QHBoxLayout, QVBoxLayout)
 
-
-if TYPE_CHECKING:
-    from artisanlib.main import ApplicationWindow # noqa: F401 # pylint: disable=unused-import
-    from PyQt6.QtWidgets import QWidget # pylint: disable=unused-import
-    from PyQt6.QtGui import QCloseEvent # pylint: disable=unused-import
+from artisanlib.util import fromCtoF, fromFtoC, stringfromseconds, stringtoseconds, comma2dot, weight_units, convertWeight, convertVolume
+from artisanlib.dialogs import ArtisanDialog
+from artisanlib.styles import line_edit_style
 
 class calculatorDlg(ArtisanDialog):
     def __init__(self, parent:'QWidget', aw:'ApplicationWindow') -> None:
@@ -51,7 +50,9 @@ class calculatorDlg(ArtisanDialog):
         startlabel = QLabel(QApplication.translate('Label', 'Start (00:00)'))
         endlabel = QLabel(QApplication.translate('Label', 'End (00:00)'))
         self.startEdit = QLineEdit()
+        self.startEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.endEdit = QLineEdit()
+        self.endEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         regextime = QRegularExpression(r'^-?[0-9]?[0-9]?[0-9][:,h][0-5][0-9]$')
         self.startEdit.setValidator(QRegularExpressionValidator(regextime,self))
         self.endEdit.setValidator(QRegularExpressionValidator(regextime,self))
@@ -71,7 +72,9 @@ class calculatorDlg(ArtisanDialog):
         flabel = QLabel(QApplication.translate('Label', 'Fahrenheit'))
         clabel = QLabel(QApplication.translate('Label', 'Celsius'))
         self.faEdit = QLineEdit()
+        self.faEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.ceEdit = QLineEdit()
+        self.ceEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.faEdit.setValidator(self.aw.createCLocaleDoubleValidator(-999999., 9999999., 2, self.faEdit))
         self.ceEdit.setValidator(self.aw.createCLocaleDoubleValidator(-999999., 9999999., 2, self.ceEdit))
         self.faEdit.editingFinished.connect(self.convertTempFtoC)
@@ -87,7 +90,9 @@ class calculatorDlg(ArtisanDialog):
         self.WoutComboBox.addItems(weight_units)
         self.WoutComboBox.setCurrentIndex(2)
         self.WinEdit = QLineEdit()
+        self.WinEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.WoutEdit = QLineEdit()
+        self.WoutEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.WinEdit.setMaximumWidth(70)
         self.WoutEdit.setMaximumWidth(70)
         #self.WinEdit.setMinimumWidth(60)
@@ -113,7 +118,9 @@ class calculatorDlg(ArtisanDialog):
         self.VoutComboBox.addItems(volumeunits)
         self.VoutComboBox.setCurrentIndex(4)
         self.VinEdit = QLineEdit()
+        self.VinEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.VoutEdit = QLineEdit()
+        self.VoutEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.VinEdit.setMaximumWidth(70)
         self.VoutEdit.setMaximumWidth(70)
         #self.VinEdit.setMinimumWidth(60)
@@ -128,9 +135,13 @@ class calculatorDlg(ArtisanDialog):
         tdslabel = QLabel(QApplication.translate('Label', 'TDS (%)'))
         coffeelabel = QLabel(QApplication.translate('Label', 'Coffee (g)'))
         self.groundsEdit = QLineEdit()
+        self.groundsEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.coffeeEdit = QLineEdit()
+        self.coffeeEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.tdsEdit = QLineEdit()
+        self.tdsEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.yieldEdit = QLineEdit()
+        self.yieldEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.yieldEdit.setReadOnly(True)
         self.groundsEdit.setValidator(self.aw.createCLocaleDoubleValidator(1., 999999., 2, self.groundsEdit))
         self.coffeeEdit.setValidator(self.aw.createCLocaleDoubleValidator(1., 999999., 2, self.coffeeEdit))
@@ -213,8 +224,8 @@ class calculatorDlg(ArtisanDialog):
     @pyqtSlot(int)
     def calcEventRC(self, _:int) -> None:
         nevents = len(self.aw.qmc.specialevents)
-        Aevent = int(self.eventAComboBox.currentIndex())
-        Bevent = int(self.eventBComboBox.currentIndex())
+        Aevent = self.eventAComboBox.currentIndex()
+        Bevent = self.eventBComboBox.currentIndex()
         if Aevent <= nevents and Bevent <= nevents and Aevent and Bevent:
             if self.aw.qmc.timeindex[0] != -1:
                 start = self.aw.qmc.timex[self.aw.qmc.timeindex[0]]
@@ -232,8 +243,8 @@ class calculatorDlg(ArtisanDialog):
                 #empty field
                 return
             try:
-                starttime = stringtoseconds(str(self.startEdit.text()))
-                endtime = stringtoseconds(str(self.endEdit.text()))
+                starttime = stringtoseconds(self.startEdit.text())
+                endtime = stringtoseconds(self.endEdit.text())
                 if  endtime > self.aw.qmc.timex[-1] or endtime < starttime:
                     self.aw.sendmessage(QApplication.translate('Label', 'Error: End time smaller than Start time'))
                     self.result1.setText('')
@@ -272,56 +283,56 @@ class calculatorDlg(ArtisanDialog):
         self.convertTempLocal('CtoF')
 
     def convertTempLocal(self, x:str) -> None:
-        self.faEdit.setText(comma2dot(str(self.faEdit.text())))
-        self.ceEdit.setText(comma2dot(str(self.ceEdit.text())))
+        self.faEdit.setText(comma2dot(self.faEdit.text()))
+        self.ceEdit.setText(comma2dot(self.ceEdit.text()))
         if x == 'FtoC':
-            newC = fromFtoC(float(str(self.faEdit.text())))
+            newC = fromFtoC(float(self.faEdit.text()))
             result = f'{newC:.2f}'
             self.ceEdit.setText(result)
         elif x == 'CtoF':
-            newF = fromCtoF(float(str(self.ceEdit.text())))
+            newF = fromCtoF(float(self.ceEdit.text()))
             result = f'{newF:.2f}'
             self.faEdit.setText(result)
 
     @pyqtSlot()
     def convertWeightItoO(self) -> None:
-        self.WinEdit.setText(comma2dot(str(self.WinEdit.text())))
-        inx = float(str(self.WinEdit.text()))
+        self.WinEdit.setText(comma2dot(self.WinEdit.text()))
+        inx = float(self.WinEdit.text())
         outx = convertWeight(inx,self.WinComboBox.currentIndex(),self.WoutComboBox.currentIndex())
         self.WoutEdit.setText(f'{outx:.2f}')
 
     @pyqtSlot()
     def convertWeightOtoI(self) -> None:
-        self.WoutEdit.setText(comma2dot(str(self.WoutEdit.text())))
-        outx = float(str(self.WoutEdit.text()))
+        self.WoutEdit.setText(comma2dot(self.WoutEdit.text()))
+        outx = float(self.WoutEdit.text())
         inx = convertWeight(outx,self.WoutComboBox.currentIndex(),self.WinComboBox.currentIndex())
         self.WinEdit.setText(f'{inx:.2f}')
 
     @pyqtSlot()
     def convertVolumeItoO(self) -> None:
-        self.VinEdit.setText(comma2dot(str(self.VinEdit.text())))
-        inx = float(str(self.VinEdit.text()))
+        self.VinEdit.setText(comma2dot(self.VinEdit.text()))
+        inx = float(self.VinEdit.text())
         outx = convertVolume(inx,self.VinComboBox.currentIndex(),self.VoutComboBox.currentIndex())
         self.VoutEdit.setText(f'{outx:.3f}')
 
     @pyqtSlot()
     def convertVolumeOtoI(self) -> None:
-        self.VoutEdit.setText(comma2dot(str(self.VoutEdit.text())))
-        outx = float(str(self.VoutEdit.text()))
+        self.VoutEdit.setText(comma2dot(self.VoutEdit.text()))
+        outx = float(self.VoutEdit.text())
         inx = convertVolume(outx,self.VoutComboBox.currentIndex(),self.VinComboBox.currentIndex())
         self.VinEdit.setText(f'{inx:.3f}')
 
     @pyqtSlot()
     def calculateYield(self) -> None:
-        self.groundsEdit.setText(comma2dot(str(self.groundsEdit.text())))
-        self.tdsEdit.setText(comma2dot(str(self.tdsEdit.text())))
-        self.coffeeEdit.setText(comma2dot(str(self.coffeeEdit.text())))
+        self.groundsEdit.setText(comma2dot(self.groundsEdit.text()))
+        self.tdsEdit.setText(comma2dot(self.tdsEdit.text()))
+        self.coffeeEdit.setText(comma2dot(self.coffeeEdit.text()))
         # Extraction yield % = Brewed Coffee[g] x TDS[%] / Coffee Grounds[g]
         if self.groundsEdit.text() == '' or self.tdsEdit.text() == '' or self.coffeeEdit.text() == '':
             return
-        grounds = float(str(self.groundsEdit.text()))
-        tds = float(str(self.tdsEdit.text()))
-        coffee = float(str(self.coffeeEdit.text()))
+        grounds = float(self.groundsEdit.text())
+        tds = float(self.tdsEdit.text())
+        coffee = float(self.coffeeEdit.text())
         if grounds == 0:
             return
         cyield = coffee * tds / grounds

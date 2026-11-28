@@ -1,25 +1,31 @@
 #
 # account.py
 #
-# Copyright (c) 2023, Paul Holleis, Marko Luther
-# All rights reserved.
-#
-#
 # ABOUT
-# This module connects to the artisan.plus inventory management service
-
-# LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
+# This module connects to the artisan platform
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
+# LICENSE
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
+# AUTHOR
+# Marko Luther
 
 """This module connects to the artisan.plus inventory management service."""
 
@@ -75,9 +81,7 @@ def setAccountShelve(account_id: str, fh:IO[str]) -> int|None:
             # could not be determined" remove all files name account_cache
             # path with any extension as we do not know which extension is
             # chosen by shelve
-            _log.info(
-                'clean account cache %s', str(account_cache_path)
-            )
+            _log.info('clean account cache %s', account_cache_path)
             # note that this deletes all "account" files including those for
             # the Viewer and other files of that name prefix like
             # account.db.org!!
@@ -126,13 +130,9 @@ def setAccount(account_id: str) -> int|None:
         _log.exception(e)
         # we couldn't fetch this lock. It seems to be blocked forever
         # we remove the lock file and retry with a shorter timeout
-        _log.info(
-            'clean lock %s', str(account_cache_lock_path)
-        )
+        _log.info('clean lock %s', account_cache_lock_path)
         Path(account_cache_lock_path).unlink()
-        _log.debug(
-            'retry setAccount(%s)', account_id
-        )
+        _log.debug('retry setAccount(%s)', account_id)
         with portalocker.Lock(account_cache_lock_path, timeout=0.3) as fh:
             return setAccountShelve(account_id, fh)
     except Exception as e:  # pylint: disable=broad-except

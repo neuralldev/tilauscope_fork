@@ -27,7 +27,7 @@ from .session import Session
 
 # The TilauScope version whose files the tablet reads and writes: the desktop's current one.
 # It moves with each desktop version (test_version_follows_desktop fails until it does).
-TILAUSCOPE_VERSION = "4.4"
+TILAUSCOPE_VERSION = "5.0"
 
 # Desktop event types, as the operator's Skywalker setup numbers them.
 EVENT_TYPE = {"air": 0, "drum": 1, "extractor": 2, "burner": 3}

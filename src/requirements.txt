@@ -58,6 +58,7 @@ matplotlib==3.11.1
 jinja2==3.1.6
 aiohttp==3.14.5
 aiohttp_jinja2==1.6
+aiohttp-retry==2.9.1 # plus.uploader (Artisan 5.0 profile upload)
 python-bidi==0.6.11
 arabic-reshaper==3.0.1
 pillow==13.0.0
@@ -108,7 +109,7 @@ build==1.5.0; platform_system=='Windows'
 pywin32==312; platform_system=='Windows'
 pyinstaller-hooks-contrib>=2026.6; platform_system=='Windows'
 pyinstaller-versionfile==3.0.1; platform_system=='Windows'
-#libusb-package==1.0.26.3; platform_system=='Windows'
+libusb-package==1.0.30.1; platform_system=='Windows' # Aillio R1/R2 over USB; ships its own PyInstaller hook for libusb-1.0.dll (x64 wheel only)
 tzdata==2026.3; platform_system=='Windows'
 wakepy==1.0.0
 pip-tools==7.6.0

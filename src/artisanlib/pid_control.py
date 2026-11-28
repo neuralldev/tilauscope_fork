@@ -44,7 +44,7 @@ from typing import Final, TYPE_CHECKING
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
 
-from artisanlib.button_style import artisan_push_button_style_dict
+from artisanlib.styles import push_button_style
 from artisanlib.util import fromCtoFstrict, fromFtoCstrict, hex2int, str2cmd, stringfromseconds, cmd2str, float2float
 
 from PyQt6.QtCore import pyqtSlot
@@ -313,13 +313,13 @@ class FujiPID:
                 p = i = d = b'        '
             else:
                 commandp = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[pkey][1]),int(float(newPvalue)*10.))
-                commandi = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[ikey][1]),int(float(newIvalue)*10.))
-                commandd = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[dkey][1]),int(float(newDvalue)*10.))
+                command = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[ikey][1]),int(float(newIvalue)*10.))
+                commanded = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[dkey][1]),int(float(newDvalue)*10.))
                 p = self.aw.ser.sendFUJIcommand(commandp,8)
                 libtime.sleep(0.035)
-                i = self.aw.ser.sendFUJIcommand(commandi,8)
+                i = self.aw.ser.sendFUJIcommand(command,8)
                 libtime.sleep(0.035)
-                d = self.aw.ser.sendFUJIcommand(commandd,8)
+                d = self.aw.ser.sendFUJIcommand(commanded,8)
                 libtime.sleep(0.035)
             #verify it went ok
             if len(p) == 8 and len(i)==8 and len(d) == 8:
@@ -525,13 +525,13 @@ class FujiPID:
             reg:int|None = None
             #if control pid is fuji PXG4
             if self.aw.ser.controlETpid[0] == 0:
-                reg = int(self.aw.modbus.address2register(self.PXG4['sv?'][1],4))
+                reg = self.aw.modbus.address2register(self.PXG4['sv?'][1],4)
             #or if control pid is fuji PXR
             elif self.aw.ser.controlETpid[0] == 1:
-                reg = int(self.aw.modbus.address2register(self.PXR['sv?'][1],4))
+                reg = self.aw.modbus.address2register(self.PXR['sv?'][1],4)
             #or if control pid is fuji PXF
             elif self.aw.ser.controlETpid[0] == 4:
-                reg = int(self.aw.modbus.address2register(self.PXF['sv?'][1],4))
+                reg = self.aw.modbus.address2register(self.PXF['sv?'][1],4)
             if reg is not None:
                 res = self.aw.modbus.readSingleRegister(self.aw.ser.controlETpid[1],reg,4)
                 if res is not None:
@@ -1041,12 +1041,12 @@ class FujiPID:
         else:
             if self.aw.ser.controlETpid[0] == 0:
                 svcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[svkey][1]),int(sv*10))
-                rampcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[rampkey][1]),int(round(ramp)))
-                soakcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[soakkey][1]),int(round(soak)))
+                rampcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[rampkey][1]),round(ramp))
+                soakcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXG4[soakkey][1]),round(soak))
             elif self.aw.ser.controlETpid[0] == 1:
                 svcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXR[svkey][1]),int(sv*10))
-                rampcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXR[rampkey][1]),int(round(ramp)))
-                soakcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXR[soakkey][1]),int(round(soak)))
+                rampcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXR[rampkey][1]),round(ramp))
+                soakcommand = self.message2send(self.aw.ser.controlETpid[1],6,int(self.PXR[soakkey][1]),round(soak))
             else:
                 return
             r1 = self.aw.ser.sendFUJIcommand(svcommand,8)
@@ -1279,6 +1279,35 @@ class PIDcontrol:
 
         self.slider_force_move:bool = True # if True move the slider independent of the slider position to fire slider action!
 
+
+    def setPositiveTargetMin(self, value:int) -> None:
+        if self.aw.pidcontrol.pidPositiveTarget != 0:
+            slidernr = self.pidPositiveTarget - 1
+            slider_min = self.aw.eventslidermin[slidernr]
+            slider_max = self.aw.eventslidermax[slidernr]
+            self.positiveTargetMin = max(slider_min, min(slider_max, value, self.positiveTargetMax))
+
+    def setPositiveTargetMax(self, value:int) -> None:
+        if self.aw.pidcontrol.pidPositiveTarget != 0:
+            slidernr = self.pidPositiveTarget - 1
+            slider_min = self.aw.eventslidermin[slidernr]
+            slider_max = self.aw.eventslidermax[slidernr]
+            self.positiveTargetMax = max(slider_min, min(slider_max, value), self.positiveTargetMin)
+
+    def setNegativeTargetMin(self, value:int) -> None:
+        if self.aw.pidcontrol.pidNegativeTarget != 0:
+            slidernr = self.pidNegativeTarget - 1
+            slider_min = self.aw.eventslidermin[slidernr]
+            slider_max = self.aw.eventslidermax[slidernr]
+            self.negativeTargetMin = max(slider_min, min(slider_max, value, self.negativeTargetMax))
+
+    def setNegativeTargetMax(self, value:int) -> None:
+        if self.aw.pidcontrol.pidNegativeTarget != 0:
+            slidernr = self.pidNegativeTarget - 1
+            slider_min = self.aw.eventslidermin[slidernr]
+            slider_max = self.aw.eventslidermax[slidernr]
+            self.negativeTargetMax = max(slider_min, min(slider_max, value), self.negativeTargetMax)
+
     @staticmethod
     def RStotalTime(ramps:list[int], soaks:list[int]) -> int:
         return sum(ramps) + sum(soaks)
@@ -1318,7 +1347,7 @@ class PIDcontrol:
                 heat_min = (max(self.positiveTargetMin, slider_min) if self.positiveTargetRangeLimit else slider_min)
                 heat_max = (min(self.positiveTargetMax, slider_max) if self.positiveTargetRangeLimit else slider_max)
                 raw_heat:float = numpy.interp(vx,[0,100],[heat_min,heat_max])
-                heat = int(round(float(raw_heat)))
+                heat = round(float(raw_heat))
                 heat = self.aw.applySliderStepSize(slidernr, heat) # quantify by slider step size
                 self.aw.addRawEventSignal.emit(heat,raw_heat,slidernr,self.createEvents,True,self.slider_force_move)
                 self.slider_force_move = False
@@ -1332,7 +1361,7 @@ class PIDcontrol:
                 cool_min = (max(self.negativeTargetMin, slider_min) if self.negativeTargetRangeLimit else slider_min)
                 cool_max = (min(self.negativeTargetMax, slider_max) if self.negativeTargetRangeLimit else slider_max)
                 raw_cool:float = numpy.interp(vx,[-100,0],[cool_max,cool_min])
-                cool = int(round(float(raw_cool)))
+                cool = round(float(raw_cool))
                 cool = self.aw.applySliderStepSize(slidernr, cool) # quantify by slider step size
                 self.aw.addRawEventSignal.emit(cool,raw_cool,slidernr,self.createEvents,True,self.slider_force_move)
                 self.slider_force_move = False
@@ -1342,9 +1371,9 @@ class PIDcontrol:
     def conv2celsius(self) -> None:
         try:
             self.aw.qmc.rampSoakSemaphore.acquire(1)
-            self.svValue = (0 if self.svValue == 0 else max(0, int(round(fromFtoCstrict(self.svValue)))))
-            self.svSliderMin = (0 if self.svSliderMin == 0 else max(0, min(999, int(round(fromFtoCstrict(self.svSliderMin))))))
-            self.svSliderMax = (0 if self.svSliderMax == 0 else max(0, min(999, int(round(fromFtoCstrict(self.svSliderMax))))))
+            self.svValue = (0 if self.svValue == 0 else max(0, round(fromFtoCstrict(self.svValue))))
+            self.svSliderMin = (0 if self.svSliderMin == 0 else max(0, min(999, round(fromFtoCstrict(self.svSliderMin)))))
+            self.svSliderMax = (0 if self.svSliderMax == 0 else max(0, min(999, round(fromFtoCstrict(self.svSliderMax)))))
             # establish ne limits on sliders
             self.aw.sliderSV.setMinimum(self.svSliderMin)
             self.aw.sliderSV.setMaximum(self.svSliderMax)
@@ -1361,9 +1390,9 @@ class PIDcontrol:
             self.pidKi2 = self.pidKi2 * (9/5.)
             self.pidKd2 = self.pidKd2 * (9/5.)
             #
-            self.pidSchedule0 = max(0, min(999, int(round(fromFtoCstrict(self.pidSchedule0)))))
-            self.pidSchedule1 = max(0, min(999, int(round(fromFtoCstrict(self.pidSchedule1)))))
-            self.pidSchedule2 = max(0, min(999, int(round(fromFtoCstrict(self.pidSchedule2)))))
+            self.pidSchedule0 = max(0, min(999, round(fromFtoCstrict(self.pidSchedule0))))
+            self.pidSchedule1 = max(0, min(999, round(fromFtoCstrict(self.pidSchedule1))))
+            self.pidSchedule2 = max(0, min(999, round(fromFtoCstrict(self.pidSchedule2))))
             #
             for i in range(len(self.svValues)): # pylint: disable=consider-using-enumerate
                 if self.svValues[i] != 0:
@@ -1382,11 +1411,11 @@ class PIDcontrol:
         try:
             self.aw.qmc.rampSoakSemaphore.acquire(1)
             self.svValue = (0 if self.svValue == 0 else max(0.0, fromCtoFstrict(self.svValue)))
-            self.svSliderMin = (0 if self.svSliderMin == 0 else max(0, min(999, int(round(fromCtoFstrict(self.svSliderMin))))))
-            self.svSliderMax = (0 if self.svSliderMax == 0 else max(0, min(999, int(round(fromCtoFstrict(self.svSliderMax))))))
+            self.svSliderMin = (0 if self.svSliderMin == 0 else max(0, min(999, round(fromCtoFstrict(self.svSliderMin)))))
+            self.svSliderMax = (0 if self.svSliderMax == 0 else max(0, min(999, round(fromCtoFstrict(self.svSliderMax)))))
             # establish ne limits on sliders
-            self.aw.sliderSV.setMinimum(int(round(self.svSliderMin)))
-            self.aw.sliderSV.setMaximum(int(round(self.svSliderMax)))
+            self.aw.sliderSV.setMinimum(round(self.svSliderMin))
+            self.aw.sliderSV.setMaximum(round(self.svSliderMax))
             self.aw.moveSVslider(self.svValue,setValue=False)
             self.pidKp = self.pidKp / (9/5.)
             self.pidKi = self.pidKi / (9/5.)
@@ -1400,9 +1429,9 @@ class PIDcontrol:
             self.pidKi2 = self.pidKi2 / (9/5.)
             self.pidKd2 = self.pidKd2 / (9/5.)
             #
-            self.pidSchedule0 = max(0, min(999, int(round(fromCtoFstrict(self.pidSchedule0)))))
-            self.pidSchedule1 = max(0, min(999, int(round(fromCtoFstrict(self.pidSchedule1)))))
-            self.pidSchedule2 = max(0, min(999, int(round(fromCtoFstrict(self.pidSchedule2)))))
+            self.pidSchedule0 = max(0, min(999, round(fromCtoFstrict(self.pidSchedule0))))
+            self.pidSchedule1 = max(0, min(999, round(fromCtoFstrict(self.pidSchedule1))))
+            self.pidSchedule2 = max(0, min(999, round(fromCtoFstrict(self.pidSchedule2))))
             #
             for i in range(len(self.svValues)): # pylint: disable=consider-using-enumerate
                 if self.svValues[i] != 0:
@@ -1463,6 +1492,9 @@ class PIDcontrol:
     # if reset the PID is initialized which resets its iTerm to 0 and initializes the derivative filter with the configured sampling rate
     def confSoftwarePID(self, reset:bool=False) -> None:
         # software PID
+        if self.aw.qmc.pid is None:
+            from artisanlib import pid
+            self.aw.qmc.pid = pid.PID()
         self.aw.qmc.pid.setSamplingRate(self.aw.qmc.delay/1000)
         self.aw.qmc.pid.setPID(self.pidKp,self.pidKi,self.pidKd)
         self.aw.qmc.pid.setWeights(self.pidPsetpointWeight,self.pidDsetpointWeight)
@@ -1490,7 +1522,8 @@ class PIDcontrol:
 
     # if send_command is False, the pidOn command is not forwarded to the external PID (TC4, Kaleido, ..)
     def pidOn(self, send_command:bool = True) -> None:
-#        if self.aw.qmc.flagon:
+        if not self.aw.qmc.flagon:
+            return
         if not self.pidActive:
             self.aw.sendmessage(QApplication.translate('StatusBar','PID ON'))
         self.pidModeInit()
@@ -1501,7 +1534,8 @@ class PIDcontrol:
         if (self.externalPIDControl() == 1 and self.aw.modbus.PID_ON_action and self.aw.modbus.PID_ON_action != ''):
             self.aw.eventaction(4,self.aw.modbus.PID_ON_action)
             self.pidActive = True
-            self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PIDactive'].format(
+            self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PIDactive',
+                min_height=self.aw.main_button_min_height,
                 min_width=self.aw.main_button_min_width,
                 font_size=self.aw.button_font_size,
                 border_radius=self.aw.button_border_radius))
@@ -1510,7 +1544,8 @@ class PIDcontrol:
         elif (self.externalPIDControl() == 2 and self.aw.s7.PID_ON_action and self.aw.s7.PID_ON_action != ''):
             self.aw.eventaction(15,self.aw.s7.PID_ON_action)
             self.pidActive = True
-            self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PIDactive'].format(
+            self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PIDactive',
+                min_height=self.aw.main_button_min_height,
                 min_width=self.aw.main_button_min_width,
                 font_size=self.aw.button_font_size,
                 border_radius=self.aw.button_border_radius))
@@ -1527,7 +1562,8 @@ class PIDcontrol:
                         self.aw.ser.SP.write(str2cmd('PID;LIMIT;' + str(duty_min) + ';' + str(duty_max) + '\n'))
                         self.aw.ser.SP.write(str2cmd('PID;ON\n'))
                         self.pidActive = True
-                        self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PIDactive'].format(
+                        self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PIDactive',
+                            min_height=self.aw.main_button_min_height,
                             min_width=self.aw.main_button_min_width,
                             font_size=self.aw.button_font_size,
                             border_radius=self.aw.button_border_radius))
@@ -1540,22 +1576,29 @@ class PIDcontrol:
             if send_command:
                 self.aw.kaleido.pidON()
             self.pidActive = True
+            if self.aw.qmc.pid is None:
+                from artisanlib import pid
+                self.aw.qmc.pid = pid.PID()
             self.aw.qmc.pid.on()
-            self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PIDactive'].format(
+            self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PIDactive',
+                min_height=self.aw.main_button_min_height,
                 min_width=self.aw.main_button_min_width,
                 font_size=self.aw.button_font_size,
                 border_radius=self.aw.button_border_radius))
-        elif self.aw.qmc.Controlbuttonflag:
+        elif self.aw.qmc.Controlbuttonflag and not self.pidActive: # only if not yet active!
             # software PID
-            if not self.pidActive: # only if not yet active!
-                self.confSoftwarePID()
-                self.pidActive = True
-                self.aw.qmc.pid.on()
-                self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PIDactive'].format(
-                    min_width=self.aw.main_button_min_width,
-                    font_size=self.aw.button_font_size,
-                    border_radius=self.aw.button_border_radius))
-                self.aw.qmc.pid.setTarget(self.svValue,init=False)
+            self.confSoftwarePID()
+            self.pidActive = True
+            if self.aw.qmc.pid is None:
+                from artisanlib import pid
+                self.aw.qmc.pid = pid.PID()
+            self.aw.qmc.pid.on()
+            self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PIDactive',
+                min_height=self.aw.main_button_min_height,
+                min_width=self.aw.main_button_min_width,
+                font_size=self.aw.button_font_size,
+                border_radius=self.aw.button_border_radius))
+            self.aw.qmc.pid.setTarget(self.svValue,init=False)
         if self.sv is None and self.svMode == 0: # only in manual SV mode we initialize the SV on PID ON
             self.setSV(self.svValue)
 
@@ -1570,7 +1613,8 @@ class PIDcontrol:
         if (self.externalPIDControl() == 1 and self.aw.modbus.PID_OFF_action and self.aw.modbus.PID_OFF_action != ''):
             self.aw.eventaction(4,self.aw.modbus.PID_OFF_action)
             if not self.aw.HottopControlActive:
-                self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PID'].format(
+                self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PID',
+                    min_height=self.aw.main_button_min_height,
                     min_width=self.aw.main_button_min_width,
                     font_size=self.aw.button_font_size,
                     border_radius=self.aw.button_border_radius))
@@ -1579,7 +1623,8 @@ class PIDcontrol:
         elif (self.externalPIDControl() == 2 and self.aw.s7.PID_OFF_action and self.aw.s7.PID_OFF_action != ''):
             self.aw.eventaction(15,self.aw.s7.PID_OFF_action)
             if not self.aw.HottopControlActive:
-                self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PID'].format(
+                self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PID',
+                    min_height=self.aw.main_button_min_height,
                     min_width=self.aw.main_button_min_width,
                     font_size=self.aw.button_font_size,
                     border_radius=self.aw.button_border_radius))
@@ -1599,7 +1644,8 @@ class PIDcontrol:
                     if self.aw.ser.COMsemaphore.available() < 1:
                         self.aw.ser.COMsemaphore.release(1)
                 if not self.aw.HottopControlActive:
-                    self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PID'].format(
+                    self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PID',
+                        min_height=self.aw.main_button_min_height,
                         min_width=self.aw.main_button_min_width,
                         font_size=self.aw.button_font_size,
                         border_radius=self.aw.button_border_radius))
@@ -1609,18 +1655,24 @@ class PIDcontrol:
             if send_command:
                 self.aw.kaleido.pidOFF()
             self.pidActive = False
+            if self.aw.qmc.pid is None:
+                from artisanlib import pid
+                self.aw.qmc.pid = pid.PID()
             self.aw.qmc.pid.off()
-            self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PID'].format(
+            self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PID',
+                min_height=self.aw.main_button_min_height,
                 min_width=self.aw.main_button_min_width,
                 font_size=self.aw.button_font_size,
                 border_radius=self.aw.button_border_radius))
         elif self.aw.qmc.Controlbuttonflag:
-            # software PID
-            self.aw.qmc.pid.setControl(lambda _: None)
             self.pidActive = False
-            self.aw.qmc.pid.off()
+            # software PID
+            if self.aw.qmc.pid is not None:
+                self.aw.qmc.pid.setControl(lambda _: None)
+                self.aw.qmc.pid.off()
             if not self.aw.HottopControlActive:
-                self.aw.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PID'].format(
+                self.aw.buttonCONTROL.setStyleSheet(push_button_style(bool(self.aw.simulator), 'PID',
+                    min_height=self.aw.main_button_min_height,
                     min_width=self.aw.main_button_min_width,
                     font_size=self.aw.button_font_size,
                     border_radius=self.aw.button_border_radius))
@@ -1657,7 +1709,7 @@ class PIDcontrol:
                         # t is within the current segment
                         k = float(segment_start_sv - prev_segment_start_sv) / float(segment_end_time - prev_segment_end_time)
                         if self.current_ramp_segment != i+1:
-                            self.aw.sendmessage(QApplication.translate('Message',f'Ramp {i+1}: in {stringfromseconds(self.svRamps[i])} to SV {int(round(v))}'))
+                            self.aw.sendmessage(QApplication.translate('Message',f'Ramp {i+1}: in {stringfromseconds(self.svRamps[i])} to SV {round(v)}'))
                             self.current_ramp_segment = i+1
                         return prev_segment_start_sv + k*(t - prev_segment_end_time)
                 prev_segment_end_time = segment_end_time
@@ -1671,7 +1723,7 @@ class PIDcontrol:
                         # t is within the current segment
                         if self.current_soak_segment != i+1:
                             self.current_soak_segment = i+1
-                            self.aw.sendmessage(QApplication.translate('Message',f'Soak {i+1}: for {stringfromseconds(self.svSoaks[i])} at SV {int(round(v))}'))
+                            self.aw.sendmessage(QApplication.translate('Message',f'Soak {i+1}: for {stringfromseconds(self.svSoaks[i])} at SV {round(v)}'))
                         return prev_segment_start_sv
                 prev_segment_end_time = segment_end_time
                 prev_segment_start_sv = segment_start_sv
@@ -1766,6 +1818,9 @@ class PIDcontrol:
 
     def setDutySteps(self, dutySteps:int) -> None:
         if self.aw.qmc.Controlbuttonflag and not self.externalPIDControl():
+            if self.aw.qmc.pid is None:
+                from artisanlib import pid
+                self.aw.qmc.pid = pid.PID()
             self.aw.qmc.pid.setDutySteps(dutySteps)
 
 
@@ -1816,6 +1871,9 @@ class PIDcontrol:
             # in all other cases if the "Control" flag is ticked: software PID
             if move and self.svSlider:
                 self.aw.moveSVslider(sv,setValue=True)
+            if self.aw.qmc.pid is None:
+                from artisanlib import pid
+                self.aw.qmc.pid = pid.PID()
             self.aw.qmc.pid.setTarget(sv,init=init)
             self.sv = sv # remember last sv
             self.svValue = sv
@@ -1869,7 +1927,7 @@ class PIDcontrol:
                 sv = self.sv
             else:
                 sv = min(float(self.svSliderMax), max(float(self.svSliderMin), self.svValue))
-            sv = int(round(sv))
+            sv = round(sv)
             self.aw.updateSVSliderLCD(sv)
             self.aw.sliderSV.setValue(sv)
             self.aw.sliderSV.blockSignals(False)
@@ -1911,6 +1969,9 @@ class PIDcontrol:
                 self.pidPsetpointWeight = beta
             if gamma is not None:
                 self.pidDsetpointWeight = gamma
+            if self.aw.qmc.pid is None:
+                from artisanlib import pid
+                self.aw.qmc.pid = pid.PID()
             self.aw.qmc.pid.setWeights(beta, gamma)
 
     # send p-i-d conf to connected PID
@@ -1952,6 +2013,9 @@ class PIDcontrol:
                     if self.aw.ser.COMsemaphore.available() < 1:
                         self.aw.ser.COMsemaphore.release(1)
         elif self.aw.qmc.Controlbuttonflag: # in all other cases if the "Control" flag is ticked
+            if self.aw.qmc.pid is None:
+                from artisanlib import pid
+                self.aw.qmc.pid = pid.PID()
             self.aw.qmc.pid.setPID(kp,ki,kd)
             self.pidKp = kp
             self.pidKi = ki
@@ -1998,11 +2062,11 @@ class DtaPID:
     #command  string = ID (ADR)+ FUNCTION (CMD) + ADDRESS + NDATA + LRC_CHK
     def writeDTE(self, value:str, DTAaddress:str) -> None:
         try:
-            newsv = hex(int(abs(float(str(value)))))[2:].upper() # can fail on value=''
+            newsv = hex(int(abs(float(value))))[2:].upper() # can fail on value=''
             deviceID = self.aw.ser.controlETpid[1]
             if self.aw.ser.controlETpid[0] != 2: # control pid is not a DTA PID
                 deviceID = self.aw.ser.readBTpid[1]
-            command = self.message2send(deviceID,6,str(DTAaddress),newsv)
+            command = self.message2send(deviceID,6,DTAaddress,newsv)
             self.aw.ser.sendDTAcommand(command)
         except Exception:  # pylint: disable=broad-except
             pass

@@ -28,6 +28,7 @@ hidden_imports = [
     'babel.numbers',
     'yoctopuce',
     'pydantic',
+    'aiohttp_retry',  # plus.uploader, imported lazily
     
     # add these based on the macOS log
     'charset_normalizer.md__mypyc',     # requests dependency

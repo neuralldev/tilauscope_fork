@@ -1,3 +1,26 @@
+# TilauScope 5.0
+
+A major release: TilauScope now stands on Artisan 5.0, with its new dashboard and refreshed look, and welcomes two more roasters — the Skywalker V1 and the Cubean. Everything TilauScope adds — the roast plan, the guided roast, AUTO, BeanCave — carries over unchanged.
+
+## 🧩 Built on Artisan 5.0
+
+* **A dashboard beside the graph.** Artisan's new dashboard view sits next to the roast graph. **Shift-Space** or **Esc** switches between the two; while monitoring, **Space** starts recording.
+* **A fresher look.** New toolbar icons, rounded dialog buttons and refreshed themes, in light and dark mode.
+* **More roasts to bring in.** RoastPATH files (.rpath) and Aillio CSV exports can now be imported, and the Cropster import is improved.
+* **Machines and scales.** Support for the Fresh Roast SR900, updated setups for Santoker, Dutch Master, Sivetz and Orbiter machines, and Acaia scales that reconnect more reliably and report weighing errors.
+
+## ☕ New roasters
+
+* **Skywalker V1 and Cubean.** Both roasters connect through their SkyCommand box, over Bluetooth or USB. The first-time setup asks which box you built and shows whether it is found nearby or plugged in. The drum starts with monitoring, the cooling starts at DROP and stops at COOL END, and OFF switches the box off.
+
+## ☕ After the roast
+
+* **A steadier colour reading.** The colour meter card of the roast result averages 1 to 5 readings of the same sample: each reading, the average with its roast level and the spread. Tap a reading to take it again. The average is written only on **Save**, which waits until you choose whole bean or ground (or the meter says so) — the card never guesses the sample.
+
+## 🏷 Labels
+
+* **Labels come from BeanCave.** PDF and Niimbot labels are printed from BeanCave, once a green coffee or a roast is selected. The roast result form no longer prints or asks for a label on saving.
+
 # TilauScope 4.3
 
 A smaller release: TilauScope now adapts itself to machines that have no air probe, and translations catch up with the new Devices window.

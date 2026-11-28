@@ -19,6 +19,8 @@
 # AUTHOR
 # mikefsq, r2 2025
 
+__lazy_modules__ = { 'json', 'threading' }
+
 import time
 import json
 import threading
@@ -31,7 +33,7 @@ import usb.core # type: ignore[import-untyped]
 import usb.util # type: ignore[import-untyped] # zuban: ignore[no-redef]
 
 if system().startswith('Windows'):
-    import libusb_package # type: ignore[import-not-found, unused-ignore] # pyright:ignore[reportMissingImports] # pylint: disable=import-error
+    import libusb_package # type:ignore[import-not-found, unused-ignore] # pyright:ignore[reportMissingImports] # pylint: disable=import-error
 
 
 import logging
@@ -39,9 +41,9 @@ from typing import Final, Any, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     try:
-        from multiprocessing.connection import PipeConnection as Connection # type: ignore[unused-ignore,attr-defined,assignment] # pylint: disable=unused-import
+        from multiprocessing.connection import PipeConnection as Connection # type: ignore[unused-ignore,attr-defined,assignment] # pylint: disable=unused-import # ty:ignore[missing-module-member]
     except ImportError:
-        from multiprocessing.connection import Connection # type: ignore[unused-ignore,attr-defined,assignment] # pylint: disable=unused-import
+        from multiprocessing.connection import Connection # type:ignore[unused-ignore,attr-defined,assignment] # pylint: disable=unused-import
     from usb.core import Configuration, Interface, Endpoint
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -124,7 +126,7 @@ class AillioR2:
         self.__dbg('init')
 
         # USB handling
-        self.usbhandle:Generator[usb.core.Device, Any, None]|usb.core.Device|None = None # type:ignore[no-any-unimported,unused-ignore]
+        self.usbhandle:Generator[usb.core.Device, Any]|usb.core.Device|None = None # type:ignore[no-any-unimported,unused-ignore]
         self.protocol:int = 2
         self.model:str = 'Unknown'
         self.ep_in:Endpoint|None = None  # type:ignore[no-any-unimported]
@@ -774,7 +776,7 @@ class AillioR2:
         d = abs(f - value)
         if d <= 0:
             return
-        d = int(round(min(d,11)))
+        d = round(min(d,11))
         if f > value:
             cmd = self.prepare_command(self.AILLIO_CMD_FAN_DECR)
             if self.parent_pipe is not None:
@@ -943,7 +945,7 @@ class AillioR2:
         cmd[2] = (temp >> 8) & 0xFF
         cmdOut = self.prepare_command(cmd)
         if self.parent_pipe is not None:
-            self.parent_pipe.send(bytes(cmdOut))
+            self.parent_pipe.send(cmdOut)
             print(f"Sent preheat command: temp={temp}°C")
 
 if __name__ == '__main__':

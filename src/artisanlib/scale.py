@@ -6,15 +6,22 @@
 #   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
 #
 # LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
-
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
 # AUTHOR
 # Marko Luther, 2025
 
@@ -39,10 +46,10 @@ SUPPORTED_SCALES:Final[list[tuple[str,int]]] = [
 ScaleSpec = tuple[str,str] # scale name, scale id (eg. ble address or serial port)
 ScaleSpecs = list[ScaleSpec]
 
-# STABLE_TIMER_PERIOD should be >1sec if Acaia is reporting also non-stable readings, for stable readings a very short period is fine
-STABLE_TIMER_PERIOD = 350 # period to wait until new weight stabilized before forwarding the new reading via scale_stable_weight_changed signals (> the scale update period!)
-MIN_STABLE_WEIGHT_CHANGE = 1 # The weight has to change for at least this amount (in g) to update the last stable weight
-
+# STABLE_TIMER_PERIOD
+STABLE_TIMER_PERIOD:Final[int] = 500 # (milliseconds) period to wait until new (unstable) weight stabilized before forwarding the new reading via scale_stable_weight_changed signals (> the scale update period!)
+MIN_TIME_BETWEEN_STABLE_WEIGHTS:Final[float] = 0.3 # (seconds) to filter wrongly tagged weight changes as stable, stable weights that arrive earlier than this period after the last one are forwarded as unstable weights
+MIN_DELTA_BETWEEN_STABLE_WEIGHTS:Final[float] = 20 # stable weight with a delta larger than this to the previous stable weight are forwarded as unstable first
 
 
 @unique
@@ -80,6 +87,7 @@ class Scale(QObject):
     scanned_signal = pyqtSignal(list)               # delivers discovered device details
     weight_changed_signal = pyqtSignal(float, bool) # delivers new weight in g with decimals for accurate
                                                     #   conversion and flag indicating stable readings
+    weight_error_signal = pyqtSignal(str)           # delivers weight error message
     tare_pressed_signal = pyqtSignal()              # issued on tare button pressed
     timer_changed_signal = pyqtSignal(int)          ## TILAU ## issued on timer start/stop
     battery_changed_signal = pyqtSignal(int)        # delivers new battery level in %
@@ -147,11 +155,21 @@ class Scale(QObject):
     def readability(self) -> float: # pylint: disable=no-self-use
         return 0
 
+    # accuracy in g
+    def repeatability(self) -> float: # pylint: disable=no-self-use
+        return 0
+
     def signal_user(self, action:STATE_ACTION) -> None:
         pass
 
+    def enable_streaming(self) -> None:
+        pass
+
+    def disable_streaming(self) -> None:
+        pass
+
     ## TILAU ##
-    def set_timer(self, on:bool) -> None: 
+    def set_timer(self, on:bool) -> None:
         pass
 
 
@@ -165,7 +183,7 @@ class ScaleManager(QObject):
     # note set setting a scale to a new configuration will disconnect from a previously connected scale
     set_scale1_signal = pyqtSignal(int, str, str) # set scale1 to model, ident and name
     connect_scale1_signal = pyqtSignal(bool) # if argument is True, device logging is activated for scale 1
-    disconnect_scale1_signal = pyqtSignal()
+    disconnect_scale1_signal = pyqtSignal()  # only disconnect scale1 if it is available and no WeightManager:weight_changed_signal is connected
     tare_scale1_signal = pyqtSignal()
     signal_user_scale1_signal = pyqtSignal(int)
     reserve_scale1_signal = pyqtSignal()
@@ -177,13 +195,14 @@ class ScaleManager(QObject):
     # scales marked assigned (in use) cannot be set nor disconnected
     # note set setting a scale to a new configuration will disconnect from a previously connected scale
     set_scale2_signal = pyqtSignal(int, str, str) # set scale2 to model, ident and name
-    connect_scale2_signal = pyqtSignal(bool) # if argument is True, device logging is activated for scale 1
-    disconnect_scale2_signal = pyqtSignal()
+    connect_scale2_signal = pyqtSignal(bool) # if argument is True, device logging is activated for scale 2
+    disconnect_scale2_signal = pyqtSignal()  # only disconnect scale2 if it is available and no WeightManager:weight_changed_signal is connected
     tare_scale2_signal = pyqtSignal()
     signal_user_scale2_signal = pyqtSignal(int)
     reserve_scale2_signal = pyqtSignal()
     release_scale2_signal = pyqtSignal()
     timer_scale2_signal = pyqtSignal(bool) ## TILAU ## if argument is True, start the scale timer, otherwise stop it
+
     disconnect_all_signal = pyqtSignal()
     connect_all_signal = pyqtSignal(bool) # if argument is True, device logging is activated for scales
 
@@ -193,15 +212,15 @@ class ScaleManager(QObject):
     scale1_scanned_signal = pyqtSignal(list) # ScaleSpecs
     scale1_connected_signal = pyqtSignal()
     scale1_disconnected_signal = pyqtSignal()
-    scale1_weight_changed_signal = pyqtSignal(int)         # in g
-    scale1_stable_weight_changed_signal = pyqtSignal(int)  # in g
+    scale1_weight_changed_signal = pyqtSignal(int)         # in g : weight changed (stable or unstable)
+    scale1_stable_weight_changed_signal = pyqtSignal(int)  # in g : stable weight changed
     scale1_tare_pressed_signal = pyqtSignal()
 
     scale2_scanned_signal = pyqtSignal(list) # ScaleSpecs
     scale2_connected_signal = pyqtSignal()
     scale2_disconnected_signal = pyqtSignal()
-    scale2_weight_changed_signal = pyqtSignal(int)         # in g
-    scale2_stable_weight_changed_signal = pyqtSignal(int)  # in g
+    scale2_weight_changed_signal = pyqtSignal(int)         # in g : weight changed (stable or unstable)
+    scale2_stable_weight_changed_signal = pyqtSignal(int)  # in g : stable weight changed
     scale2_tare_pressed_signal = pyqtSignal()
 
     available_signal = pyqtSignal()    # issued if the first scale freshly connects or an already connected but assigned scale gets released from its assignment
@@ -212,41 +231,42 @@ class ScaleManager(QObject):
 
     def __init__(self, connected_handler:Callable[[str, str], None], disconnected_handler:Callable[[str, str], None]) -> None:
         super().__init__()
+        self._logging: bool = False
+
         self.connected_handler = connected_handler
         self.disconnected_handler = disconnected_handler
         self.scale1: Scale|None = None
         self.scale2: Scale|None = None
         self.available:bool = False # true if any of the both scales is connected but not assigned
 
-        self.scan_scale1_signal.connect(self.scan_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.set_scale1_signal.connect(self.set_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.connect_scale1_signal.connect(self.connect_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.disconnect_scale1_signal.connect(self.disconnect_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.tare_scale1_signal.connect(self.tare_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        ## TILAU ##
-        self.timer_scale1_signal.connect(self.timer_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.signal_user_scale1_signal.connect(self.signal_user_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.reserve_scale1_signal.connect(self.reserve_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.release_scale1_signal.connect(self.release_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
+        self.scan_scale1_signal.connect(self.scan_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # xtype: ignore[call-arg]
+        self.set_scale1_signal.connect(self.set_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.connect_scale1_signal.connect(self.connect_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.disconnect_scale1_signal.connect(self.disconnect_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.tare_scale1_signal.connect(self.tare_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.signal_user_scale1_signal.connect(self.signal_user_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.reserve_scale1_signal.connect(self.reserve_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.release_scale1_signal.connect(self.release_scale1_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.timer_scale1_signal.connect(self.timer_scale1_slot, type=Qt.ConnectionType.QueuedConnection) ## TILAU ##
 
-        self.scan_scale2_signal.connect(self.scan_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.set_scale2_signal.connect(self.set_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.connect_scale2_signal.connect(self.connect_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.disconnect_scale2_signal.connect(self.disconnect_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.tare_scale2_signal.connect(self.tare_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.signal_user_scale2_signal.connect(self.signal_user_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.reserve_scale2_signal.connect(self.reserve_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.release_scale2_signal.connect(self.release_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        ## TILAU ##
-        self.timer_scale2_signal.connect(self.timer_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
+        self.scan_scale2_signal.connect(self.scan_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.set_scale2_signal.connect(self.set_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.connect_scale2_signal.connect(self.connect_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.disconnect_scale2_signal.connect(self.disconnect_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.tare_scale2_signal.connect(self.tare_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.signal_user_scale2_signal.connect(self.signal_user_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.reserve_scale2_signal.connect(self.reserve_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.release_scale2_signal.connect(self.release_scale2_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.timer_scale2_signal.connect(self.timer_scale2_slot, type=Qt.ConnectionType.QueuedConnection) ## TILAU ##
 
-        self.disconnect_all_signal.connect(self.disconnect_all_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
-        self.connect_all_signal.connect(self.connect_all_slot, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
+        self.disconnect_all_signal.connect(self.disconnect_all_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
+        self.connect_all_signal.connect(self.connect_all_slot, type=Qt.ConnectionType.QueuedConnection) # Xtype: ignore[call-arg]
 
         self.scale1_last_weight:int|None = None     # in g; cleared by arrival of fresh non-stable weights, holding last weight to-be-come stable_weight
         self.scale1_stable_reading_timer = QTimer()
         self.scale1_stable_reading_timer.setSingleShot(True)
         self.scale1_stable_reading_timer.timeout.connect(self.scale1_stable_reading_timer_slot)
+        self.scale1_last_stable_weight_received:float = 0 # time when last stable weight was received
 
         self.scale1_last_weight_sent:int|None = None # the last weight the scale sent to Artisan
 
@@ -254,6 +274,7 @@ class ScaleManager(QObject):
         self.scale2_stable_reading_timer = QTimer()
         self.scale2_stable_reading_timer.setSingleShot(True)
         self.scale2_stable_reading_timer.timeout.connect(self.scale2_stable_reading_timer_slot)
+        self.scale2_last_stable_weight_received:float = 0 # time when last stable weight was received
 
         self.scale2_last_weight_sent:int|None = None # the last weight the scale sent to Artisan
 
@@ -282,6 +303,14 @@ class ScaleManager(QObject):
             return self.scale2.readability()
         return 0
 
+    # returns accuracy of the connected scale_nr (0 or 1) if connected and otherwise 0
+    def repeatability(self, scale_nr:int) -> float:
+        if scale_nr == 1 and self.scale1 is not None:
+            return self.scale1.repeatability()
+        if scale_nr == 2 and self.scale2 is not None:
+            return self.scale2.repeatability()
+        return 0
+
 #- scale 1
 
     def is_scale1_configured(self) -> bool:
@@ -290,11 +319,21 @@ class ScaleManager(QObject):
     def is_scale1_connected(self) -> bool:
         return self.scale1 is not None and self.scale1.is_connected()
 
+    def get_scale1_id(self) -> str|None:
+        if self.scale1 is not None and self.scale1.is_connected():
+            return self.scale1.get_ident()
+        return None
+
+    def get_scale1_name(self) -> str:
+        if self.scale1 is not None and self.scale1.is_connected():
+            return self.scale1.get_name() or ''
+        return ''
+
     def reset_scale1(self) -> None:
         if self.scale1 is not None:
             if self.scale1.is_assigned():
                 return
-            self.disconnect_scale(self.scale1)
+            self._disconnect_scale(self.scale1)
             try:
                 self.scale1.scanned_signal.disconnect(self.scale1_scanned_slot)
                 self.scale1.connected_signal.disconnect(self.scale1_connected_slot)
@@ -312,7 +351,12 @@ class ScaleManager(QObject):
     @pyqtSlot(int,str,str)
     def set_scale1_slot(self, model:int, ident:str, name:str) -> None:
         if self.scale1 is not None:
-            if self.scale1.is_assigned(): # scale in use
+            if (self.scale1.is_assigned() or # scale in use or
+                # scale connected and model/ident/name match
+                (self.scale1.is_connected() and
+                 self.scale1.get_model() == model and
+                 self.scale1.get_ident() == ident and
+                 self.scale1.get_name() == name)):
                 return
             self.reset_scale1()
         self.scale1 = self._get_scale(model, ident, name)
@@ -338,20 +382,42 @@ class ScaleManager(QObject):
 
     @pyqtSlot(bool)
     def connect_scale1_slot(self, device_logging:bool) -> None:
-        if self.scale1 is not None:
+        self._logging = device_logging
+        if self.scale1 is not None and not self.scale1.is_connected():
             self.scale1.connect_scale(device_logging)
 
     @pyqtSlot()
     def disconnect_scale1_slot(self) -> None:
-        if self.scale1 is not None and not self.scale1.is_assigned():
-            self.disconnect_scale(self.scale1)
-
+        if (self.scale1 is not None and not self.scale1.is_assigned() and
+                self.receivers(self.scale1_weight_changed_signal) < 1):
+            self._disconnect_scale(self.scale1)
 
     @pyqtSlot()
     def tare_scale1_slot(self) -> None:
         if self.scale1 is not None:
             self.scale1.tare_scale()
             self.scale1.signal_user(STATE_ACTION.TARE)
+
+    @pyqtSlot(int)
+    def signal_user_scale1_slot(self, action:STATE_ACTION) -> None:
+        if self.scale1 is not None:
+            self.scale1.signal_user(action)
+
+    @pyqtSlot()
+    def reserve_scale1_slot(self) -> None:
+        if self.scale1 is not None:
+            self.scale1.enable_streaming()
+            self.scale1.set_assigned(True)
+            self.update_availability()
+            _log.debug('scale1 reserved')
+
+    @pyqtSlot()
+    def release_scale1_slot(self) -> None:
+        if self.scale1 is not None:
+            self.scale1.disable_streaming()
+            self.scale1.set_assigned(False)
+            self.update_availability()
+            _log.debug('scale1 released')
 
     ## TILAU ##
     @pyqtSlot(bool)
@@ -363,25 +429,6 @@ class ScaleManager(QObject):
             else:
                 self.scale1.signal_user(STATE_ACTION.TIMER_OFF)
 
-    @pyqtSlot(int)
-    def signal_user_scale1_slot(self, action:STATE_ACTION) -> None:
-        if self.scale1 is not None:
-            self.scale1.signal_user(action)
-
-    @pyqtSlot()
-    def reserve_scale1_slot(self) -> None:
-        if self.scale1 is not None:
-            self.scale1.set_assigned(True)
-            self.update_availability()
-            _log.debug('scale1 reserved')
-
-    @pyqtSlot()
-    def release_scale1_slot(self) -> None:
-        if self.scale1 is not None:
-            self.scale1.set_assigned(False)
-            self.update_availability()
-            _log.debug('scale1 released')
-
 
     @pyqtSlot(list)
     def scale1_scanned_slot(self, scales:ScaleSpecs) -> None:
@@ -390,31 +437,49 @@ class ScaleManager(QObject):
     @pyqtSlot()
     def scale1_connected_slot(self) -> None:
         self.scale1_connected_signal.emit()
+        QTimer.singleShot(350, self.scale1_signal_connected)
+
+    @pyqtSlot()
+    def scale1_signal_connected(self) -> None:
         if self.scale1 is not None:
             self.scale1.signal_user(STATE_ACTION.CONNECTED)
 
     @pyqtSlot()
     def scale1_disconnected_slot(self) -> None:
+        self.scale1_stable_reading_timer.stop() # prevent weight changes being send after disconnect
         self.scale1_disconnected_signal.emit()
 
     ## try to catch a last non-stable weight change and send as stable state
     # weight in g
     @pyqtSlot(float, bool)
     def scale1_weight_changed_slot(self, weight:float, stable:bool) -> None:
-        _log.debug('PRINT scale1_weight_changed_slot(%s,%s)',weight,stable)
-        _log.debug('PRINT self.scale1_last_weight: %s',self.scale1_last_weight)
-        self.scale1_last_weight_sent = int(round(weight))
-        if stable: # we expect at least on unstable weight (which in turn is turned into a stable reading by our timer!) after a stable one
+        if self._logging:
+            _log.debug('scale1_weight_changed_slot(%s,%s)',weight,stable)
+        toa:float = libtime.time()
+        prev_last_weight_sent = self.scale1_last_weight_sent
+        self.scale1_last_weight_sent = round(weight)
+        if (stable and
+                # stable weights received short after a previous one are sent as unstable first (later captchered by the timer)
+                (toa - self.scale1_last_stable_weight_received) > MIN_TIME_BETWEEN_STABLE_WEIGHTS and
+                (prev_last_weight_sent is None or abs(self.scale1_last_weight_sent - prev_last_weight_sent) < MIN_DELTA_BETWEEN_STABLE_WEIGHTS)):
+            self.scale1_last_stable_weight_received = toa
+            # we expect at least one unstable weight after a stable one (which in turn is turned into a stable reading by the scale1_stable_reading_timer!)
             self.scale1_last_weight = None # prevent earlier non-stable weights to be send delayed as stable via the timer
+            self.scale1_stable_reading_timer.stop() # we stop a pending timer not to have it deliver outdated data as stable
             # weights marked as stable by the scale are immediately forwarded as stable weights
-#            _log.debug("PRINT stable weight forwarded: %s", self.scale1_last_weight_sent)
+            self.scale1_weight_changed_signal.emit(self.scale1_last_weight_sent)
             self.scale1_stable_weight_changed_signal.emit(self.scale1_last_weight_sent)
+            if self._logging:
+                _log.debug('stable1 emit: %s',self.scale1_last_weight_sent)
         else:
+            if self._logging:
+                _log.debug('STABLE->UNSTABLE1 %s, %s', stable and (toa - self.scale1_last_stable_weight_received) > MIN_TIME_BETWEEN_STABLE_WEIGHTS, stable and (prev_last_weight_sent is None or abs(self.scale1_last_weight_sent - prev_last_weight_sent) < MIN_DELTA_BETWEEN_STABLE_WEIGHTS))
             self.scale1_last_weight = self.scale1_last_weight_sent
             # fed into our stable weight timer system to ensure that the "last one" is also emitted as stable weight
             self.scale1_stable_reading_timer.start(STABLE_TIMER_PERIOD) # start/restart stable weight timer
             # non-stable weights are immediately forwarded as regular weight updates to keep the display fluid
-#            _log.debug("PRINT non-stable weight forwarded as stable: %s", self.scale1_last_weight_sent)
+            if self._logging:
+                _log.debug('unstable1 emit: %s',self.scale1_last_weight_sent)
             self.scale1_weight_changed_signal.emit(self.scale1_last_weight_sent)
 
     def scale1_tare_pressed_slot(self) -> None:
@@ -423,22 +488,39 @@ class ScaleManager(QObject):
     @pyqtSlot()
     def scale1_stable_reading_timer_slot(self) -> None:
         if self.scale1_last_weight is not None:
+            if self._logging:
+                _log.debug('artificial stable1 emit: %s',self.scale1_last_weight)
+            self.scale1_weight_changed_signal.emit(self.scale1_last_weight)
             self.scale1_stable_weight_changed_signal.emit(self.scale1_last_weight)
 
     def get_scale1_last_weight(self) -> int|None:
         return self.scale1_last_weight_sent
 
 
+
 #- scale 2
+
+    def is_scale2_configured(self) -> bool:
+        return self.scale2 is not None
 
     def is_scale2_connected(self) -> bool:
         return self.scale2 is not None and self.scale2.is_connected()
+
+    def get_scale2_id(self) -> str|None:
+        if self.scale2 is not None and self.scale2.is_connected():
+            return self.scale2.get_ident()
+        return None
+
+    def get_scale2_name(self) -> str:
+        if self.scale2 is not None and self.scale2.is_connected():
+            return self.scale2.get_name() or ''
+        return ''
 
     def reset_scale2(self) -> None:
         if self.scale2 is not None:
             if self.scale2.is_assigned():
                 return
-            self.disconnect_scale(self.scale2)
+            self._disconnect_scale(self.scale2)
             try:
                 self.scale2.scanned_signal.disconnect(self.scale2_scanned_slot)
                 self.scale2.connected_signal.disconnect(self.scale2_connected_slot)
@@ -456,7 +538,12 @@ class ScaleManager(QObject):
     @pyqtSlot(int,str,str)
     def set_scale2_slot(self, model:int, ident:str, name:str) -> None:
         if self.scale2 is not None:
-            if self.scale2.is_assigned(): # scale in use
+            if (self.scale2.is_assigned() or # scale in use or
+                # scale connected and model/ident/name match
+                (self.scale2.is_connected() and
+                 self.scale2.get_model() == model and
+                 self.scale2.get_ident() == ident and
+                 self.scale2.get_name() == name)):
                 return
             self.reset_scale2()
         self.scale2= self._get_scale(model, ident, name)
@@ -481,21 +568,42 @@ class ScaleManager(QObject):
 
     @pyqtSlot(bool)
     def connect_scale2_slot(self, device_logging:bool) -> None:
-        if self.scale2 is not None:
+        self._logging = device_logging
+        if self.scale2 is not None and not self.scale2.is_connected():
             self.scale2.connect_scale(device_logging)
 
     @pyqtSlot()
     def disconnect_scale2_slot(self) -> None:
-        if self.scale2 is not None and not self.scale2.is_assigned():
-            self.scale2.signal_user(STATE_ACTION.DISCONNECTED)
-            libtime.sleep(0.2) # wait a moment to have the disconnect signal being sent to the user
-            self.scale2.disconnect_scale()
+        if (self.scale2 is not None and not self.scale2.is_assigned() and
+                self.receivers(self.scale2_weight_changed_signal) < 1):
+            self._disconnect_scale(self.scale2)
 
     @pyqtSlot()
     def tare_scale2_slot(self) -> None:
         if self.scale2 is not None:
             self.scale2.tare_scale()
             self.scale2.signal_user(STATE_ACTION.TARE)
+
+    @pyqtSlot(int)
+    def signal_user_scale2_slot(self, action:STATE_ACTION) -> None:
+        if self.scale2 is not None:
+            self.scale2.signal_user(action)
+
+    @pyqtSlot()
+    def reserve_scale2_slot(self) -> None:
+        if self.scale2 is not None:
+            self.scale2.enable_streaming()
+            self.scale2.set_assigned(True)
+            self.update_availability()
+            _log.debug('scale2 reserved')
+
+    @pyqtSlot()
+    def release_scale2_slot(self) -> None:
+        if self.scale2 is not None:
+            self.scale2.disable_streaming()
+            self.scale2.set_assigned(False)
+            self.update_availability()
+            _log.debug('scale2 released')
 
     ## TILAU ##
     @pyqtSlot(bool)
@@ -507,25 +615,6 @@ class ScaleManager(QObject):
             else:
                 self.scale2.signal_user(STATE_ACTION.TIMER_OFF)
 
-    @pyqtSlot(int)
-    def signal_user_scale2_slot(self, action:STATE_ACTION) -> None:
-        if self.scale2 is not None:
-            self.scale2.signal_user(action)
-
-    @pyqtSlot()
-    def reserve_scale2_slot(self) -> None:
-        if self.scale2 is not None:
-            self.scale2.set_assigned(True)
-            self.update_availability()
-            _log.debug('scale2 reserved')
-
-    @pyqtSlot()
-    def release_scale2_slot(self) -> None:
-        if self.scale2 is not None:
-            self.scale2.set_assigned(False)
-            self.update_availability()
-            _log.debug('scale2 released')
-
 
     @pyqtSlot(list)
     def scale2_scanned_slot(self, scales:ScaleSpecs) -> None:
@@ -534,27 +623,49 @@ class ScaleManager(QObject):
     @pyqtSlot()
     def scale2_connected_slot(self) -> None:
         self.scale2_connected_signal.emit()
+        QTimer.singleShot(350, self.scale2_signal_connected)
+
+    @pyqtSlot()
+    def scale2_signal_connected(self) -> None:
         if self.scale2 is not None:
             self.scale2.signal_user(STATE_ACTION.CONNECTED)
 
     @pyqtSlot()
     def scale2_disconnected_slot(self) -> None:
+        self.scale2_stable_reading_timer.stop() # prevent weight changes being send after disconnect
         self.scale2_disconnected_signal.emit()
 
     ## try to catch a last non-stable weight change and send as stable state
     # weight in g
     @pyqtSlot(float, bool)
     def scale2_weight_changed_slot(self, weight:float, stable:bool) -> None:
-        self.scale2_last_weight_sent = int(round(weight))
-        if stable:
+        if self._logging:
+            _log.debug('scale2_weight_changed_slot(%s,%s)',weight,stable)
+        toa:float = libtime.time()
+        prev_last_weight_sent = self.scale2_last_weight_sent
+        self.scale2_last_weight_sent = round(weight)
+        if (stable and
+                # stable weights received short after a previous one are sent as unstable first (later captchered by the timer)
+                (toa - self.scale2_last_stable_weight_received) > MIN_TIME_BETWEEN_STABLE_WEIGHTS and
+                (prev_last_weight_sent is None or abs(self.scale2_last_weight_sent - prev_last_weight_sent) < MIN_DELTA_BETWEEN_STABLE_WEIGHTS)):
+            self.scale2_last_stable_weight_received = toa
+            # we expect at least one unstable weight after a stable one (which in turn is turned into a stable reading by the scale2_stable_reading_timer!)
             self.scale2_last_weight = None # prevent earlier non-stable weights to be send delayed as stable via the timer
+            self.scale2_stable_reading_timer.stop() # we stop a pending timer not to have it deliver outdated data as stable
             # weights marked as stable by the scale are immediately forwarded as stable weights
+            self.scale2_weight_changed_signal.emit(self.scale2_last_weight_sent)
             self.scale2_stable_weight_changed_signal.emit(self.scale2_last_weight_sent)
+            if self._logging:
+                _log.debug('stable2 emit: %s',self.scale2_last_weight_sent)
         else:
+            if self._logging:
+                _log.debug('STABLE->UNSTABLE2 %s, %s', stable and (toa - self.scale2_last_stable_weight_received) > MIN_TIME_BETWEEN_STABLE_WEIGHTS, stable and (prev_last_weight_sent is None or abs(self.scale2_last_weight_sent - prev_last_weight_sent) < MIN_DELTA_BETWEEN_STABLE_WEIGHTS))
             self.scale2_last_weight = self.scale2_last_weight_sent
             # fed into our stable weight timer system to ensure that the "last one" is also emitted as stable weight
             self.scale2_stable_reading_timer.start(STABLE_TIMER_PERIOD) # start/restart stable weight timer
             # non-stable weights are immediately forwarded as regular weight updates to keep the display fluid
+            if self._logging:
+                _log.debug('unstable2 emit: %s',self.scale2_last_weight_sent)
             self.scale2_weight_changed_signal.emit(self.scale2_last_weight_sent)
 
     def scale2_tare_pressed_slot(self) -> None:
@@ -563,6 +674,9 @@ class ScaleManager(QObject):
     @pyqtSlot()
     def scale2_stable_reading_timer_slot(self) -> None:
         if self.scale2_last_weight is not None:
+            if self._logging:
+                _log.debug('artificial stable2 emit: %s',self.scale2_last_weight)
+            self.scale2_weight_changed_signal.emit(self.scale2_last_weight)
             self.scale2_stable_weight_changed_signal.emit(self.scale2_last_weight)
 
     def get_scale2_last_weight(self) -> int|None:
@@ -574,22 +688,29 @@ class ScaleManager(QObject):
     def is_available(self) -> bool:
         return self.available
 
-    # if force is True, available/unavailable signals are also emitted if availability did not change to inform new/updated components
-    def update_availability(self, force:bool = False) -> None:
-        availability = ((self.scale1 is not None and self.scale1.is_connected() and not self.scale1.is_assigned()) or
-            (self.scale2 is not None and self.scale2.is_connected() and not self.scale2.is_assigned()))
-        if (force or self.available) and  not availability:
-            self.unavailable_signal.emit()
-        elif (force or not self.available) and availability:
+    def scale1_available(self) -> bool:
+        return self.scale1 is not None and self.scale1.is_connected() and not self.scale1.is_assigned()
+
+    def scale2_available(self) -> bool:
+        return self.scale2 is not None and self.scale2.is_connected() and not self.scale2.is_assigned()
+
+
+####
+
+
+    def update_availability(self) -> None:
+        self.available = self.scale1_available() or self.scale2_available()
+        if self.available:
             self.available_signal.emit()
-        self.available = availability
+        if not self.scale1_available() or not self.scale2_available():
+            self.unavailable_signal.emit()
 
     @pyqtSlot()
     def update_availability_slot(self) -> None:
         self.update_availability()
 
     @staticmethod
-    def disconnect_scale(scale:Scale) -> None:
+    def _disconnect_scale(scale:Scale) -> None:
         if scale.is_connected():
             scale.signal_user(STATE_ACTION.DISCONNECTED)
             libtime.sleep(0.2) # wait a moment to have the disconnect signal being sent to the user
@@ -597,13 +718,12 @@ class ScaleManager(QObject):
 
     @pyqtSlot()
     def disconnect_all_slot(self) -> None:
-        _log.debug('ScaleManager disconnect all')
         for scale in (self.scale1, self.scale2):
             if scale is not None:
-                self.disconnect_scale(scale)
+                self._disconnect_scale(scale)
 
     @pyqtSlot(bool)
     def connect_all_slot(self, device_logging:bool) -> None:
         self.connect_scale1_slot(device_logging)
-        libtime.sleep(0.1)
+        libtime.sleep(0.2)
         self.connect_scale2_slot(device_logging)

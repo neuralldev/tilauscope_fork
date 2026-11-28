@@ -114,7 +114,7 @@
 /* Roasts tab */
 .tabs{display:flex;background:var(--overlay);border-radius:12px;padding:3px;gap:3px;margin-left:6px}.tabs button{height:36px;padding:0 16px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sub)}.tabs button.on{background:var(--blue);color:var(--bg)}
 #roastsview{flex:1;min-height:0;display:flex;gap:16px;padding:0 16px 16px}
-.rl{width:440px;flex:none;display:flex;flex-direction:column;gap:8px;min-height:0}
+.rl{width:clamp(360px,32vw,440px);flex:none;display:flex;flex-direction:column;gap:8px;min-height:0}
 .rbar{display:flex;align-items:center;gap:10px;min-height:0}.rbar:empty{display:none}
 .filt{height:36px;padding:0 12px;border-radius:18px;background:rgba(137,180,250,.14);color:var(--blue);font-size:14px;font-weight:600}
 #rsorts{display:flex;background:var(--overlay);border-radius:12px;padding:3px;gap:3px;align-self:flex-start}#rsorts button{height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:600;color:var(--sub)}#rsorts button.on{background:var(--blue);color:var(--bg)}
@@ -141,10 +141,11 @@
 .mini{flex:1;min-height:0;background:var(--bg);border-radius:14px;overflow:hidden}
 .tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;flex:none}
 .tile{background:var(--bg);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0}
-.tile .cap{font-size:13px;color:var(--sub)}.tile .val{font-family:ui-monospace,monospace;font-size:22px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
-.tile .sub{font-size:13px;color:var(--sub)}.tile .val i{width:12px;height:12px;border-radius:6px;flex:none}.tile .val i.ring{background:transparent!important;border:2px solid}.tile.nr .val{color:var(--muted)}
+.tile .cap{font-size:12px;color:var(--sub)}.tile .val{font-family:ui-monospace,monospace;font-size:19px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.tile .sub{font-size:12px;color:var(--sub)}.tile .val i{width:12px;height:12px;border-radius:6px;flex:none}.tile .val i.ring{background:transparent!important;border:2px solid}.tile.nr .val{color:var(--muted)}
 #rdetail .tile{background:var(--bg)}#rview .tile{background:var(--surface)}
-.tile.etap{text-align:left;border:1px solid var(--overlay);color:inherit;font-family:inherit}.tile.etap .cap{display:flex;align-items:center;justify-content:space-between;color:var(--sub)}
+.tile.etap,.tile.mtap{text-align:left;border:1px solid var(--overlay);color:inherit;font-family:inherit}.tile.etap .cap,.tile.mtap .cap{display:flex;align-items:center;justify-content:space-between;color:var(--sub)}
+.tile.etap,.tile.mtap{position:relative}.tile.etap .cap svg,.tile.mtap .cap svg{position:absolute;top:8px;right:8px}
 .tile.etap .val small{font-size:14px;font-weight:400;color:var(--sub);margin-left:-2px}
 .acts{display:flex;gap:10px;flex:none}.acts .btn{height:44px}
 .rsim{margin-left:auto;width:44px;height:44px;flex:none;border-radius:22px;border:2px solid var(--accent);color:var(--accent);background:rgba(203,166,247,.12);display:flex;align-items:center;justify-content:center}
@@ -214,6 +215,7 @@
 </head>
 <body>
 <script src="common.js"></script>
+<script src="measure-sheets.js"></script>
 <script src="device-cards.js"></script>
 <script src="cave-edit.js"></script>
 <script src="flavour-dial.js"></script>
@@ -286,6 +288,7 @@ window.onSnapshot = function (method, d) {
     return;
   }
   if (method === "get_roast_energy") { if (d && d.reply) EnergySheet.show(d.reply); else toast("This roast has no energy"); return; }
+  if (method === "edit_roast") { if (d && d.reply) { RoastsTab.roast(d.reply); send("get_roasts"); } else toast("This roast could not be changed"); return; }
   if (method === "save_tasting") { if (d && d.reply) { RoastsTab.roast(d.reply); send("get_roasts"); } else toast("The tasting could not be saved"); return; }
   if (method === "library_page" || method === "library_get" || method === "library_card" || method === "library_publish" || method === "library_send" || method === "library_withdraw") { LibraryTab.reply(method, d && d.reply); return; }
   if (method === "library_publish_check") { LibraryTab.publishSheet(d && d.reply); return; }
@@ -304,7 +307,7 @@ window.onSnapshot = function (method, d) {
     toast("Coffee imported: " + name);
     return;
   }
-  if (method === "get_setup") { if (d && d.reply) { CaveEdit.setDevices(d.reply.config.devices); LibraryTab.setColours(d.reply.catalogue.colours); RoastsTab.setPrinter(d.reply.config.devices.printer); } return; }
+  if (method === "get_setup") { if (d && d.reply) { CaveEdit.setDevices(d.reply.config.devices); LibraryTab.setColours(d.reply.catalogue.colours); RoastsTab.setPrinter(d.reply.config.devices.printer); RoastsTab.setDevices(d.reply.config.devices); } return; }
   if (method === "roast_label") { RoastsTab.label(d && d.reply); return; }
   if (method === "roast_card") { RoastsTab.card(d && d.reply); return; }
   // The roast screen opens on the replay; refused while a roast is on screen

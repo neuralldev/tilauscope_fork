@@ -173,15 +173,14 @@ def reset_labels() -> None:
 
 
 def _get_tilaupid_text(qmc: Any, pid, et: float, bt: float) -> str:
-    """## TILAU ## Preheat monitor drawn on the Artisan canvas while TilauPID ramps
-    the roaster to its target SV (recording started, CHARGE not marked yet). Reads
-    only qmc + the PID object — never the TilauScope window, which may well be closed.
+    """The preheat card floating over the curve while TilauPID ramps the roaster to its
+    target SV (recording started, CHARGE not marked yet). Reads only qmc + the PID object.
     All values stay in the current Artisan unit; sv_native() is the single conversion.
 
-    Three fixed zones (header, READY IN hero + climb gauge, EXPERIENCE learning badge).
-    The EXPERIENCE band and the two capability lines are pre-built HTML cached on the PID
-    object at TilauPreheatPID.start() (pid.learning_badge_html) — this method only reads
-    that attribute and pid.ramp_start_temp; no QSettings/corpus/file I/O on this hot path.
+    Two zones: the header, then the READY IN hero with the climb gauge. The EXPERIENCE
+    learning badge is not repeated here: the preheat panel beside the curve already shows
+    it (wiki/OwnCanvas-Spec.md §14.7). Reads pid.ramp_start_temp for the gauge; no
+    QSettings/corpus/file I/O on this hot path.
     Must never raise: any missing/malformed PID attribute falls back to a minimal render."""
     L = _labels()
     mode = qmc.mode

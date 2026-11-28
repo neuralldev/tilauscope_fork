@@ -1,25 +1,33 @@
 #
 # stock.py
 #
-# Copyright (c) 2023, Paul Holleis, Marko Luther
-# All rights reserved.
-#
-#
 # ABOUT
-# This module connects to the artisan.plus inventory management service
-
-# LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
+# This module connects to the artisan platform
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
+# LICENSE
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
+# AUTHOR
+# Marko Luther
+
+__lazy_modules__ = { 'json' }
 
 from PyQt6.QtCore import QSemaphore, QObject, QThread, pyqtSlot, pyqtSignal
 from PyQt6.QtWidgets import QApplication
@@ -29,15 +37,16 @@ import json
 import time
 import datetime
 import html
-import requests
-import requests.models
 import logging
 import functools
 
 from artisanlib.util import (decodeLocal, encodeLocal, getDirectory, is_int_list, is_float_list, render_weight,
     weight_units, float2float, convertWeight)
 from plus import config, connection, controller, util
-from typing import Final, TypedDict, TextIO, NotRequired
+from typing import Final, TypedDict, TextIO, NotRequired, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import requests.models # pylint: disable=unused-import
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -297,6 +306,7 @@ def getWorker() -> 'Worker|None':
             worker.startSignal.connect(worker.update_blocking)
             worker.replySignal.connect(util.updateLimits)
             worker.updatedSignal.connect(util.updateSchedule)
+            worker.updatedSignal.connect(util.updateDashboardInventory)
             worker.upToDateSignal.connect(util.updateSchedule)
         return worker
     except Exception as e:  # pylint: disable=broad-except
@@ -466,31 +476,31 @@ def list2blend(blend_list: BlendList|None) -> Blend|None:
 ###################
 # coffee and blend stock access and rendering
 
-unit_translations_singular = {
-    'bag': QApplication.translate('Plus', 'bag'),
-    'box': QApplication.translate('Plus', 'box'),
-    'barrel': QApplication.translate('Plus', 'barrel'),
-}
-unit_translations_plural = {
-    'bag': QApplication.translate('Plus', 'bags'),
-    'box': QApplication.translate('Plus', 'boxes'),
-    'barrel': QApplication.translate('Plus', 'barrels'),
-}
-
 
 def renderAmount(amount:float, default_unit:CoffeeUnit|None=None, target_unit_idx:int=0) -> str:
     res = ''
     # first try to convert to default_unit (like "bags")
     try:
         if default_unit is not None:
-            unit_size = int(default_unit['size'])
+
+            unit_translations_singular = {
+                'bag': QApplication.translate('Plus', 'bag'),
+                'box': QApplication.translate('Plus', 'box'),
+                'barrel': QApplication.translate('Plus', 'barrel'),
+            }
+            unit_translations_plural = {
+                'bag': QApplication.translate('Plus', 'bags'),
+                'box': QApplication.translate('Plus', 'boxes'),
+                'barrel': QApplication.translate('Plus', 'barrels'),
+            }
+            unit_size = default_unit['size']
             if amount > unit_size:
                 a = amount // unit_size
                 if a > 1:
                     u = unit_translations_plural[default_unit['name']]
                 else:
                     u = unit_translations_singular[default_unit['name']]
-                res = f'{int(round(a))}{u}'
+                res = f'{round(a)} {u}'
     except Exception:  # pylint: disable=broad-except
         pass
     # if we could not convert to default_unit type,
@@ -665,11 +675,11 @@ def coffee2beans(c:Coffee) -> str:
         picked = None
         landed = None
         try:
-            picked = int(cy['picked'][0]) # pyright:ignore[reportTypedDictNotRequiredAccess]
+            picked = cy['picked'][0] # pyright:ignore[reportTypedDictNotRequiredAccess]
         except Exception:  # pylint: disable=broad-except
             pass
         try:
-            landed = int(cy['landed'][0]) # pyright:ignore[reportTypedDictNotRequiredAccess]
+            landed = cy['landed'][0] # pyright:ignore[reportTypedDictNotRequiredAccess]
         except Exception:  # pylint: disable=broad-except
             pass
         if picked is not None and not bool(landed):
@@ -689,8 +699,8 @@ def coffee2beans(c:Coffee) -> str:
         return f'{label}{bean}, {year}'
     if coffee_label_normal_order:
         if year == '':
-            return f'{origin}, {label}{bean}'
-        return f'{origin}, {label}{bean}, {year}'
+            return f'{origin} {label}{bean}'
+        return f'{origin} {label}{bean}, {year}'
     if year == '':
         return f'{label}{bean}, {origin}'
     return f'{label}{bean}, {origin} {year}'
@@ -724,7 +734,7 @@ def coffeeLabel(c:Coffee) -> str:
     if origin == '':
         return c.get('label', '')
     if coffee_label_normal_order:
-        return f"{origin}, {c.get('label', '')}"
+        return f"{origin} {c.get('label', '')}"
     return f"{c.get('label', '')}, {origin}"
 
 # returns a dict with all coffees with stock associated as string of the form
@@ -1031,7 +1041,7 @@ def getBlendBlendDict(blend:BlendStructure, weight:float|None = None) -> Blend:
             pass
         try:
             if is_float_list(densities):
-                res['density'] = int(round(sum(densities)))
+                res['density'] = round(sum(densities))
             else:
                 del res['density']
         except Exception:  # pylint: disable=broad-except
@@ -1157,7 +1167,7 @@ def blend2beans(blend:BlendStructure, weight_unit_idx:int, weightIn:float=0) -> 
             w = ''
             if weightIn:
                 w = f"{render_weight(i['ratio'] * weightIn,weight_unit_idx,weight_unit_idx,smart_unit_upgrade=False)} " # @UndefinedVariable
-            ratio = f"{int(round(i['ratio'] * 100))}% "
+            ratio = f"{round(i['ratio'] * 100)}% "
             res.append(f'{ratio}{w}{c}')
     except Exception as e:  # pylint: disable=broad-except
         _log.exception(e)
@@ -1284,7 +1294,7 @@ def getBlends(weight_unit_idx:int, store:str|None, customBlend:Blend|None, acqui
                                 except Exception:
                                     pass
                                 try:
-                                    d = int(cd['density']) # pyright:ignore[reportTypedDictNotRequiredAccess]
+                                    d = cd['density'] # pyright:ignore[reportTypedDictNotRequiredAccess]
                                     if d > 0:
                                         coffee_density[coffee] = d
                                         i['density'] = d
@@ -1292,9 +1302,7 @@ def getBlends(weight_unit_idx:int, store:str|None, customBlend:Blend|None, acqui
                                 except Exception:
                                     pass
                                 try:
-                                    screen_size_min = int(
-                                        cd['screen_size']['min'] # pyright:ignore[reportTypedDictNotRequiredAccess]
-                                    )
+                                    screen_size_min = cd['screen_size']['min'] # pyright:ignore[reportTypedDictNotRequiredAccess]
                                     if screen_size_min > 0:
                                         coffee_screen_min[
                                             coffee
@@ -1304,9 +1312,7 @@ def getBlends(weight_unit_idx:int, store:str|None, customBlend:Blend|None, acqui
                                 except Exception:
                                     pass
                                 try:
-                                    screen_size_max = int(
-                                        cd['screen_size']['max'] # pyright:ignore[reportTypedDictNotRequiredAccess]
-                                    )
+                                    screen_size_max = cd['screen_size']['max'] # pyright:ignore[reportTypedDictNotRequiredAccess]
                                     if screen_size_max > 0:
                                         coffee_screen_max[
                                             coffee
@@ -1353,7 +1359,7 @@ def getBlends(weight_unit_idx:int, store:str|None, customBlend:Blend|None, acqui
                                     except Exception:
                                         pass
                                     try:
-                                        d = int(cd['density']) # pyright:ignore[reportTypedDictNotRequiredAccess]
+                                        d = cd['density'] # pyright:ignore[reportTypedDictNotRequiredAccess]
                                         if d > 0:
                                             coffee_density[
                                                 replaceCoffee
@@ -1362,9 +1368,7 @@ def getBlends(weight_unit_idx:int, store:str|None, customBlend:Blend|None, acqui
                                     except Exception:
                                         pass
                                     try:
-                                        screen_size_min = int(
-                                            cd['screen_size']['min'] # pyright:ignore[reportTypedDictNotRequiredAccess]
-                                        )
+                                        screen_size_min = cd['screen_size']['min'] # pyright:ignore[reportTypedDictNotRequiredAccess]
                                         if screen_size_min > 0:
                                             coffee_screen_min[
                                                 replaceCoffee
@@ -1373,9 +1377,7 @@ def getBlends(weight_unit_idx:int, store:str|None, customBlend:Blend|None, acqui
                                     except Exception:
                                         pass
                                     try:
-                                        screen_size_max = int(
-                                            cd['screen_size']['max'] # pyright:ignore[reportTypedDictNotRequiredAccess]
-                                        )
+                                        screen_size_max = cd['screen_size']['max'] # pyright:ignore[reportTypedDictNotRequiredAccess]
                                         if screen_size_max > 0:
                                             coffee_screen_max[
                                                 replaceCoffee
@@ -1450,9 +1452,7 @@ def getBlends(weight_unit_idx:int, store:str|None, customBlend:Blend|None, acqui
                             # only if the density of all components is known,
                             # we can estimate the density of this blend
                             if is_float_list(densities): # component densities are floats as they are ints multiplied by ratio!
-                                new_blend['density'] = int(
-                                    round(sum(densities))
-                                )  # @UndefinedVariable
+                                new_blend['density'] = round(sum(densities))  # @UndefinedVariable
                                 if not replacementBlends:
                                     # if we are processing the original blend,
                                     # we store the computed moisture/density/

@@ -23,7 +23,7 @@ import math
 import time
 import uuid
 from collections import deque
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
 from dataclasses import dataclass
 
 from PyQt6.QtWidgets import (
@@ -6348,7 +6348,7 @@ class RoastAssistantPanel(QWidget):
     # le même chemin que l'humain (_apply_slider_value).
 
     def _ap_watch_idxs(self) -> tuple[int, ...]:
-        return self._ap.watch_ids()
+        return cast('tuple[int, ...]', self._ap.watch_ids())   # the desktop's lever ids are slider indexes
 
     def _ap_max_burner(self) -> float:
         """Plafond brûleur déclaré par le torréfacteur (roasters.json), 100 sans plafond."""
@@ -6498,7 +6498,7 @@ class RoastAssistantPanel(QWidget):
         self._ap.arm(_pk)   # feedforward immédiat sur la phase courante (armement en cours de roast)
 
     def _ap_plan_levers(self, phase_key: str) -> list[tuple[int, float]]:
-        return self._ap.plan_levers(phase_key)
+        return cast('list[tuple[int, float]]', self._ap.plan_levers(phase_key))
 
     @pyqtSlot()
     def _ap_tile_tapped(self) -> None:

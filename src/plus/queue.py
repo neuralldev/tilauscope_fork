@@ -1,26 +1,33 @@
 #
 # queue.py
 #
-# Copyright (c) 2023, Paul Holleis, Marko Luther
-# All rights reserved.
-#
-#
 # ABOUT
-# This module connects to the artisan.plus inventory management service
-
-# LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later versison. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
+# This module connects to the artisan platform
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
+# LICENSE
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
+# AUTHOR
+# Marko Luther
 
+__lazy_modules__ = { 'threading', 'json', 'json.decoder', 'plus.roast' }
 
 from PyQt6.QtCore import QCoreApplication, QObject, QThread, pyqtSlot, pyqtSignal, QSemaphore
 from PyQt6.QtWidgets import QApplication
@@ -30,7 +37,6 @@ from plus import config, util, roast, connection, sync, controller
 import threading
 import time
 import datetime
-import requests.models
 import json
 import json.decoder
 import logging
@@ -38,6 +44,7 @@ from typing import Final, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import persistqueue # pylint: disable=unused-import
+    import requests.models # pylint: disable=unused-import
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -46,7 +53,7 @@ queue_path = getDirectory(config.outbox_cache, share=False)
 
 app = QCoreApplication.instance()
 
-queue:'persistqueue.SQLiteQueue|None' = None # type:ignore[no-any-unimported,unused-ignore] # holdes the persistqueue.SQLiteQueue, initialized by start()
+queue:'persistqueue.SQLiteQueue|None' = None # holdes the persistqueue.SQLiteQueue, initialized by start()
 
 # queue entries are dictionaries with entries
 #   url   : the URL to send the request to
@@ -109,10 +116,10 @@ class Worker(QObject): # pyright: ignore [reportGeneralTypeIssues]
                         iters = 0
                     if 'data' in item and 'modified_at' in item['data']:
                         item_age = time.time()-util.ISO86012epoch(item['data']['modified_at'])
-                        if (config.queue_discard_after > 0 and item_age > config.queue_discard_after):
+                        if 0 < config.queue_discard_after < item_age:
                             # old item scheduled to be removed from the queue
                             iters = 0
-                            _log.debug('-> expired item %s removed from queue (%s min)',item['data']['roast_id'],int(round(item_age/60)))
+                            _log.debug('-> expired item %s removed from queue (%s min)',item['data']['roast_id'],round(item_age/60))
                         else:
                             iters = config.queue_retries + 1
                     while iters > 0:
@@ -140,8 +147,8 @@ class Worker(QObject): # pyright: ignore [reportGeneralTypeIssues]
                                     aw.sendmessage(
                                         QApplication.translate(
                                             'Plus',
-                                            'Roast successfully uploaded to {}'
-                                        ).format(config.app_name)
+                                            'Roast successfully uploaded to the artisan platform'
+                                        )
                                     )  # @UndefinedVariable
                                 # successfully transmitted, we add/update the
                                 # roasts UUID sync-cache
@@ -452,8 +459,8 @@ def addRoast(roast_record:dict[str, Any]|None = None, unsynced:bool=False) -> No
                 aw.sendmessage(
                     QApplication.translate(
                         'Plus',
-                        'Queuing roast for upload to {}'
-                    ).format(config.app_name)
+                        'Queuing roast for upload to the artisan platform'
+                    )
                 )  # @UndefinedVariable
                 rr: dict[str, Any]
                 if roast_record is not None:

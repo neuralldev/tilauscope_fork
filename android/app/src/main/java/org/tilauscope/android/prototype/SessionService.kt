@@ -460,7 +460,7 @@ class SessionService : Service() {
         const val CONFIG_FILE = "config.json"
         const val CAVE_FOLDER = "beancave"
         private val REPLY_METHODS = setOf("get_setup", "save_setup", "save_mqtt", "classify_scan",
-    "get_cave", "cave_preview", "cave_import", "cave_start_empty", "get_coffees", "save_coffee", "get_plan", "set_plan_choice", "save_tasting",
+    "get_cave", "cave_preview", "cave_import", "cave_start_empty", "get_coffees", "save_coffee", "get_plan", "set_plan_choice", "save_tasting", "edit_roast",
     "get_roasts", "get_roast", "import_roasts", "roasts_preview", "roast_label", "roast_card", "get_alarms", "set_alarm_list", "import_alarms",
     "get_alarm_list", "edit_alarm", "add_alarm", "delete_alarm", "undo_alarm", "move_alarm", "new_alarm_list", "delete_alarm_list",
     "simulate", "set_auto_mark", "set_follow", "mqtt_check", "get_energy", "get_roast_energy", "delete_roast",

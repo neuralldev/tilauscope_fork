@@ -34,20 +34,20 @@ if TYPE_CHECKING:
     from artisanlib.dialogs import HelpDlg # noqa: F401 # pylint: disable=unused-import
     from PyQt6.QtGui import QCloseEvent # pylint: disable=unused-import
 
-from artisanlib.util import (deltaLabelBigPrefix, deltaLabelPrefix, deltaLabelUTF8,
-                             stringtoseconds, stringfromseconds, toFloat, float2float)
-from artisanlib.dialogs import ArtisanDialog
-from artisanlib.widgets import MyQDoubleSpinBox
-from help import symbolic_help # pyright:ignore [attr-defined] # pylint: disable=no-name-in-module
-from artisanlib.canvas import Interp1dKind
-
-from PyQt6.QtCore import (Qt, pyqtSlot, QSettings, QRegularExpression, QTimer)
-from PyQt6.QtGui import (QColor, QIntValidator, QRegularExpressionValidator, QPixmap)
+from PyQt6.QtCore import (Qt, pyqtSlot, QSettings, QRegularExpression, QTimer, QSize)
+from PyQt6.QtGui import (QColor, QIntValidator, QRegularExpressionValidator, QPixmap, QIcon, QPalette)
 from PyQt6.QtWidgets import (QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-                             QPushButton, QSpinBox, QTabWidget, QComboBox, QDialogButtonBox, QGridLayout,
-                             QGroupBox, QLayout, QMessageBox, QRadioButton, QStyleFactory, QHeaderView,
+                             QPushButton, QSpinBox, QComboBox, QDialogButtonBox, QGridLayout,
+                             QGroupBox, QLayout, QRadioButton, QStyleFactory, QHeaderView,
                              QTableWidget, QTableWidgetItem, QFrame, QButtonGroup)
 
+from help import symbolic_help # pyright:ignore [attr-defined] # pylint: disable=no-name-in-module
+from artisanlib.util import (deltaLabelBigPrefix, deltaLabelPrefix, deltaLabelUTF8, getStyleIconPath,
+                             stringtoseconds, stringfromseconds, toFloat, float2float)
+from artisanlib.dialogs import ArtisanDialog, artisan_warning
+from artisanlib.widgets import MyQDoubleSpinBox, ArtisanMinorPushButton, ArtisanQTabWidget
+from artisanlib.styles import horizontal_header_style, vertical_header_style, line_edit_style, spin_box_style, artisan_minor_push_button_style, table_style
+from artisanlib.canvas import Interp1dKind
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -67,13 +67,24 @@ class equDataDlg(ArtisanDialog):
 
         #DATA Table
         self.datatable = QTableWidget()
+        self.datatable.setStyleSheet(table_style(self.aw.app.darkmode))
+        self.datatable.setShowGrid(False)
         self.datatable.setTabKeyNavigation(True)
         header = self.datatable.horizontalHeader()
         if header is not None:
             header.setStretchLastSection(True)
+            header.setStyleSheet(horizontal_header_style(self.aw.app.darkmode))
+        vertical_header = self.datatable.verticalHeader()
+        if vertical_header is not None:
+            vertical_header.setStyleSheet(vertical_header_style(self.aw.app.darkmode))
+            vertical_header.setDefaultAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignVCenter)
+
         self.datatable.setMinimumSize(self.datatable.minimumSizeHint())
 
-        self.copydataTableButton = QPushButton(QApplication.translate('Button', 'Copy Table'))
+        self.copydataTableButton = ArtisanMinorPushButton(QApplication.translate('Button', 'Copy table'),
+            'copy-stroke-rounded-white.svg',
+            'copy-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         self.copydataTableButton.setToolTip(QApplication.translate('Tooltip','Copy table to clipboard, OPTION or ALT click for tabular text'))
         self.copydataTableButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.copydataTableButton.setMaximumSize(self.copydataTableButton.sizeHint())
@@ -83,6 +94,7 @@ class equDataDlg(ArtisanDialog):
         self.dataprecision = ['%.1f','%.2f','%.3f','%.4f','%.5f','%.6f']
         self.dataprecisionval = 1
         self.precisionSpinBox = QSpinBox()
+        self.precisionSpinBox.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.precisionSpinBox.setRange(1,6)
         self.precisionSpinBox.setSingleStep(1)
         self.precisionSpinBox.setValue(int(self.dataprecisionval))
@@ -108,7 +120,7 @@ class equDataDlg(ArtisanDialog):
         self.setLayout(dataplotterLayout)
 
     def changeprecision(self) -> None:
-        self.dataprecisionval = int(self.precisionSpinBox.value())-1
+        self.dataprecisionval = self.precisionSpinBox.value()-1
         self.createDataTable()
 
     def createDataTable(self) -> None:
@@ -348,12 +360,14 @@ class CurvesDlg(ArtisanDialog):
         filterlabel.setToolTip(QApplication.translate('Tooltip','RoR linear decay average filter size'))
         #DeltaFilter holds the number of pads in filter
         self.DeltaETfilter = QSpinBox()
+        self.DeltaETfilter.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.DeltaETfilter.setSingleStep(1)
         self.DeltaETfilter.setRange(0,40)
         self.DeltaETfilter.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.DeltaETfilter.setValue(int(round((self.aw.qmc.deltaETfilter - 1)/2)))
+        self.DeltaETfilter.setValue(round((self.aw.qmc.deltaETfilter - 1)/2))
         self.DeltaETfilter.valueChanged.connect(self.changeDeltaETfilter)
         self.DeltaBTfilter = QSpinBox()
+        self.DeltaBTfilter.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.DeltaBTfilter.setSingleStep(1)
         self.DeltaBTfilter.setRange(0,40)
         self.DeltaBTfilter.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -375,10 +389,11 @@ class CurvesDlg(ArtisanDialog):
         curvefilterlabel.setToolTip(QApplication.translate('Tooltip','Linear decay average filter, applied if not recording. Resulting signal is used for RoR computation.'))
         #Filter holds the number of pads in filter
         self.Filter = QSpinBox()
+        self.Filter.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.Filter.setSingleStep(1)
         self.Filter.setRange(0,5)
         self.Filter.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.Filter.setValue(int(round((self.aw.qmc.curvefilter - 1)/2)))
+        self.Filter.setValue(round((self.aw.qmc.curvefilter - 1)/2))
         self.Filter.valueChanged.connect(self.changeFilter)
         #filterspikes
         self.FilterSpikes = QCheckBox(QApplication.translate('CheckBox', 'Smooth Spikes'))
@@ -393,6 +408,7 @@ class CurvesDlg(ArtisanDialog):
         self.DropDuplicates.stateChanged.connect(self.changeDuplicatesFilter)
         self.DropDuplicates.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.DropDuplicatesLimit = MyQDoubleSpinBox()
+        self.DropDuplicatesLimit.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.DropDuplicatesLimit.setDecimals(2)
         self.DropDuplicatesLimit.setSingleStep(0.1)
         self.DropDuplicatesLimit.setRange(0.,1.)
@@ -439,11 +455,13 @@ class CurvesDlg(ArtisanDialog):
         minlabel = QLabel(QApplication.translate('Label', 'min','abbrev of minimum'))
         maxlabel = QLabel(QApplication.translate('Label', 'max'))
         self.minLimit = QSpinBox()
+        self.minLimit.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.minLimit.setRange(0,1000)    #(min,max)
         self.minLimit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.minLimit.setMinimumWidth(80)
         self.minLimit.setValue(int(self.aw.qmc.filterDropOut_tmin))
         self.maxLimit = QSpinBox()
+        self.maxLimit.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.maxLimit.setRange(0,1000)
         self.maxLimit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.maxLimit.setMinimumWidth(80)
@@ -581,8 +599,10 @@ class CurvesDlg(ArtisanDialog):
 
         labelETDeltaFormula = QLabel(deltaLabelUTF8 + QApplication.translate('Label', 'ET Y(x)'))
         labelBTDeltaFormula = QLabel(deltaLabelUTF8 + QApplication.translate('Label', 'BT Y(x)'))
-        self.DeltaETfunctionedit = QLineEdit(str(self.aw.qmc.DeltaETfunction))
-        self.DeltaBTfunctionedit = QLineEdit(str(self.aw.qmc.DeltaBTfunction))
+        self.DeltaETfunctionedit = QLineEdit(self.aw.qmc.DeltaETfunction)
+        self.DeltaETfunctionedit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
+        self.DeltaBTfunctionedit = QLineEdit(self.aw.qmc.DeltaBTfunction)
+        self.DeltaBTfunctionedit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
 
         rorSymbolicFormulaLabelsLayout = QHBoxLayout()
         rorSymbolicFormulaLabelsLayout.addWidget(labelETDeltaFormula)
@@ -655,15 +675,17 @@ class CurvesDlg(ArtisanDialog):
         rorminlabel = QLabel(QApplication.translate('Label', 'min','abbrev of minimum'))
         rormaxlabel = QLabel(QApplication.translate('Label', 'max'))
         self.rorminLimit = QSpinBox()
+        self.rorminLimit.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.rorminLimit.setRange(-999,999)    #(min,max)
         self.rorminLimit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.rorminLimit.setMinimumWidth(80)
-        self.rorminLimit.setValue(int(self.aw.qmc.RoRlimitm))
+        self.rorminLimit.setValue(self.aw.qmc.RoRlimitm)
         self.rormaxLimit = QSpinBox()
+        self.rormaxLimit.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.rormaxLimit.setRange(-999,999)
         self.rormaxLimit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.rormaxLimit.setMinimumWidth(80)
-        self.rormaxLimit.setValue(int(self.aw.qmc.RoRlimit))
+        self.rormaxLimit.setValue(self.aw.qmc.RoRlimit)
         if self.aw.qmc.mode == 'F':
             self.rorminLimit.setSuffix(' F/min')
             self.rormaxLimit.setSuffix(' F/min')
@@ -702,10 +724,11 @@ class CurvesDlg(ArtisanDialog):
         # path effects
         effectslabel = QLabel(QApplication.translate('Label', 'Path Effects'))
         self.PathEffects = QSpinBox()
+        self.PathEffects.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.PathEffects.setSingleStep(1)
         self.PathEffects.setRange(0,5)
         self.PathEffects.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.PathEffects.setValue(int(self.aw.qmc.patheffects))
+        self.PathEffects.setValue(self.aw.qmc.patheffects)
         self.PathEffects.editingFinished.connect(self.changePathEffects)
         pathEffectsLayout = QHBoxLayout()
         pathEffectsLayout.addWidget(effectslabel)
@@ -783,6 +806,9 @@ class CurvesDlg(ArtisanDialog):
         self.equedit7 = QLineEdit(self.aw.qmc.plotcurves[6])
         self.equedit8 = QLineEdit(self.aw.qmc.plotcurves[7])
         self.equedit9 = QLineEdit(self.aw.qmc.plotcurves[8])
+        for qedit in [self.equedit1, self.equedit2, self.equedit3, self.equedit4, self.equedit5,
+                self.equedit6, self.equedit7, self.equedit8, self.equedit9]:
+            qedit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.equedit1.setSelection (0,0)
         self.equedit2.setSelection (0,0)
         self.equedit3.setSelection (0,0)
@@ -793,33 +819,61 @@ class CurvesDlg(ArtisanDialog):
         self.equedit8.setSelection (0,0)
         self.equedit9.setSelection (0,0)
 
-        color1Button = QPushButton(QApplication.translate('Button','Color'))
+        color1Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color1Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color1Button.clicked.connect(self.setcurvecolor0)
-        color2Button = QPushButton(QApplication.translate('Button','Color'))
+        color2Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color2Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color2Button.clicked.connect(self.setcurvecolor1)
-        color3Button = QPushButton(QApplication.translate('Button','Color'))
+        color3Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color3Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color3Button.clicked.connect(self.setcurvecolor2)
-        color4Button = QPushButton(QApplication.translate('Button','Color'))
+        color4Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color4Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color4Button.clicked.connect(self.setcurvecolor3)
-        color5Button = QPushButton(QApplication.translate('Button','Color'))
+        color5Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color5Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color5Button.clicked.connect(self.setcurvecolor4)
-        color6Button = QPushButton(QApplication.translate('Button','Color'))
+        color6Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color6Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color6Button.clicked.connect(self.setcurvecolor5)
-        color7Button = QPushButton(QApplication.translate('Button','Color'))
+        color7Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color7Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color7Button.clicked.connect(self.setcurvecolor6)
-        color8Button = QPushButton(QApplication.translate('Button','Color'))
+        color8Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color8Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         color8Button.clicked.connect(self.setcurvecolor7)
-        color9Button = QPushButton(QApplication.translate('Button','Color'))
-        color9Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        color9Button = ArtisanMinorPushButton(QApplication.translate('Button','Color'),
+            'palette-stroke-rounded-white.svg',
+            'palette-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         color9Button.clicked.connect(self.setcurvecolor8)
+        color9Button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
         self.equc1colorlabel = QLabel('  ')
         self.equc2colorlabel = QLabel('  ')
         self.equc3colorlabel = QLabel('  ')
@@ -839,10 +893,16 @@ class CurvesDlg(ArtisanDialog):
         self.equc8colorlabel.setStyleSheet(f"background-color:'{self.aw.qmc.plotcurvecolor[7]}';")
         self.equc9colorlabel.setStyleSheet(f"background-color:'{self.aw.qmc.plotcurvecolor[8]}';")
 
-        equdrawbutton = QPushButton(QApplication.translate('Button','Plot'))
+        equdrawbutton = ArtisanMinorPushButton(QApplication.translate('Button','Plot'),
+            'graph-white.svg',
+            'graph-dark.svg',
+            self.aw.app.darkmode)
         equdrawbutton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         equdrawbutton.clicked.connect(self.plotequ)
-        equshowtablebutton = QPushButton(QApplication.translate('Button','Data'))
+        equshowtablebutton = ArtisanMinorPushButton(QApplication.translate('Button','Data'),
+            'database-stroke-rounded-white.svg',
+            'database-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         equshowtablebutton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         equshowtablebutton.setToolTip(QApplication.translate('Tooltip','Shows data table of plots'))
         equshowtablebutton.clicked.connect(self.equshowtable)
@@ -852,7 +912,10 @@ class CurvesDlg(ArtisanDialog):
         self.equvdevicebutton = QPushButton()
         self.equvdevicebutton.clicked.connect(self.setvdevice)
         self.update_equbuttons()
-        saveImgButton = QPushButton(QApplication.translate('Button','Save Image'))
+        saveImgButton = ArtisanMinorPushButton(QApplication.translate('Button','Save Image'),
+            'save-stroke-rounded-white.svg',
+            'save-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         saveImgButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         saveImgButton.setToolTip(QApplication.translate('Tooltip','Save image using current graph size to a png format'))
         saveImgButton.clicked.connect(self.aw.resizeImg_0_1)
@@ -862,6 +925,9 @@ class CurvesDlg(ArtisanDialog):
             helpcurveButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.setButtonTranslations(helpcurveButton,'Help',QApplication.translate('Button','Help'))
             helpcurveButton.clicked.connect(self.showSymbolicHelp)
+            helpcurveButton.setIconSize(QSize(14,14))
+            helpcurveButton.setStyleSheet(artisan_minor_push_button_style(self.aw.app.darkmode))
+            helpcurveButton.setIcon(QIcon(getStyleIconPath('help-square-stroke-rounded-dark.svg' if self.aw.app.darkmode else 'help-square-stroke-rounded-white.svg')))
         curve1Layout = QGridLayout()
         curve1Layout.setSpacing(5)
         curve1Layout.addWidget(self.equc1label,0,0)
@@ -913,13 +979,15 @@ class CurvesDlg(ArtisanDialog):
         curvebuttonlayout.addStretch()
         curvebuttonlayout.addWidget(equshowtablebutton)
         curvebuttonlayout.addStretch()
-        curvebuttonlayout.addWidget(helpcurveDialogButton)
+        curvebuttonlayout.addWidget(helpcurveButton)
         tab2Layout = QVBoxLayout()
 #        tab2Layout.addWidget(self.equlabel)
         tab2Layout.addWidget(plot1GroupBox)
         tab2Layout.addLayout(curveLayout)
-        tab2Layout.addLayout(curvebuttonlayout)
+        tab2Layout.addSpacing(15)
         tab2Layout.addStretch()
+        tab2Layout.addLayout(curvebuttonlayout)
+        tab2Layout.addSpacing(15)
         ##### TAB 3
         self.interpCheck = QCheckBox(QApplication.translate('CheckBox','Show'))
         self.interpCheck.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -942,7 +1010,10 @@ class CurvesDlg(ArtisanDialog):
         self.univarCheck = QCheckBox(QApplication.translate('CheckBox', 'Show'))
         self.univarCheck.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.univarCheck.stateChanged.connect(self.univar) #toggle
-        univarButton = QPushButton(QApplication.translate('Button','Info'))
+        univarButton = ArtisanMinorPushButton(QApplication.translate('Button','Info'),
+            'info-stroke-rounded-white.svg',
+            'info-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         univarButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         univarButton.setMaximumSize(univarButton.sizeHint())
         univarButton.setMinimumSize(univarButton.minimumSizeHint())
@@ -951,13 +1022,13 @@ class CurvesDlg(ArtisanDialog):
         self.lnvarCheck.stateChanged.connect(self.lnvar) #toggle
         self.lnresult = QLineEdit()
         self.lnresult.setReadOnly(True)
-        self.lnresult.setStyleSheet("background-color:'lightgrey';")
+        self.lnresult.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.expvarCheck = QCheckBox(QApplication.translate('CheckBox', 'Show'))
         self.expvarCheck.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.expvarCheck.stateChanged.connect(self.expvar) #toggle
         self.expresult = QLineEdit()
         self.expresult.setReadOnly(True)
-        self.expresult.setStyleSheet("background-color:'lightgrey';")
+        self.expresult.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.expradiobutton1 = QRadioButton('x\xb2')
         self.expradiobutton1.setChecked(True)
         self.exppower = 2
@@ -966,6 +1037,7 @@ class CurvesDlg(ArtisanDialog):
         self.expradiobutton2.toggled.connect(self.expradiobuttonClicked)
         self.exptimeoffsetLabel = QLabel(QApplication.translate('Label', 'Offset seconds from CHARGE'))
         self.exptimeoffset = QLineEdit('180')   #default to 180 seconds past CHARGE
+        self.exptimeoffset.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.exptimeoffset.editingFinished.connect(self.exptimeoffsetChanged)
 
         self.analyzecombobox = QComboBox()
@@ -981,6 +1053,7 @@ class CurvesDlg(ArtisanDialog):
         self.analyzecombobox.currentIndexChanged.connect(self.changeAnalyzecombobox)
         self.analyzetimeoffsetLabel = QLabel(QApplication.translate('Label', 'Custom offset seconds from CHARGE'))
         self.analyzetimeoffset = QLineEdit(str(self.aw.qmc.analysisoffset))   #default to 180 seconds past CHARGE
+        self.analyzetimeoffset.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.analyzetimeoffset.setMaximumWidth(100)
         self.analyzetimeoffset.setMinimumWidth(55)
         self.analyzetimeoffset.editingFinished.connect(self.analyzetimeoffsetChanged)
@@ -989,13 +1062,15 @@ class CurvesDlg(ArtisanDialog):
         else:
             self.analyzetimeoffset.setEnabled(True)
         self.segmentsamplesthresholdLabel = QLabel(QApplication.translate('Label', 'Number of samples considered significant'))
-        self.segmentsamplesthreshold = QLineEdit(str(int(round(self.aw.qmc.segmentsamplesthreshold))))   #default
+        self.segmentsamplesthreshold = QLineEdit(str(round(self.aw.qmc.segmentsamplesthreshold)))   #default
+        self.segmentsamplesthreshold.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.segmentsamplesthreshold.setMaximumWidth(100)
         self.segmentsamplesthreshold.setMinimumWidth(55)
         self.segmentsamplesthreshold.editingFinished.connect(self.segmentsamplesthresholdChanged)
         self.segmentsamplesthreshold.setValidator(QIntValidator(0,50,self.segmentsamplesthreshold))
         self.segmentdeltathresholdLabel = QLabel(QApplication.translate('Label', 'Delta RoR Actual-to-Fit considered significant'))
         self.segmentdeltathreshold = QLineEdit(str(self.aw.qmc.segmentdeltathreshold))   #default
+        self.segmentdeltathreshold.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.segmentdeltathreshold.setMaximumWidth(100)
         self.segmentdeltathreshold.setMinimumWidth(55)
         self.segmentdeltathreshold.editingFinished.connect(self.segmentdeltathresholdChanged)
@@ -1013,6 +1088,7 @@ class CurvesDlg(ArtisanDialog):
         self.curvefitcombobox.currentIndexChanged.connect(self.changeCurvefitcombobox)
         self.curvefittimeoffsetLabel = QLabel(QApplication.translate('Label', 'Custom offset seconds from CHARGE'))
         self.curvefittimeoffset = QLineEdit(str(self.aw.qmc.curvefitoffset))   #default to 180 seconds past CHARGE
+        self.curvefittimeoffset.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.curvefittimeoffset.setMaximumWidth(100)
 #        self.curvefittimeoffset.setMaximumWidth(50)
         self.curvefittimeoffset.setMinimumWidth(55)
@@ -1029,6 +1105,7 @@ class CurvesDlg(ArtisanDialog):
         self.bkgndButton.setEnabled(False)
         polyfitdeglabel = QLabel(QApplication.translate('Label','deg'))
         self.polyfitdeg = QSpinBox()
+        self.polyfitdeg.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.polyfitdeg.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.polyfitdeg.setRange(1,4)
         self.polyfitdeg.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -1046,13 +1123,15 @@ class CurvesDlg(ArtisanDialog):
         self.polyfitCheck.clicked.connect(self.polyfit) #toggle
         self.resultWidget = QLineEdit()
         self.resultWidget.setReadOnly(True)
-        self.resultWidget.setStyleSheet("background-color:'lightgrey';")
+        self.resultWidget.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         startlabel = QLabel(QApplication.translate('Label', 'Start'))
         endlabel = QLabel(QApplication.translate('Label', 'End'))
         self.startEdit = QLineEdit()
+        self.startEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.startEdit.setMaximumWidth(60)
         self.startEdit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.endEdit = QLineEdit()
+        self.endEdit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.endEdit.setMaximumWidth(60)
         self.endEdit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.polyfitRoR = False
@@ -1213,14 +1292,19 @@ class CurvesDlg(ArtisanDialog):
             pass
         self.styleComboBox.currentIndexChanged.connect(self.setappearance)
         self.resolutionSpinBox = QSpinBox()
+        self.resolutionSpinBox.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.resolutionSpinBox.setSuffix('%')
         self.resolutionSpinBox.setRange(40,300)
         self.resolutionSpinBox.setSingleStep(5)
-        self.resolutionSpinBox.setValue(int(round(self.aw.dpi)))
+        self.resolutionSpinBox.setValue(round(self.aw.dpi))
         self.resolutionSpinBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        resButton = QPushButton(QApplication.translate('Button','Set'))
+        self.resolutionSpinBox.setAlignment(Qt.AlignmentFlag.AlignRight)
+        resButton = ArtisanMinorPushButton(QApplication.translate('Button','Set'),
+            'tick-01-stroke-rounded-white.svg',
+            'tick-01-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         resButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        resButton.clicked.connect(lambda _:self.changedpi())
+        resButton.clicked.connect(self.changedpi_slot)
         self.soundCheck = QCheckBox(QApplication.translate('CheckBox', 'Beep'))
         self.soundCheck.setChecked(bool(self.aw.soundflag))
         self.soundCheck.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -1228,6 +1312,7 @@ class CurvesDlg(ArtisanDialog):
         scaleFactorLabel = QLabel(QApplication.translate('Label','Scale Factor'))
         scaleFactorLabel.setToolTip(QApplication.translate('Tooltip','User interface scaling factor'))
         self.scalefactorSpinBox = MyQDoubleSpinBox()
+        self.scalefactorSpinBox.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.scalefactorSpinBox.setToolTip(QApplication.translate('Tooltip','User interface scaling factor'))
         self.scalefactorSpinBox.setDecimals(2)
         self.scalefactorSpinBox.setSingleStep(0.05)
@@ -1307,9 +1392,10 @@ class CurvesDlg(ArtisanDialog):
         self.WebLCDsFlag.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.WebLCDsPortLabel = QLabel(QApplication.translate('Label', 'Port'))
         self.WebLCDsPort = QLineEdit(str(self.aw.WebLCDsPort))
+        self.WebLCDsPort.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.WebLCDsPort.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.WebLCDsPort.setValidator(QRegularExpressionValidator(QRegularExpression(r'^[0-9]{1,4}$'),self))
-        self.WebLCDsPort.setMaximumWidth(45)
+        self.WebLCDsPort.setMaximumWidth(50)
         self.WebLCDsPort.setDisabled(self.aw.WebLCDs)
         self.QRpic = QLabel() # the QLabel holding the QR code image
         if self.aw.WebLCDs:
@@ -1356,9 +1442,11 @@ class CurvesDlg(ArtisanDialog):
         # Renaming BT and ET
         self.renameETLabel = QLabel(QApplication.translate('Label', 'ET'))
         self.renameETLine = QLineEdit(self.aw.ETname)
+        self.renameETLine.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.renameETLine.editingFinished.connect(self.renameET)
         self.renameBTLabel = QLabel(QApplication.translate('Label', 'BT'))
         self.renameBTLine = QLineEdit(self.aw.BTname)
+        self.renameBTLine.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.renameBTLine.editingFinished.connect(self.renameBT)
         renameLayout = QHBoxLayout()
         renameLayout.addWidget(self.renameETLabel)
@@ -1369,12 +1457,13 @@ class CurvesDlg(ArtisanDialog):
         renameGroupWidget.setLayout(renameLayout)
         #watermark image
         self.logopathedit = QLineEdit(self.aw.qmc.backgroundpath)
-        self.logopathedit.setStyleSheet("background-color:'lightgrey';")
+        self.logopathedit.setStyleSheet(line_edit_style(self.aw.app.darkmode))
         self.logopathedit.setReadOnly(True)
         self.logopathedit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.logopathedit.setText(self.aw.logofilename)
         logoalphalabel = QLabel(QApplication.translate('Label','Opacity'))
         self.logoalpha = MyQDoubleSpinBox()
+        self.logoalpha.setStyleSheet(spin_box_style(self.aw.app.darkmode))
         self.logoalpha.setDecimals(1)
         self.logoalpha.setSingleStep(0.5)
         self.logoalpha.setRange(0.,10.)
@@ -1386,9 +1475,15 @@ class CurvesDlg(ArtisanDialog):
         logoshowCheck.setChecked(self.aw.logoimgflag)
         logoshowCheck.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         logoshowCheck.stateChanged.connect(self.changelogoshowCheck)
-        loadButton = QPushButton(QApplication.translate('Button','Load'))
+        loadButton = ArtisanMinorPushButton(QApplication.translate('Button','Load'),
+            'file-02-stroke-rounded-white.svg',
+            'file-02-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         loadButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        delButton = QPushButton(QApplication.translate('Button','Delete'))
+        delButton = ArtisanMinorPushButton(QApplication.translate('Button','Clear'),
+            'cancel-01-stroke-rounded-white.svg',
+            'cancel-01-stroke-rounded-dark.svg',
+            self.aw.app.darkmode)
         delButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         loadButton.clicked.connect(self.logofileload)
         delButton.clicked.connect(self.logofiledelete)
@@ -1421,7 +1516,7 @@ class CurvesDlg(ArtisanDialog):
         tab5Layout.addLayout(webrenlogLayout)
 
         ############################  TABS LAYOUT
-        self.TabWidget = QTabWidget()
+        self.TabWidget = ArtisanQTabWidget()
         # RoR
         C0Widget = QWidget()
         C0Widget.setLayout(tab0Layout)
@@ -1470,7 +1565,7 @@ class CurvesDlg(ArtisanDialog):
         self.setLayout(Slayout)
 
         self.TabWidget.setContentsMargins(0,0,0,0)
-        Slayout.setContentsMargins(5,15,5,5)
+        Slayout.setContentsMargins(10,10,10,10)
         Slayout.setSpacing(5)
 
         self.updatePlotterleftlabels()
@@ -1573,7 +1668,7 @@ class CurvesDlg(ArtisanDialog):
     @pyqtSlot(bool)
     def logofileload(self, _:bool = False) -> None:
         self.aw.qmc.logoloadfile()
-        self.logopathedit.setText(str(self.aw.logofilename))
+        self.logopathedit.setText(self.aw.logofilename)
         # note the logo is only visible after a full redraw
 
     @pyqtSlot(bool)
@@ -1593,7 +1688,7 @@ class CurvesDlg(ArtisanDialog):
 
     @pyqtSlot()
     def renameBT(self) -> None:
-        self.aw.BTname = str(self.renameBTLine.text()).strip()
+        self.aw.BTname = self.renameBTLine.text().strip()
         if self.aw.BTname == '':
             self.aw.BTname = QApplication.translate('Label', 'BT')
         BTname_subst = self.aw.qmc.device_name_subst(self.aw.BTname)
@@ -1602,7 +1697,7 @@ class CurvesDlg(ArtisanDialog):
 
     @pyqtSlot()
     def renameET(self) -> None:
-        self.aw.ETname = str(self.renameETLine.text()).strip()
+        self.aw.ETname = self.renameETLine.text().strip()
         if self.aw.ETname == '':
             self.aw.ETname = QApplication.translate('Label', 'ET')
         ETname_subst = self.aw.qmc.device_name_subst(self.aw.ETname)
@@ -1675,6 +1770,9 @@ class CurvesDlg(ArtisanDialog):
             self.WebLCDsURL.setText('')
             self.QRpic.setPixmap(QPixmap())
 
+    @pyqtSlot(bool)
+    def changedpi_slot(self, _:bool) -> None:
+        self.changedpi()
 
     def changedpi(self) -> None:
         try:
@@ -1716,7 +1814,7 @@ class CurvesDlg(ArtisanDialog):
         try:
             colorf = self.aw.colordialog(QColor(self.aw.qmc.plotcurvecolor[x]))
             if colorf.isValid():
-                colorname = str(colorf.name())
+                colorname = colorf.name()
                 self.aw.qmc.plotcurvecolor[x] = colorname
                 #refresh right color labels
                 self.equc1colorlabel.setStyleSheet(f"background-color:'{self.aw.qmc.plotcurvecolor[0]}';")
@@ -1766,7 +1864,7 @@ class CurvesDlg(ArtisanDialog):
             self.setbackgroundequ1(foreground=True)
         else:
             # Check for incompatible vars from in the equations
-            EQU = [str(self.equedit1.text()),str(self.equedit2.text())]
+            EQU = [self.equedit1.text(),self.equedit2.text()]
             incompatiblevars:list[str] = ['P','F','$','#']
             error = ''
             for iv in incompatiblevars:
@@ -1776,9 +1874,12 @@ class CurvesDlg(ArtisanDialog):
                     error = f'P2: \n-{iv}\n\n[{EQU[1]}]'
 
             if error:
-                string = QApplication.translate('Message','Incompatible variables found in %s')%error
-                QMessageBox.warning(None, #self, # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
-                    QApplication.translate('Message','Assignment problem'),string)
+#                string = QApplication.translate('Message','Incompatible variables found in %s')%error
+#                QMessageBox.warning(None, #self, # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
+#                    QApplication.translate('Message','Assignment problem'),string)
+                artisan_warning(self, self.aw,
+                    QApplication.translate('Message','Incompatible variables found in {}').format(error),
+                    QApplication.translate('Message','Assignment problem'))
 
             else:
                 extratemp1:list[float] = []
@@ -1804,8 +1905,8 @@ class CurvesDlg(ArtisanDialog):
                 self.aw.qmc.extradevicecolor1[-1] = self.aw.qmc.plotcurvecolor[0]
                 self.aw.qmc.extradevicecolor2[-1] = self.aw.qmc.plotcurvecolor[1]
                 # set expressions
-                self.aw.qmc.extramathexpression1[-1] = str(self.equedit1.text())
-                self.aw.qmc.extramathexpression2[-1] = str(self.equedit2.text())
+                self.aw.qmc.extramathexpression1[-1] = self.equedit1.text()
+                self.aw.qmc.extramathexpression2[-1] = self.equedit2.text()
                 # set values
                 self.aw.qmc.extratemp1[-1] = extratemp1
                 self.aw.qmc.extratemp2[-1] = extratemp2
@@ -1830,9 +1931,9 @@ class CurvesDlg(ArtisanDialog):
         self.setbackgroundequ1()
 
     def setbackgroundequ1(self,foreground:bool = False, mathequ:bool = False) -> None:
-        EQU = [str(self.equedit1.text()),str(self.equedit2.text())]
+        EQU = [self.equedit1.text(),self.equedit2.text()]
         if mathequ:
-            EQU = ['',str(self.expresult.text())]
+            EQU = ['',self.expresult.text()]
         self.aw.qmc.analysisresultsstr = ''
         self.aw.setbackgroundequ(foreground=foreground, EQU=EQU)
 
@@ -1907,10 +2008,10 @@ class CurvesDlg(ArtisanDialog):
         try:
             if self.aw.qmc.ax is not None:
                 self.aw.sendmessage('Dropping beans...')
-                colorb = ['#996633','#4d2600','#4b4219','black','#4b3219','#996633','#281a0d']
+                colorb = ['#996633','#4d2600','#4b4219','#000000','#4b3219','#996633','#281a0d']
                 for _ in range(3): # number of bean layers (each a randomly different color)
-                    x = self.aw.qmc.endofx*numpy.random.rand(int(round(self.aw.qmc.endofx/6)))
-                    y = self.aw.qmc.ylimit*numpy.random.rand(int(round(self.aw.qmc.endofx/6)))
+                    x = self.aw.qmc.endofx*numpy.random.rand(round(self.aw.qmc.endofx/6))
+                    y = self.aw.qmc.ylimit*numpy.random.rand(round(self.aw.qmc.endofx/6))
                     self.aw.qmc.ax.plot(x,y,'o',color=colorb[int(round(6*numpy.random.rand(1)[0]))])
         except Exception as e: # pylint: disable=broad-except
             _, _, exc_tb = sys.exc_info()
@@ -1937,11 +2038,11 @@ class CurvesDlg(ArtisanDialog):
             self.aw.clearMessageLine()
 
             self.aw.qmc.plotterequationresults = [[],[],[],[],[],[],[],[],[]]
-            EQU = [str(self.equedit1.text()),str(self.equedit2.text()),
-                   str(self.equedit3.text()),str(self.equedit4.text()),
-                   str(self.equedit5.text()),str(self.equedit6.text()),
-                   str(self.equedit7.text()),str(self.equedit8.text()),
-                   str(self.equedit9.text())]
+            EQU = [self.equedit1.text(),self.equedit2.text(),
+                   self.equedit3.text(),self.equedit4.text(),
+                   self.equedit5.text(),self.equedit6.text(),
+                   self.equedit7.text(),self.equedit8.text(),
+                   self.equedit9.text()]
             self.aw.qmc.resetlines()
 
             commentoutplot = [0]*9      # "#" as first char does not evaluate plot nor show it. Allows to keep formula on window without eval (ie. long filters)
@@ -1978,7 +2079,7 @@ class CurvesDlg(ArtisanDialog):
                         if self.aw.qmc.timeindexB[0] > -1:
                             toff = self.aw.qmc.timeB[self.aw.qmc.timeindexB[0]]
                     else:
-                        x_range = [float(x) for x in range(int(round(self.aw.qmc.startofx)),int(round(self.aw.qmc.endofx)))]
+                        x_range = [float(x) for x in range(round(self.aw.qmc.startofx),round(self.aw.qmc.endofx))]
                     #create y range
                     y_range:list[float] = []
 
@@ -1999,8 +2100,13 @@ class CurvesDlg(ArtisanDialog):
     @pyqtSlot(int)
     def setappearance(self, _i:int) -> None:
         try:
-            self.app.setStyle(str(self.styleComboBox.currentText()))
-            self.aw.appearance = str(self.styleComboBox.currentText()).lower()
+            self.app.setStyle(self.styleComboBox.currentText())
+            self.aw.appearance = self.styleComboBox.currentText().lower()
+            if not sys.platform.startswith('darwin'):
+                # set artisan accent color (but on macOS where it does not has any effect)
+                palette = self.app.palette()
+                palette.setColor(QPalette.ColorRole.Accent,  QColor('#3979ae'))
+                self.app.setPalette(palette)
         except Exception as e: # pylint: disable=broad-except
             _, _, exc_tb = sys.exc_info()
             self.aw.qmc.adderror((QApplication.translate('Error Message', 'Exception:') + ' setappearance(): {0}').format(str(e)),getattr(exc_tb, 'tb_lineno', '?'))
@@ -2116,7 +2222,7 @@ class CurvesDlg(ArtisanDialog):
         else:
             start = 0
 
-        Aevent = int(self.eventAComboBox.currentIndex())
+        Aevent = self.eventAComboBox.currentIndex()
         if Aevent != 0:
             a = self.events[Aevent-1][1]
             self.startEdit.blockSignals(True)
@@ -2125,7 +2231,7 @@ class CurvesDlg(ArtisanDialog):
             self.startEdit.setDisabled(False)
             self.startEdit.blockSignals(False)
 
-        Bevent = int(self.eventBComboBox.currentIndex())
+        Bevent = self.eventBComboBox.currentIndex()
         if Bevent != 0:
             b = self.events[Bevent-1][1]
             self.endEdit.blockSignals(True)
@@ -2157,8 +2263,8 @@ class CurvesDlg(ArtisanDialog):
     def doPolyfit(self) -> bool:
         try:
             ll = min(len(self.aw.qmc.timex),len(self.curves[self.c1ComboBox.currentIndex()]),len(self.curves[self.c2ComboBox.currentIndex()]))
-            starttime = stringtoseconds(str(self.startEdit.text()))
-            endtime = stringtoseconds(str(self.endEdit.text()))
+            starttime = stringtoseconds(self.startEdit.text())
+            endtime = stringtoseconds(self.endEdit.text())
             if starttime == -1 or endtime == -1:
                 self.resultWidget.setText('')
                 self.resultWidget.repaint()
@@ -2640,8 +2746,8 @@ class CurvesDlg(ArtisanDialog):
         settings.setValue('CurvesPosition',self.frameGeometry().topLeft())
         self.aw.CurveDlg_activeTab = self.TabWidget.currentIndex()
 
-        self.aw.qmc.DeltaETfunction = str(self.DeltaETfunctionedit.text())
-        self.aw.qmc.DeltaBTfunction = str(self.DeltaBTfunctionedit.text())
+        self.aw.qmc.DeltaETfunction = self.DeltaETfunctionedit.text()
+        self.aw.qmc.DeltaBTfunction = self.DeltaBTfunctionedit.text()
         if self.aw.largeDeltaLCDs_dialog is not None:
             self.aw.largeDeltaLCDs_dialog.updateVisiblitiesDeltaETBT()
         self.changeDecimalPlaces()
@@ -2665,26 +2771,26 @@ class CurvesDlg(ArtisanDialog):
         self.aw.notificationsSetEnabledSignal.emit(notifications_enabled)
 
         self.aw.qmc.RoRlimitFlag = self.rorFilter.isChecked()
-        self.aw.qmc.RoRlimitm = int(self.rorminLimit.value())
-        self.aw.qmc.RoRlimit = int(self.rormaxLimit.value())
+        self.aw.qmc.RoRlimitm = self.rorminLimit.value()
+        self.aw.qmc.RoRlimit = self.rormaxLimit.value()
         self.aw.qmc.filterDropOuts = self.FilterSpikes.isChecked()
         self.aw.qmc.dropSpikes = self.DropSpikes.isChecked()
         self.aw.qmc.dropDuplicates = self.DropDuplicates.isChecked()
         self.aw.qmc.dropDuplicatesLimit = float2float(self.DropDuplicatesLimit.value(),2)
         self.aw.qmc.minmaxLimits = self.MinMaxLimits.isChecked()
-        self.aw.qmc.filterDropOut_tmin = int(self.minLimit.value())
-        self.aw.qmc.filterDropOut_tmax = int(self.maxLimit.value())
+        self.aw.qmc.filterDropOut_tmin = self.minLimit.value()
+        self.aw.qmc.filterDropOut_tmax = self.maxLimit.value()
         self.aw.qmc.foregroundShowFullflag = self.ShowFull.isChecked()
         self.aw.qmc.interpolateDropsflag = self.InterpolateDrops.isChecked()
-        self.aw.qmc.plotcurves[0] = str(self.equedit1.text())
-        self.aw.qmc.plotcurves[1] = str(self.equedit2.text())
-        self.aw.qmc.plotcurves[2] = str(self.equedit3.text())
-        self.aw.qmc.plotcurves[3] = str(self.equedit4.text())
-        self.aw.qmc.plotcurves[4] = str(self.equedit5.text())
-        self.aw.qmc.plotcurves[5] = str(self.equedit6.text())
-        self.aw.qmc.plotcurves[6] = str(self.equedit7.text())
-        self.aw.qmc.plotcurves[7] = str(self.equedit8.text())
-        self.aw.qmc.plotcurves[8] = str(self.equedit9.text())
+        self.aw.qmc.plotcurves[0] = self.equedit1.text()
+        self.aw.qmc.plotcurves[1] = self.equedit2.text()
+        self.aw.qmc.plotcurves[2] = self.equedit3.text()
+        self.aw.qmc.plotcurves[3] = self.equedit4.text()
+        self.aw.qmc.plotcurves[4] = self.equedit5.text()
+        self.aw.qmc.plotcurves[5] = self.equedit6.text()
+        self.aw.qmc.plotcurves[6] = self.equedit7.text()
+        self.aw.qmc.plotcurves[7] = self.equedit8.text()
+        self.aw.qmc.plotcurves[8] = self.equedit9.text()
         self.aw.cacheCurveVisibilities()
         self.aw.qmc.resetlinecountcaches()
         self.aw.qmc.resetlines()
@@ -2695,23 +2801,26 @@ class CurvesDlg(ArtisanDialog):
 
         self.aw.qt_scale_factor = self.scalefactorSpinBox.value()
         if self.aw.qt_scale_factor != self.org_qt_scale_factor:
-            msg:str = QApplication.translate('Tooltip','Scaling factor changed')
-            text:str = QApplication.translate('Tooltip','Restart the app for the change to take effect')
-            # native dialog
-            if platform.system() == 'Darwin':
-                mbox = QMessageBox() # only without super this one shows the native dialog on macOS under Qt 6.6.2
-                # for native dialogs, text and informativetext need to be plain strings, no RTF incl. HTML instructions like <br>
-                mbox.setText(msg)
-                mbox.setInformativeText(text)
-                mbox.setWindowModality(Qt.WindowModality.ApplicationModal) # for native dialog it has to be ApplicationModal
-                mbox.setStandardButtons(QMessageBox.StandardButton.Ok)
-                mbox.setDefaultButton(QMessageBox.StandardButton.Ok)
-                mbox.exec()
-            else:
-                # non-native dialog
-                QMessageBox.warning(None, #self, # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
-                                msg,text,
-                                QMessageBox.StandardButton.Ok, QMessageBox.StandardButton.Ok)
+#            msg:str = QApplication.translate('Tooltip','Scaling factor changed')
+#            text:str = QApplication.translate('Tooltip','Restart the app for the change to take effect')
+#            # native dialog
+#            if platform.system() == 'Darwin':
+#                mbox = QMessageBox() # only without super this one shows the native dialog on macOS under Qt 6.6.2
+#                # for native dialogs, text and informativetext need to be plain strings, no RTF incl. HTML instructions like <br>
+#                mbox.setText(msg)
+#                mbox.setInformativeText(text)
+#                mbox.setWindowModality(Qt.WindowModality.ApplicationModal) # for native dialog it has to be ApplicationModal
+#                mbox.setStandardButtons(QMessageBox.StandardButton.Ok)
+#                mbox.setDefaultButton(QMessageBox.StandardButton.Ok)
+#                mbox.exec()
+#            else:
+#                # non-native dialog
+#                QMessageBox.warning(None, #self, # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
+#                                msg,text,
+#                                QMessageBox.StandardButton.Ok, QMessageBox.StandardButton.Ok)
+            artisan_warning(self, self.aw,
+                QApplication.translate('Tooltip','Restart the app for the change to take effect'),
+                QApplication.translate('Tooltip','Scaling factor changed'))
 
 
 #        self.aw.closeEventSettings()

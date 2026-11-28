@@ -228,8 +228,11 @@ a progress view while it downloads, and then **🛠 Install Now & Quit** once it
 progress.
 
 ![one per tab](assets/getting-started-1.17.png)
-<!-- CAPTURE 1.18 — the updater mid-download: the progress view between
+<!-- CAPTURE 1.18 [scene:updater_download] — the updater mid-download: the progress view between
 ⬇ Download & Install and 🛠 Install Now & Quit. Needs a pending update. -->
+
+![The updater downloading: a bar and its percentage, with Cancel, between Download & Install and Install Now & Quit.](assets/getting-started-1.18.png)
+
 ![one per tab](assets/getting-started-1.19.png)
 
 Before it is offered, the downloaded installer is checked against the checksum published with

@@ -290,11 +290,22 @@ on the meter itself.
 **Color Meter** group of [Configuration → SENSORS](configuration.md#-sensors--every-device-by-role).
 The list shows every supported colour meter found nearby, without naming its brand.
 
-**What changes on screen.** A live reading button appears next to the colour fields in the
-roast result form once paired. Take the measurement on the meter itself, as usual: the reading
-appears on the card, and clicking it writes it in. An Omni states whether the sample was whole
-bean or ground, so its reading goes straight to the matching field; with a RoastSee C1,
-TilauScope asks which one it is.
+**What changes on screen.** Once the meter is paired, a **◉ Colour meter** button sits next to
+the colour fields of the roast result form and opens the colour card beside it. Choose
+**Whole bean** or **Ground** first, then how many readings to average, from 1 to 5 (the number
+is remembered). Measure on the meter itself, as usual: each reading fills the next slot, and the
+card shows their average in large type with its roast level, the **spread** (half the gap
+between the highest and the lowest reading) and a band from darker to lighter where each reading
+is a tick and the average is framed. Click a reading to take it again: the next reading
+replaces it in its slot, and until then it still counts in the average. Once every slot is
+filled, the next reading replaces the first one, then the second, and so on.
+
+**Save as ground** (or **Save as whole bean**) writes the average into the matching field.
+Until **Whole bean** or **Ground** is chosen, the button reads **Choose whole bean or ground**
+and stays greyed: the card never assumes the sample. **Cancel**, or closing the form, keeps
+nothing. After a save, the next reading starts a new series, and the sample is chosen again.
+An Omni states whether the sample was whole bean or ground, and the card selects it by
+itself.
 
 **The Omni's scale.** Each time it connects, TilauScope sets the Omni to the SCA Agtron
 standard, the scale of TilauScope's colour fields. The setting stays on the meter, so the

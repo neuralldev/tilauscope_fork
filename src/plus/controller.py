@@ -1,28 +1,38 @@
 #
 # controller.py
 #
-# Copyright (c) 2023, Paul Holleis, Marko Luther
-# All rights reserved.
-#
-#
 # ABOUT
-# This module connects to the artisan.plus inventory management service
-
-# LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
+# This module connects to the artisan platform
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
+# LICENSE
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
+# AUTHOR
+# Marko Luther
+
+
+__lazy_modules__ = { 'threading', 'asyncio', 'aiohttp', 'aiohttp_retry',
+    'plus', 'plus.stock', 'plus.queue', 'plus.sync', 'plus.roast'}
 
 from PyQt6.QtCore import QSemaphore, QTimer, Qt, pyqtSlot
-from PyQt6.QtWidgets import QApplication, QMessageBox
+from PyQt6.QtWidgets import QApplication
 
 import platform
 import threading
@@ -32,7 +42,8 @@ from typing import Final, TYPE_CHECKING
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow # noqa: F401 # pylint: disable=unused-import
 
-from plus import config, connection, stock, queue, sync, roast, util
+from plus import config, connection, stock, queue, sync, roast
+from artisanlib.dialogs import artisan_question
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -43,8 +54,8 @@ def is_connected() -> bool:
     return config.connected
 
 
-# artisan.plus is on as soon as an account id has been established
-# Note that artisan.plus might be on, while not being connected due to
+# artisan platform is on as soon as an account id has been established
+# Note that artisan platform might be on, while not being connected due to
 # connectivity issues
 def is_on() -> bool:
     aw = config.app_window
@@ -59,7 +70,7 @@ def is_synced() -> bool:
     aw = config.app_window
     if aw is not None:
         if aw.qmc.roastUUID is None:
-            # not in sync if no roastUUID and saved to file or (OFF and not saved yet but at least 5min in length)
+            # not in sync if no roastUUID and (saved to file or (OFF and not saved yet but at least 5min in length))
             return not (bool(aw.curFile) or
                 (not aw.qmc.flagon and
                     (len(aw.qmc.timex)>0 and ((aw.qmc.timex[-1] - (aw.qmc.timex[aw.qmc.timeindex[0]] if aw.qmc.timeindex[0] != -1 else 0)) > 5*60))))
@@ -89,7 +100,7 @@ def toggle(app_window:'ApplicationWindow') -> None:
         ):  # @UndefinedVariable
             sync.sync()
     elif config.connected:
-        if not is_synced() and app_window.qmc.checkSaved(allow_discard=False):
+        if not is_synced() and not app_window.qmc.flagon and app_window.qmc.checkSaved(allow_discard=False):
             # we (manually) turn syncing for the current roast on
             queue.addRoast(unsynced=True)
         else:
@@ -201,8 +212,7 @@ def connect(clear_on_failure: bool =False, interactive: bool = True) -> None:
                                 )
                                 keychain_success = True
                                 _log.debug('keyring set password (%s)', login)
-                            # pylint: disable=broad-except
-                            except Exception as e:
+                            except Exception as e:  # pylint: disable=broad-except
                                 _log.exception(e)
                                 if (
                                     not platform.system().startswith('Windows')
@@ -228,8 +238,6 @@ def connect(clear_on_failure: bool =False, interactive: bool = True) -> None:
                                 )  # @UndefinedVariable
                             except Exception:  # pylint: disable=broad-except
                                 pass
-
-
                         # remember password in memory for this session
                         config_passwd = passwd
             if aw is not None:
@@ -251,25 +259,25 @@ def connect(clear_on_failure: bool =False, interactive: bool = True) -> None:
                         )  # @UndefinedVariable
                         aw.sendmessageSignal.emit(
                             QApplication.translate(
-                                'Plus', 'Connected to artisan.plus'
+                                'Plus', 'Connected to the artisan platform'
                             ),
                             True,
                             None,
                         )  # @UndefinedVariable
-                        _log.info('artisan.plus connected')
+                        _log.info('artisan platform connected')
                         try:
                             queue.start()  # start the outbox queue
                         except Exception as e:  # pylint: disable=broad-except
                             _log.exception(e)
-                        try:
-                            aw.resetDonateCounter()
-                        except Exception as e:  # pylint: disable=broad-except
-                            _log.exception(e)
+#                        try:
+#                            aw.resetDonateCounter()
+#                        except Exception as e:  # pylint: disable=broad-except
+#                            _log.exception(e)
                     elif clear_on_failure:
                         connection.clearCredentials()
                         aw.sendmessageSignal.emit(
                             QApplication.translate(
-                                'Plus', 'artisan.plus turned off'
+                                'Plus', 'artisan platform disconnected'
                             ),
                             True,
                             None,
@@ -278,9 +286,10 @@ def connect(clear_on_failure: bool =False, interactive: bool = True) -> None:
                         message = QApplication.translate(
                             'Plus', 'Authentication failed'
                         )
-                        message = (
-                            f'{aw.plus_account} {message}'
-                        )  # @UndefinedVariable
+                        if aw.plus_account is not None: # pyright:ignore[reportUnnecessaryComparison] # pyright infers type str here, which is wrong!
+                            message = (
+                                f'{aw.plus_account} {message}'
+                            )  # @UndefinedVariable
                         aw.sendmessageSignal.emit(
                             message, True, None
                         )  # @UndefinedVariable
@@ -292,7 +301,7 @@ def connect(clear_on_failure: bool =False, interactive: bool = True) -> None:
                 if interactive and aw is not None:
                     aw.sendmessageSignal.emit(
                         QApplication.translate(
-                            'Plus', 'artisan.plus turned off'
+                            'Plus', 'artisan platform disconnected'
                         ),
                         True,
                         None,
@@ -301,7 +310,7 @@ def connect(clear_on_failure: bool =False, interactive: bool = True) -> None:
                 if interactive:
                     aw.sendmessageSignal.emit(
                         QApplication.translate(
-                            'Plus', "Couldn't connect to artisan.plus"
+                            'Plus', "Couldn't connect to the artisan platform"
                         ),
                         True,
                         None,
@@ -319,19 +328,19 @@ def connect(clear_on_failure: bool =False, interactive: bool = True) -> None:
                 connect_semaphore.release(1)
         if aw is not None:
             aw.updatePlusStatusSignal.emit()  # @UndefinedVariable
-        if interactive and is_connected():
-            QTimer.singleShot(2000, stock.update)
+        if is_connected():
+            if interactive:
+                QTimer.singleShot(2000, stock.update)
+            if aw is not None:
+                aw.dashboard.update_inventory_section()
 
 
 # show a dialog to have the user confirm the disconnect action
+# NOTE: adding a stylesheet to the QApplication referts this to a Qt dialog instead of native dialogs again
 def disconnect_confirmed() -> bool:
-    string = QApplication.translate('Plus', 'Disconnect artisan.plus?')
-    mbox = QMessageBox()
-    mbox.setText(string)
-    util.setPlusIcon(mbox)
-    mbox.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-    res = mbox.exec()
-    return QMessageBox.StandardButton.Yes == res
+    if config.app_window is not None:
+        return artisan_question(config.app_window, config.app_window, '', QApplication.translate('Plus', 'Disconnect?'), default_cancel=True)
+    return False
 
 # if keepON is set (the default), the credentials are not removed at all and
 # just the connected flag is toggled to keep plus in ON (dark-grey) state
@@ -367,7 +376,7 @@ def disconnect(
                 if remove_credentials:
                     aw.sendmessageSignal.emit(
                         QApplication.translate(
-                            'Plus', 'artisan.plus turned off'
+                            'Plus', 'artisan platform disconnected'
                         ),
                         True,
                         None,
@@ -376,22 +385,23 @@ def disconnect(
                     aw.sendmessageSignal.emit(
                         (
                         QApplication.translate(
-                            'Plus', 'artisan.plus connection lost. Reconnecting automatically...'
+                            'Plus', 'Connection to the artisan platform lost. Reconnecting automatically...'
                         )
                         if keepON else
                         QApplication.translate(
-                            'Plus', 'artisan.plus disconnected'
+                            'Plus', 'artisan platform disconnected'
                         )),
                         True,
                         None,
                     )
             if stop_queue:
                 queue.stop()  # stop the outbox queue
-            _log.info('artisan.plus disconnected')
+            _log.info('artisan platform disconnected')
         finally:
             if connect_semaphore.available() < 1:
                 connect_semaphore.release(1)
         if aw is not None:
+            aw.dashboard.update_inventory_section()
             aw.updatePlusStatusSignal.emit()  # @UndefinedVariable
             aw.disconnectPlusSignal.emit()  # @UndefinedVariable
 
@@ -401,7 +411,7 @@ def reconnected() -> None:
         try:
             connect_semaphore.acquire(1)
             config.connected = True
-            _log.info('artisan.plus reconnected')
+            _log.info('artisan platform reconnected')
         finally:
             if connect_semaphore.available() < 1:
                 connect_semaphore.release(1)
@@ -413,7 +423,7 @@ def reconnected() -> None:
             if aw is not None:
                 aw.sendmessageSignal.emit(
                     QApplication.translate(
-                        'Plus', 'artisan.plus reconnected'),
+                        'Plus', 'artisan platform reconnected'),
                     True,
                     None)
 
@@ -441,7 +451,7 @@ def updateSyncRecordHashAndSync() -> str|None:
                         roast_record['roast_id'], server_updates_modified_at
                     )
                     sync.setApplidedServerUpdatesModifiedAt(None)
-                # artisan.plus is ON and the profile is under sync
+                # artisan platform is ON and the profile is under sync
                 if sync.syncRecordUpdated(roast_record):
                     # we push updates on the sync record back to the server
                     # via the queue

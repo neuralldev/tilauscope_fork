@@ -25,6 +25,8 @@
 # AUTHOR
 # Marko Luther, 2023
 
+__lazy_modules__ = {'ast'}
+
 import warnings
 import codecs
 import logging
@@ -68,9 +70,8 @@ application_desktop_file_name: Final[str] = 'org.tilauscope.tilauscope'
 ## application identity, so it must not follow application_name.
 stock_theme_directory: Final[str] = 'TilauScope' ## TILAU ##
 
-
-from PyQt6.QtCore import Qt, QStandardPaths, QCoreApplication, QTime, QDate, QDateTime
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, QStandardPaths, QCoreApplication, QTime, QDate, QDateTime, QUrl
+from PyQt6.QtGui import QColor, QDesktopServices
 
 
 deltaLabelPrefix:Final[str] = '<html>&Delta;&thinsp;</html>' # prefix constant for labels to compose DeltaET/BT by prepending this prefix to ET/BT labels
@@ -85,7 +86,7 @@ deltaLabelMathPrefix:Final[str] = r'$\Delta\/$'  # prefix for labels in matplibg
 def appFrozen() -> bool:
     ib = False
     try:
-        platf = str(platform.system())
+        platf = platform.system()
         if platf == 'Darwin':
             # the sys.frozen is set by py2app and pyinstaller and is unset otherwise
             if getattr( sys, 'frozen', False ):
@@ -156,8 +157,8 @@ def encodeLocalStrict(x:Any|None, default:str = '') -> str:
         return default
 def hex2int(h1:int, h2:int|None = None) -> int:
     if h2 is not None:
-        return int(h1*256 + h2)
-    return int(h1)
+        return h1*256 + h2
+    return h1
 
 # str2cmd converts string to bytes ignoring all non-ascii characters. Result to be used for low-level device communication.
 def str2cmd(s:str) -> bytes:
@@ -186,7 +187,7 @@ def stringfromseconds(seconds_raw:float, leadingzero:bool = True) -> str:
         seconds_raw /= 60
         sep = 'h'
     # seconds = int(round(seconds_raw)) # note that round(1.5)=round(2.5)=2
-    seconds = int(math.floor(seconds_raw + 0.5))
+    seconds = math.floor(seconds_raw + 0.5)
     if seconds >= 0:
         d, m = divmod(seconds, 60)
         if leadingzero:
@@ -308,7 +309,7 @@ def toInt(x:int|str|float|None) -> int:
     if x is None:
         return 0
     try:
-        return int(round(float(x)))
+        return round(float(x))
     except Exception: # pylint: disable=broad-except
         return 0
 
@@ -476,14 +477,14 @@ def getDataDirectory() -> str|None:
 # internal function to return
 @functools.cache
 def _getAppDataDirectory(app:'Artisan') -> str|None:
-    # temporarily switch app name to Artisan (as it might be artisanViewer)
-    appName = app.applicationName()
-    app.setApplicationName(application_name)
-    data_dir = QStandardPaths.standardLocations(
-        QStandardPaths.StandardLocation.AppLocalDataLocation
-    )[0]
-    app.setApplicationName(appName)
     try:
+        # temporarily switch app name to Artisan (as it might be artisanViewer)
+        appName = app.applicationName()
+        app.setApplicationName(application_name)
+        data_dir = QStandardPaths.standardLocations(
+            QStandardPaths.StandardLocation.AppLocalDataLocation
+        )[0]
+        app.setApplicationName(appName)
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         return data_dir
@@ -548,6 +549,11 @@ def getResourcePath() -> str:
         return os.path.dirname(os.path.realpath(__file__)) + '\\..\\includes\\'
     return QCoreApplication.applicationDirPath() + '/'
 
+@functools.cache
+def getStyleIconPath(icon_filename:str) -> str:
+    # path in stylesheets needs to feature forward slashes also on Windows!
+    return Path.as_posix(Path(getResourcePath()).joinpath('Icons').joinpath(icon_filename))
+
 # if share is True, the same (cache) file is shared between the Artisan and
 # ArtisanViewer apps
 # and locks have to be used to avoid race conditions
@@ -570,7 +576,67 @@ def getDirectory(filename: str, ext: str|None = None, share: bool = False) -> st
     return str(fp)
 
 
-# standard/MPL hex color strings append alpha information to the end, while QColor assumes the alpha information in color name strings at the begin
+
+def getTaskURL(port:int, index_path:str) -> str:
+#    # use Artisan's host IP address
+#    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#    s.connect(('8.8.8.8', 80))
+#    localIP = s.getsockname()[0]
+#    s.close()
+#    return f'http://{str(localIP)}:{str(port)}/{index_path}'
+    # use Artisan's host name (more stable over DHCP/zeroconf updates), but cannot be accessed on Windows from iPhone
+    if sys.platform.startswith('darwin'):
+        import subprocess
+        host = subprocess.check_output(['scutil', '--get', 'LocalHostName']).decode('utf-8')
+    else:
+        import socket
+        # on Linux/Windows the mdns name is created by appending ".local" to the hostname
+        host = socket.gethostname()
+    return f"http://{host.strip().replace(' ', '_').casefold()}.local:{str(port)}/{index_path}"
+
+def open_link(url:str) -> None:
+    QDesktopServices.openUrl(QUrl(url, QUrl.ParsingMode.TolerantMode))
+
+
+# COLOR
+
+# NOTE: standard/MPL hex color strings append alpha information to the end, while QColor assumes the alpha information in color name strings at the begin
+
+
+@functools.lru_cache(maxsize=50)
+def color_to_lab(color: str) -> tuple[float, float, float]:
+    # Ensure color is in RGB model and extract normalized (0.0 - 1.0) values
+    r, g, b = tuple(int(color[i:i+2], 16)/255 for i in (1, 3 ,5))
+
+    # 1. sRGB to linear RGB
+    r = ((r + 0.055) / 1.055) ** 2.4 if r > 0.04045 else r / 12.92
+    g = ((g + 0.055) / 1.055) ** 2.4 if g > 0.04045 else g / 12.92
+    b = ((b + 0.055) / 1.055) ** 2.4 if b > 0.04045 else b / 12.92
+
+    # 2. Linear RGB to XYZ (D65 reference white)
+    x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047
+    y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000
+    z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883
+
+    # 3. XYZ to CIELAB
+    def f(t: float) -> float:
+        return t ** (1 / 3) if t > 0.008856 else (7.787 * t) + (16 / 116)
+
+    L = (116 * f(y)) - 16
+    a = 500 * (f(x) - f(y))
+    b_val = 200 * (f(y) - f(z))
+    return (L, a, b_val)
+
+# takes two MPL hex colors (RGB) and computes the delta_e euclidean distance in CIElab
+# Note: alpha information is ignored
+@functools.lru_cache(maxsize=50)
+def color_delta_e(c1: str, c2: str) -> float:
+    try:
+        L1, a1, b1 = color_to_lab(c1[:7])
+        L2, a2, b2 = color_to_lab(c2[:7])
+        return math.sqrt((L2 - L1) ** 2 + (a2 - a1) ** 2 + (b2 - b1) ** 2)
+    except Exception: # pylint: disable=broad-except
+        return 0.5
 
 # converts QColor ARGB names to a standard/MPL hex color strings with alpha values at the end
 @functools.lru_cache(maxsize=50)
@@ -590,10 +656,10 @@ def rgba_colorname2argb_colorname(c:str) -> str:
 @functools.lru_cache(maxsize=50)
 def toGrey(color:str) -> str:
     h, _s, l, a = QColor(rgba_colorname2argb_colorname(color)).getHslF()
-    gray = QColor.fromHslF(h,0,(1-l)/1.7+l,a) # saturation set to 0
+    gray_color:QColor = QColor.fromHslF(h,0,(1-l)/1.7+l,a) # saturation set to 0
     if len(color) == 9:
-        return gray.name(QColor.NameFormat.HexArgb)
-    return gray.name(QColor.NameFormat.HexRgb)
+        return gray_color.name(QColor.NameFormat.HexArgb)
+    return gray_color.name(QColor.NameFormat.HexRgb)
 
 # takes a hex color string and returns the same color as hex string with reduced staturation and incr. lightness
 @functools.lru_cache(maxsize=50)
@@ -609,9 +675,12 @@ def toDim(color:str) -> str:
     return gray.name(QColor.NameFormat.HexRgb)
 
 # creates QLinearGradient style from light to dark by default, or from dark to light if reverse is True
+# xalpha can be given as a hex value of two letters
 @functools.cache
-def createGradient(rgb:QColor|str, tint_factor:float = 0.1, shade_factor:float = 0.1, reverse:bool = False, left_to_right:bool = False) -> str:
+def createGradient(rgb:QColor|str, tint_factor:float = 0.1, shade_factor:float = 0.1, reverse:bool = False, left_to_right:bool = False, alpha:str = '') -> str:
     light_grad,dark_grad = createRGBGradient(rgb,tint_factor,shade_factor)
+    light_grad = f'#{alpha}{light_grad[1:]}'
+    dark_grad = f'#{alpha}{dark_grad[1:]}'
     if reverse:
         # dark to light
         if left_to_right:
@@ -1075,7 +1144,7 @@ def findTPint(timeindex:list[int], timex:list[float], temp:list[float]) -> int:
     if start < SOR_index < end:
         start = SOR_index
     for i in range(end - 1, start -1, -1):
-        if temp[i] > 0 and temp[i] < TP:
+        if 0 < temp[i] < TP:
             TP = temp[i]
             idx = i
     return idx
@@ -1084,7 +1153,7 @@ def findTPint(timeindex:list[int], timex:list[float], temp:list[float]) -> int:
 def eventtime2string(time:float) -> str:
     if time == 0.0:
         return ''
-    di,mo = divmod(time,60)
+    di,mo = divmod(math.floor(time + 0.5),60)
     return f'{di:02.0f}:{mo:02.0f}'
 
 
@@ -1112,8 +1181,8 @@ def events_internal_to_external_value(v:float|None) -> int:
     if -1.0 <= v <= 1.0:
         return 0
     if v < -1.0:
-        return -(int(round(abs(v)*10)) - 10)
-    return int(round(v*10)) - 10
+        return -(round(abs(v)*10) - 10)
+    return round(v*10) - 10
 
 # the inverse of events_internal_to_external_value, converting an external to an internal event value
 # v from [-100,100]
@@ -1447,13 +1516,13 @@ def computeDeltas(
         if optimal_smoothing:
             user_filter = delta_filter
         else:
-            user_filter = int(round(delta_filter/2.))
+            user_filter = round(delta_filter/2.)
         delta1 = smooth_list(timex,z1,window_len=user_filter,decay_smoothing=(not optimal_smoothing),a_lin=timex_lin, # pyright:ignore[reportUnknownArgumentType]
                         medfilt_factor=medfilt_factor, filter_dropouts=filter_dropouts, replace_error_values=replace_error_values)
 
         # cut out the part after DROP and before CHARGE and remove values beyond the RoRlimit
         return [
-            d if ((roast_start_idx <= i <= roast_end_idx) and (d is not None and (not limit_ror or
+            float(d) if ((roast_start_idx <= i <= roast_end_idx) and (d is not None and (not limit_ror or
                 ror_limit_min < d < ror_limit_max)))
             else None
             for i,d in enumerate(delta1)
@@ -1468,7 +1537,7 @@ def computeDeltas(
 
 #Write object to file
 def serialize(filename:str, obj:dict[str, Any]) -> None:
-    fn = str(filename)
+    fn = filename
     with open(fn, 'w+', encoding='utf-8') as f:
         f.write(repr(obj))
 
@@ -1477,7 +1546,7 @@ def serialize(filename:str, obj:dict[str, Any]) -> None:
 def deserialize(filename:str) -> dict[str, Any]:
     obj:dict[str,Any] = {}
     try:
-        fn = str(filename)
+        fn = filename
         if os.path.exists(fn):
             with open(fn, encoding='utf-8') as f:
                 obj=ast.literal_eval(f.read()) # pylint: disable=eval-used
@@ -1508,7 +1577,7 @@ def csv_load(csvFile:io.TextIOWrapper) -> 'ProfileData':
     else:
         roastdate = QDateTime(date, QTime())
     profile['roastdate'] = encodeLocalStrict(QDate(date).toString())
-    profile['roastepoch'] = int(roastdate.toSecsSinceEpoch())
+    profile['roastepoch'] = roastdate.toSecsSinceEpoch()
     profile['roasttzoffset'] = 0
     unit = header[1].split('Unit:')[1]
     if unit in {'F', 'C'}:
@@ -1651,9 +1720,9 @@ def exportProfile2CSV(filename:str, profile:'ProfileData') -> bool:
                 'DROP:' + eventtime2string(DROP),
                 'COOL:' + eventtime2string(COOL),
                 'Time:' + QTime.fromString(decodeLocalStrict(profile['roasttime'])).toString()[:-3]]) # pyright: ignore[reportTypedDictNotRequiredAccess]
-            headrow:list[str] = (['Time1','Time2','ET','BT','Event'] + functools.reduce(lambda x,y : x + [str(y[0]),str(y[1])],
+            headrow:list[str] = (['Time1','Time2','ET','BT','Event'] + functools.reduce(lambda x,y : x + [y[0], y[1]],
                     (list(zip(profile['extraname1'][0:extradevices],profile['extraname2'][0:extradevices], strict=True)) if 'extraname1' in profile and 'extraname2' in profile else []),
-                    cast(list[str], [])))
+                    cast(list[str], []))) # ty:ignore[redundant-cast]
             writer.writerow(headrow)
             last_time:str|None = None
             events_set:set[str] = set()
@@ -1665,7 +1734,7 @@ def exportProfile2CSV(filename:str, profile:'ProfileData') -> bool:
                     time2 = ''
                 event:str = ''
                 for ev in events:
-                    if ev[1] not in events_set and (ev[0]!=0 or (ev[1]=='CHARGE' and ev[0]!=-1)) and int(round(tx)) == int(round(ev[0])):
+                    if ev[1] not in events_set and (ev[0]!=0 or (ev[1]=='CHARGE' and ev[0]!=-1)) and round(tx) == round(ev[0]):
                         event = ev[1]
                         events_set.add(ev[1])
                         break
@@ -1683,7 +1752,7 @@ def exportProfile2CSV(filename:str, profile:'ProfileData') -> bool:
                                 extratemps.append(str(profile['extratemp2'][j][i]))
                             else:
                                 extratemps.append('-1')
-                    writer.writerow([str(time1),str(time2),str(temp1[i]),str(temp2[i]),str(event)] + extratemps)
+                    writer.writerow([time1, time2, str(temp1[i]),str(temp2[i]), event] + extratemps)
                 last_time = time1
         return True
     return False
@@ -1695,7 +1764,7 @@ def roast_time(timeindex:list[int], timex:list[float]) -> float|None:
     if len(timex) == 0 or len(timeindex) < 7:
         return None
     starttime = (timex[timeindex[0]] if timeindex[0] != -1 and timeindex[0] < len(timex) else 0)
-    endtime = (timex[timeindex[6]] if timeindex[6] > 0  and timeindex[6] < len(timex) else timex[-1])
+    endtime =  (timex[timeindex[6]] if 0 < timeindex[6] < len(timex) else timex[-1])
     return endtime - starttime
 
 # return the total roasting time of the given profile in seconds
@@ -1800,24 +1869,24 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
         try:
             roastdate = None
             date = QDate.fromString(decodeLocalStrict(profile['roastisodate']),Qt.DateFormat.ISODate)
-            if not date.isValid(): # ty:ignore[no-matching-overload]
+            if not date.isValid():
                 date = QDate.currentDate()
             if 'roasttime' in profile:
                 try:
                     time = QTime.fromString(decodeLocalStrict(profile['roasttime']))
-                    if not time.isValid(): # ty:ignore[no-matching-overload]
+                    if not time.isValid():
                         time = QTime().currentTime()
                     roastdate = QDateTime(date,time)
                 except Exception: # pylint: disable=broad-except
                     roastdate = QDateTime(date, QTime())
             if roastdate is not None:
-                roastepoch = int(roastdate.toSecsSinceEpoch())
+                roastepoch = roastdate.toSecsSinceEpoch()
         except Exception: # pylint: disable=broad-except
             pass
     elif 'roastdate' in profile:
         try:
             date = QDate.fromString(decodeLocalStrict(profile['roastdate']))
-            if not date.isValid(): # ty:ignore[no-matching-overload]
+            if not date.isValid():
                 date = QDate.currentDate()
             if 'roasttime' in profile:
                 try:
@@ -1827,7 +1896,7 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
                     roastdate = QDateTime(date, QTime())
             else:
                 roastdate = QDateTime(date, QTime())
-            roastepoch = int(roastdate.toSecsSinceEpoch())
+            roastepoch = roastdate.toSecsSinceEpoch()
         except Exception: # pylint: disable=broad-except
             pass
 
@@ -1838,19 +1907,19 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
 
     # samplint interval (we don't trust profile['samplinginterval'])
     tx_diff = numpy.diff(numpy.array(timex[1:])) # we skip the first sample as it might have been delayed/skipped
-    sampling_interval = max(min_sampling_interval, int(round(float(numpy.average(tx_diff))))) # sampling interval in seconds
+    sampling_interval = max(min_sampling_interval, round(float(numpy.average(tx_diff)))) # sampling interval in seconds
 
     # remove readings before CHARGE and after DROP
     start_idx:int = 0
     end_idx:int = len(timex)
-    if seconds_before_charge is not None and timeindex[0]>-1 and timeindex[0]<len(timex):
+    if seconds_before_charge is not None and -1 < timeindex[0] < len(timex):
         readings_before,_ = divmod(seconds_before_charge,sampling_interval)
         start_idx = max(0,timeindex[0]-readings_before)
-    if seconds_after_drop is not None and timeindex[6]>0 and timeindex[6]<len(timex):
+    if seconds_after_drop is not None and 0 < timeindex[6] < len(timex):
         readings_after,_ = divmod(seconds_after_drop,sampling_interval)
         end_idx = min(end_idx, timeindex[6]+readings_after+1)
     # adjust roastepoch (start of recording) by adding the duration removed
-    roastepoch += int(round(timex[start_idx] - timex[0]))
+    roastepoch += round(timex[start_idx] - timex[0])
     # adjust timex
     timex = timex[start_idx:end_idx]
     # adjust ET
@@ -1890,7 +1959,7 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
     # roast start / CHARGE
     last_idx:int = 0
     charge_offset:int = 0 # delta in seconds between time[0] (start of recording; roastepoch) and CHARGE (start of roast)
-    if len(timeindex)>0 and timeindex[0]>-1 and len(timex_resampled)>timeindex[0]:
+    if len(timeindex)>0 and timeindex[0] > -1 and -1 < timeindex[0] < len(timex_resampled):
         charge_offset = timex_resampled[timeindex[0]]
         roast.milestones.charge_idx = timeindex[0]
         last_idx = timeindex[0]
@@ -1903,22 +1972,22 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
         last_idx = timeindex[1]
 
     # FIRST CRACK START
-    if len(timeindex)>1 and timeindex[2]>0 and len(timex_resampled)>timeindex[2]>last_idx:
+    if len(timeindex)>2 and timeindex[2]>0 and len(timex_resampled)>timeindex[2]>last_idx:
         roast.milestones.first_crack_start_idx = timeindex[2]
         last_idx = timeindex[2]
 
     # FIRST CRACK END
-    if len(timeindex)>1 and timeindex[3]>0 and len(timex_resampled)>timeindex[3]>last_idx:
+    if len(timeindex)>3 and timeindex[3]>0 and len(timex_resampled)>timeindex[3]>last_idx:
         roast.milestones.first_crack_end_idx = timeindex[3]
         last_idx = timeindex[3]
 
     # SECOND CRACK START
-    if len(timeindex)>1 and timeindex[4]>0 and len(timex_resampled)>timeindex[4]>last_idx:
+    if len(timeindex)>4 and timeindex[4]>0 and len(timex_resampled)>timeindex[4]>last_idx:
         roast.milestones.second_crack_start_idx = timeindex[4]
         last_idx = timeindex[4]
 
     # SECOND CRACK END
-    if len(timeindex)>1 and timeindex[5]>0 and len(timex_resampled)>timeindex[5]>last_idx:
+    if len(timeindex)>5 and timeindex[5]>0 and len(timex_resampled)>timeindex[5]>last_idx:
         roast.milestones.second_crack_end_idx = timeindex[5]
         last_idx = timeindex[5]
 
@@ -1984,7 +2053,7 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
 
     # multiply reading by 10 and round to integer
     def reading2value(x:float|None, factor:int) -> int:
-        return (-1 if x is None or x == -1 or math.isnan(x) else int(round(x*factor)))
+        return (-1 if x is None or x == -1 or math.isnan(x) else round(x*factor))
 
     # et_values
     et_values = profile.get('temp1',[])
@@ -2028,7 +2097,7 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
     if rate_of_rise:
         # ET RoR
         if rate_of_rise > 1 and len(et_values)>0:
-            delta_ET_samples = max(1,int(round(delta_span_ET / sampling_interval)))
+            delta_ET_samples = max(1, round(delta_span_ET / sampling_interval))
             delta_et,_ = computeDeltas(
                 numpy.array(timex),
                 numpy.array(et_values),
@@ -2036,8 +2105,8 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
                 True,               # optimal smoothing
                 time_lin,
                 delta_ET_filter,    # delta filter
-                (timeindex[0] if len(timeindex)>0 and timeindex[0]>-1 and len(timex)>timeindex[0] else 0),           # roast_start_idx
-                (timeindex[6] if len(timeindex)>6 and timeindex[6]>0 and len(timex)>timeindex[6] else len(timex)-1), # roast_end_idx
+                (timeindex[0] if len(timeindex)>0 and -1 < timeindex[0] < len(timex) else 0),           # roast_start_idx
+                (timeindex[6] if len(timeindex)>6 and 0 < timeindex[6] < len(timex) else len(timex)-1), # roast_end_idx
                 True, # polyfit ror computation (in combination with optimal smoothing this results in the application of the optimal Savgol filter)
                 medfilt_factor_RoR, # median filter factor RoR
                 False,              # no further dropout filtering
@@ -2050,7 +2119,7 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
                 roast.et_ror_values.extend([reading2value(x, factor) for x in interp1d(tx_a,numpy.array(delta_et),fill_value='extrapolate')(timex_resampled)])
         # BT RoR
         if len(bt_values)>0:
-            delta_BT_samples = max(1,int(round(delta_span_BT / sampling_interval)))
+            delta_BT_samples = max(1,round(delta_span_BT / sampling_interval))
             delta_bt,_ = computeDeltas(
                 numpy.array(timex),
                 numpy.array(bt_values),
@@ -2058,8 +2127,8 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
                 True,               # optimal smoothing
                 time_lin,
                 delta_BT_filter,    # delta filter
-                (timeindex[0] if len(timeindex)>0 and timeindex[0]>-1 and len(timex)>timeindex[0] else 0),           # roast_start_idx
-                (timeindex[6] if len(timeindex)>6 and timeindex[6]>0 and len(timex)>timeindex[6] else len(timex)-1), # roast_end_idx
+                (timeindex[0] if len(timeindex)>0 and -1 < timeindex[0] < len(timex) else 0),           # roast_start_idx
+                (timeindex[6] if len(timeindex)>6 and 0 < timeindex[6] < len(timex) else len(timex)-1), # roast_end_idx
                 True, # polyfit ror computation (in combination with optimal smoothing this results in the application of the optimal Savgol filter)
                 medfilt_factor_RoR, # median filter factor RoR
                 False,              # no further dropout filtering
@@ -2175,7 +2244,7 @@ def roast_message_to_profile(roast:'artisan_roast_pb2.Roast') -> 'ProfileData': 
                     cast(list[int], event.get('values', [])),
                     strict=False):
                 specialevents.append(ind)
-                specialeventstype.append(int(i))
+                specialeventstype.append(i)
                 specialeventsvalue.append(events_external_to_internal_value(value))
                 specialeventsStrings.append('')
 
@@ -2217,14 +2286,14 @@ def roast_message_to_profile(roast:'artisan_roast_pb2.Roast') -> 'ProfileData': 
 
     if 'start' in roast_dict:
         # start points to the start of the roast (CHARGE)
-        profile['roastepoch'] = int(round(datetime.datetime.fromisoformat(roast_dict['start']).timestamp()))
+        profile['roastepoch'] = round(datetime.datetime.fromisoformat(roast_dict['start']).timestamp())
 
 
     if 'timex' in profile:
 
         # correct roastepoch which should point to the start of the recording
         if len(profile['timex']) > 0 and 'roastepoch' in profile:
-            profile['roastepoch'] = profile['roastepoch'] + int(round(profile['timex'][0]))
+            profile['roastepoch'] = profile['roastepoch'] + round(profile['timex'][0])
 
         additional_curves = roast_dict.get('additional_curves',[])
         # make the number of additional curves even

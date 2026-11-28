@@ -609,7 +609,8 @@ class Demo:
                            "coffee": bean.name if bean else "", "is_reference": bool(uuid) and reference == uuid,
                            "has_reference": bool(reference),
                            "rest_days": (date.today() - date.fromtimestamp(detail["epoch"])).days if detail["epoch"] else None,
-                           "words": _tasting_words((self.config or {}).get("unit", "C")), "colours": catalogue.export()["colours"]})
+                           "words": _tasting_words((self.config or {}).get("unit", "C")), "colours": catalogue.export()["colours"],
+                           "colour_levels": COLOUR_LEVELS})
 
     def delete_roast(self, data: str) -> str:
         """{origin, name}: the roast file leaves the tablet (from the computer: only its copy); the stock stays."""
@@ -630,6 +631,12 @@ class Demo:
         self._preheat_ready = None
         self._warm_preheat()
         return self.get_roasts()
+
+    def edit_roast(self, data: str) -> str:
+        """A saved roast's roasted weight or colour given again ({origin, name, field, value}), from the Roasts tab."""
+        request = json.loads(data)
+        self.roasts.edit(request["origin"], request["name"], request["field"], float(request["value"]))
+        return self.get_roast(json.dumps({"origin": request["origin"], "name": request["name"]}))
 
     def save_tasting(self, data: str) -> str:
         """The tasting of a roast ({origin, name, verdict, defects, notes, reference}), and its star, as the desktop."""
