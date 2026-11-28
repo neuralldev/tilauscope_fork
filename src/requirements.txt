@@ -107,7 +107,7 @@ SecretStorage==3.5.0; platform_system=='Linux'
 ###
 build==1.5.0; platform_system=='Windows'
 pywin32==312; platform_system=='Windows'
-pyinstaller-hooks-contrib>=2026.6; platform_system=='Windows'
+pyinstaller-hooks-contrib>=2026.7; platform_system=='Windows'
 pyinstaller-versionfile==3.0.1; platform_system=='Windows'
 libusb-package==1.0.30.1; platform_system=='Windows' # Aillio R1/R2 over USB; ships its own PyInstaller hook for libusb-1.0.dll (x64 wheel only)
 tzdata==2026.3; platform_system=='Windows'
